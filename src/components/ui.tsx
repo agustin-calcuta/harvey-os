@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cx, iniciales } from '../lib/utils'
 import { IMPORTANCIA, OBJETIVOS, type Importancia, type Objetivo } from '../types'
@@ -193,11 +194,8 @@ export function Modal({
 
   if (!abierto) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/80 p-4 backdrop-blur-sm sm:p-8">
-      <div
-        className={cx('card w-full animate-in my-auto', ancho)}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Capa onCerrar={onCerrar}>
+      <div className={cx('card animate-in relative w-full', ancho)}>
         <div className="flex items-start justify-between gap-4 border-b border-line p-5">
           <div>
             {kicker && <div className="label bracket mb-2">{kicker}</div>}
@@ -213,13 +211,39 @@ export function Modal({
         </div>
         <div className="p-5">{children}</div>
       </div>
-      <button
-        className="fixed inset-0 -z-10 cursor-default"
-        onClick={onCerrar}
-        aria-label="Cerrar"
-        tabIndex={-1}
-      />
-    </div>
+    </Capa>
+  )
+}
+
+/**
+ * Capa a pantalla completa.
+ *
+ * Va por portal a <body> a propósito: cualquier ancestro con transform,
+ * filtro o animación crea un bloque contenedor y un `fixed` deja de
+ * referirse al viewport. El portal lo evita de raíz.
+ */
+export function Capa({
+  children,
+  onCerrar,
+  alinear = 'center',
+}: {
+  children: ReactNode
+  onCerrar?: () => void
+  alinear?: 'center' | 'end'
+}) {
+  return createPortal(
+    <div
+      className={cx(
+        'fixed inset-0 z-50 flex overflow-y-auto bg-black/85 backdrop-blur-sm',
+        alinear === 'end' ? 'justify-end' : 'items-center justify-center p-4 sm:p-8',
+      )}
+      onMouseDown={(e) => {
+        if (onCerrar && e.target === e.currentTarget) onCerrar()
+      }}
+    >
+      {children}
+    </div>,
+    document.body,
   )
 }
 

@@ -20,7 +20,7 @@ import {
   nombreDe,
 } from '../../lib/utils'
 import { IMPORTANCIA, OBJETIVOS, type Reunion } from '../../types'
-import { Boton, Chip, ChipImportancia, Confirmar, Etiqueta, Vacio } from '../ui'
+import { Boton, Capa, Chip, ChipImportancia, Confirmar, Etiqueta, Vacio } from '../ui'
 import ModalCompromiso from './ModalCompromiso'
 
 export default function FaseVivo({ reunion }: { reunion: Reunion }) {
@@ -365,8 +365,7 @@ function PanelPendientes({
   if (!abierto) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm">
-      <button className="flex-1" onClick={onCerrar} aria-label="Cerrar" />
+    <Capa onCerrar={onCerrar} alinear="end">
       <div className="flex w-full max-w-lg flex-col border-l border-line bg-ink">
         <div className="flex items-start justify-between gap-3 border-b border-line p-5">
           <div>
@@ -434,6 +433,6 @@ function PanelPendientes({
           )}
         </div>
       </div>
-    </div>
+    </Capa>
   )
 }

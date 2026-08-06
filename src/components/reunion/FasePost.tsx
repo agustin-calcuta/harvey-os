@@ -16,7 +16,7 @@ import {
   paraInputDate,
 } from '../../lib/utils'
 import { ESTADO_COMPROMISO, IMPORTANCIA, OBJETIVOS, type Compromiso, type Reunion } from '../../types'
-import { Boton, Chip, ChipImportancia, Confirmar, Etiqueta, Vacio } from '../ui'
+import { Boton, Capa, Chip, ChipImportancia, Confirmar, Etiqueta, Vacio } from '../ui'
 import ModalCompromiso from './ModalCompromiso'
 
 export default function FasePost({ reunion }: { reunion: Reunion }) {
@@ -408,8 +408,8 @@ function VistaCorreo({
     .map((u) => u.email)
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/85 p-4 backdrop-blur-sm sm:p-8">
-      <div className="mx-auto max-w-2xl">
+    <Capa onCerrar={onCerrar}>
+      <div className="my-auto w-full max-w-2xl">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <Etiqueta className="bracket mb-1">Se envía a {destinatarios.length} personas</Etiqueta>
@@ -422,6 +422,6 @@ function VistaCorreo({
           dangerouslySetInnerHTML={{ __html: correo.html }}
         />
       </div>
-    </div>
+    </Capa>
   )
 }

@@ -5,7 +5,7 @@ import { useApp } from '../store/AppContext'
 import { abrirEnClienteDeCorreo } from '../lib/email'
 import { fechaHora, relativo } from '../lib/utils'
 import type { Notificacion, TipoNotificacion } from '../types'
-import { Boton, Chip, Etiqueta, Seccion, Vacio } from '../components/ui'
+import { Boton, Capa, Chip, Etiqueta, Seccion, Vacio } from '../components/ui'
 
 const TIPO: Record<TipoNotificacion, { nombre: string; fase: string }> = {
   agenda_cerrada: { nombre: 'Temario cerrado', fase: 'Pre-reunión' },
@@ -149,8 +149,8 @@ export default function Correos() {
       </Seccion>
 
       {viendo && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/85 p-4 backdrop-blur-sm sm:p-8">
-          <div className="mx-auto max-w-2xl">
+        <Capa onCerrar={() => setViendo(undefined)}>
+          <div className="my-auto w-full max-w-2xl">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <Etiqueta className="bracket mb-1">
@@ -171,7 +171,7 @@ export default function Correos() {
               </pre>
             )}
           </div>
-        </div>
+        </Capa>
       )}
     </div>
   )
