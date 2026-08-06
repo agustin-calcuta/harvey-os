@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Pencil, Play, Trash2, Unlock } from 'lucide-react'
 import { useApp } from '../store/AppContext'
@@ -48,6 +48,17 @@ export default function ReunionDetalle() {
   )
   const [editando, setEditando] = useState(false)
   const [porBorrar, setPorBorrar] = useState(false)
+
+  // Cuando la reunión avanza de etapa, la vista acompaña. Sólo ante un cambio
+  // real de estado: si el usuario eligió otra pestaña a mano, se respeta.
+  const estadoPrevio = useRef(reunion?.estado)
+  useEffect(() => {
+    if (!reunion) return
+    if (estadoPrevio.current !== reunion.estado) {
+      estadoPrevio.current = reunion.estado
+      setFase(faseSugerida(reunion.estado))
+    }
+  }, [reunion])
 
   if (!reunion) {
     return (
@@ -115,7 +126,7 @@ export default function ReunionDetalle() {
             </div>
           </div>
 
-          <div className="flex shrink-0 flex-col items-end gap-3">
+          <div className="flex w-full shrink-0 flex-row-reverse flex-wrap items-center justify-between gap-3 sm:w-auto sm:flex-col sm:flex-nowrap sm:items-end">
             <Avatares
               nombres={reunion.participantesIds
                 .map((uid) => estado.usuarios.find((u) => u.id === uid))
@@ -166,21 +177,21 @@ export default function ReunionDetalle() {
               onClick={() => setFase(f.id)}
               className={
                 activa
-                  ? 'flex flex-1 items-center gap-3 whitespace-nowrap bg-bone px-5 py-4 text-left text-ink'
-                  : 'flex flex-1 items-center gap-3 whitespace-nowrap bg-ink-2 px-5 py-4 text-left text-smoke transition-colors hover:bg-ink-3 hover:text-bone'
+                  ? 'flex flex-1 items-center gap-2 whitespace-nowrap bg-bone px-3 py-3 text-left text-ink sm:gap-3 sm:px-5 sm:py-4'
+                  : 'flex flex-1 items-center gap-2 whitespace-nowrap bg-ink-2 px-3 py-3 text-left text-smoke transition-colors hover:bg-ink-3 hover:text-bone sm:gap-3 sm:px-5 sm:py-4'
               }
             >
               <span
                 className={
                   activa
-                    ? 'display text-2xl text-signal'
-                    : 'display text-2xl text-line-2'
+                    ? 'display text-xl text-signal sm:text-2xl'
+                    : 'display text-xl text-line-2 sm:text-2xl'
                 }
               >
                 {f.num}
               </span>
               <span className="min-w-0">
-                <span className="block font-mono text-[11px] uppercase tracking-[0.14em]">
+                <span className="block font-mono text-[10px] uppercase tracking-[0.12em] sm:text-[11px] sm:tracking-[0.14em]">
                   {f.texto}
                 </span>
                 {sugerida && !activa && (

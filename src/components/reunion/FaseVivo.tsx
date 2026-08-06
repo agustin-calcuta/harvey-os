@@ -150,7 +150,7 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
         ))}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
         {/* ── Tema en curso ── */}
         <div className="space-y-5">
           <div className="card">
@@ -162,7 +162,7 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
                 <ChipImportancia valor={tema.importancia} />
                 <Chip>{OBJETIVOS[tema.objetivo].nombre}</Chip>
               </div>
-              <h2 className="display text-3xl sm:text-4xl">{tema.titulo}</h2>
+              <h2 className="display text-2xl sm:text-3xl lg:text-4xl">{tema.titulo}</h2>
               {tema.detalle && (
                 <p className="mt-3 max-w-2xl text-sm leading-relaxed text-smoke">
                   {tema.detalle}
@@ -179,7 +179,9 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
                 <div className="flex items-baseline gap-3">
                   <span
                     className={
-                      excedido ? 'display text-5xl text-signal' : 'display text-5xl'
+                      excedido
+                        ? 'display text-4xl text-signal sm:text-5xl'
+                        : 'display text-4xl sm:text-5xl'
                     }
                   >
                     {mmss(seg)}
@@ -259,7 +261,7 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
 
         {/* ── Compromisos del tema ── */}
         <aside className="space-y-3">
-          <div className="card sticky top-4">
+          <div className="card xl:sticky xl:top-4">
             <div className="flex items-center justify-between gap-2 border-b border-line p-4">
               <Etiqueta className="bracket">Compromisos</Etiqueta>
               <Boton tam="sm" variante="solido" onClick={() => setNuevoCompromiso(true)}>

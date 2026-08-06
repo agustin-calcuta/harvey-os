@@ -55,15 +55,16 @@ export default function Reuniones() {
           )
         }
       >
-        <div className="mb-5 flex flex-wrap gap-1.5">
+        {/* En móvil se desplazan en horizontal en vez de apilarse en varias filas. */}
+        <div className="no-scrollbar -mx-4 mb-5 flex gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
           {FILTROS.map((f) => (
             <button
               key={f.valor}
               onClick={() => setFiltro(f.valor)}
               className={
                 filtro === f.valor
-                  ? 'border border-bone bg-bone px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-ink'
-                  : 'border border-line-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-smoke transition-colors hover:border-smoke hover:text-bone'
+                  ? 'shrink-0 whitespace-nowrap border border-bone bg-bone px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ink'
+                  : 'shrink-0 whitespace-nowrap border border-line-2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-smoke transition-colors hover:border-smoke hover:text-bone'
               }
             >
               {f.texto}
@@ -139,7 +140,7 @@ export default function Reuniones() {
                       </div>
                     </div>
 
-                    <div className="flex shrink-0 flex-col items-end gap-3">
+                    <div className="flex w-full shrink-0 flex-row-reverse items-center justify-between gap-3 sm:w-auto sm:flex-col sm:items-end">
                       <Avatares
                         nombres={r.participantesIds
                           .map((id) => estado.usuarios.find((u) => u.id === id))

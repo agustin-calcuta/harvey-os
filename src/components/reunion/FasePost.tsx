@@ -76,7 +76,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
             <RotateCcw size={12} /> Reabrir para editar
           </Boton>
         )}
-        <label className="ml-auto flex cursor-pointer items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-smoke">
+        <label className="flex w-full cursor-pointer items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-smoke sm:ml-auto sm:w-auto">
           <input
             type="checkbox"
             className="h-3.5 w-3.5 accent-[#C0392B]"
@@ -148,7 +148,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
                       </span>
                       <h4 className="text-base">{t.titulo}</h4>
                     </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-8">
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 sm:pl-8">
                       <ChipImportancia valor={t.importancia} />
                       <Chip>{OBJETIVOS[t.objetivo].nombre}</Chip>
                       <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-smoke-2">
@@ -169,7 +169,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
                   </div>
                 </div>
 
-                <div className="mt-3 border-t border-line pt-3 pl-8">
+                <div className="mt-3 border-t border-line pt-3 sm:pl-8">
                   {editable ? (
                     <NotaEditable temaId={t.id} valor={t.conclusiones ?? ''} />
                   ) : (

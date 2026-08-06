@@ -27,8 +27,9 @@ export function Boton({
 }: BotonProps) {
   const base =
     'inline-flex items-center justify-center gap-2 font-mono uppercase tracking-[0.12em] transition-all disabled:opacity-35 disabled:cursor-not-allowed select-none border'
+  // Alturas cómodas para el dedo: nada por debajo de ~34 px de alto real.
   const tamanos = {
-    sm: 'text-[10px] px-3 py-1.5',
+    sm: 'text-[10px] px-3 py-2',
     md: 'text-[11px] px-4 py-2.5',
     lg: 'text-xs px-6 py-3.5',
   }
@@ -195,11 +196,11 @@ export function Modal({
   if (!abierto) return null
   return (
     <Capa onCerrar={onCerrar}>
-      <div className={cx('card animate-in relative w-full', ancho)}>
-        <div className="flex items-start justify-between gap-4 border-b border-line p-5">
+      <div className={cx('card animate-in relative my-auto w-full', ancho)}>
+        <div className="flex items-start justify-between gap-4 border-b border-line p-4 sm:p-5">
           <div>
             {kicker && <div className="label bracket mb-2">{kicker}</div>}
-            <h2 className="display text-2xl">{titulo}</h2>
+            <h2 className="display text-xl sm:text-2xl">{titulo}</h2>
           </div>
           <button
             onClick={onCerrar}
@@ -209,7 +210,7 @@ export function Modal({
             <X size={14} />
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="p-4 sm:p-5">{children}</div>
       </div>
     </Capa>
   )
@@ -235,7 +236,9 @@ export function Capa({
     <div
       className={cx(
         'fixed inset-0 z-50 flex overflow-y-auto bg-black/85 backdrop-blur-sm',
-        alinear === 'end' ? 'justify-end' : 'items-center justify-center p-4 sm:p-8',
+        // items-start + my-auto en el hijo: centra si entra en pantalla y
+        // deja scrollear desde arriba si el contenido es más alto.
+        alinear === 'end' ? 'justify-end' : 'items-start justify-center p-3 sm:p-8',
       )}
       onMouseDown={(e) => {
         if (onCerrar && e.target === e.currentTarget) onCerrar()

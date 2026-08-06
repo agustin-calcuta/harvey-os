@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   CalendarDays,
   CheckCircle2,
@@ -30,6 +30,18 @@ export default function Layout() {
   const { yo, estado, salir, esAdmin } = useApp()
   const [abierto, setAbierto] = useState(false)
   const navegar = useNavigate()
+  const ruta = useLocation()
+
+  // El menú móvil se cierra al navegar y no deja el fondo scrolleable.
+  useEffect(() => setAbierto(false), [ruta.pathname])
+  useEffect(() => {
+    if (!abierto) return
+    const previo = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previo
+    }
+  }, [abierto])
 
   const misPendientes = estado.compromisos.filter(
     (c) => c.responsableId === yo?.id && c.estado !== 'hecho',
@@ -148,11 +160,21 @@ export default function Layout() {
 
       {/* ── Contenido ── */}
       <div className="flex min-w-0 flex-1 flex-col lg:pl-[248px]">
-        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-ink/90 px-4 py-3 backdrop-blur lg:hidden">
-          <button onClick={() => setAbierto(true)} aria-label="Abrir menú">
+        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-ink/95 px-4 py-3 backdrop-blur lg:hidden">
+          <button
+            onClick={() => setAbierto(true)}
+            aria-label="Abrir menú"
+            className="-m-2 p-2"
+          >
             <Menu size={20} />
           </button>
-          <div className="display text-lg">Harvey</div>
+          <button onClick={() => navegar('/')} className="display text-lg">
+            Harvey
+          </button>
+          <span className="ml-auto truncate font-mono text-[10px] uppercase tracking-[0.14em] text-smoke">
+            {enlaces.find((n) => (n.exacto ? ruta.pathname === n.a : ruta.pathname.startsWith(n.a)))
+              ?.texto ?? ''}
+          </span>
         </header>
 
         <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">

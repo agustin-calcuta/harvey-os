@@ -73,7 +73,7 @@ export default function Panel() {
       </div>
 
       {/* ── Métricas ── */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Metrica valor={abiertos.length} etiqueta="Compromisos abiertos" />
         <Metrica
           valor={vencidos.length}
@@ -135,7 +135,7 @@ export default function Panel() {
             </div>
 
             {/* Agenda */}
-            <div className="grid gap-px bg-line sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-px bg-line sm:grid-cols-3">
               <div className="bg-ink-2 p-4">
                 <div className="label mb-1">En agenda</div>
                 <div className="display text-2xl">{agenda.length}</div>
@@ -144,7 +144,7 @@ export default function Panel() {
                 <div className="label mb-1">Esperando aprobación</div>
                 <div className="display text-2xl">{propuestos.length}</div>
               </div>
-              <div className="bg-ink-2 p-4">
+              <div className="col-span-2 bg-ink-2 p-4 sm:col-span-1">
                 <div className="label mb-1">Tiempo asignado</div>
                 <div
                   className={
@@ -164,8 +164,8 @@ export default function Panel() {
             {agenda.length > 0 && (
               <ul className="divide-y divide-line border-t border-line">
                 {agenda.map((t, i) => (
-                  <li key={t.id} className="flex items-center gap-3 px-5 py-3">
-                    <span className="w-6 shrink-0 font-mono text-[11px] text-smoke-2">
+                  <li key={t.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+                    <span className="hidden w-6 shrink-0 font-mono text-[11px] text-smoke-2 sm:block">
                       {String(i + 1).padStart(2, '0')}
                     </span>
                     <span
@@ -173,9 +173,11 @@ export default function Panel() {
                       style={{ background: IMPORTANCIA[t.importancia].hex }}
                     />
                     <span className="min-w-0 flex-1 truncate text-sm">{t.titulo}</span>
-                    <ChipObjetivo valor={t.objetivo} />
-                    <span className="w-14 shrink-0 text-right font-mono text-[11px] text-smoke">
-                      {t.duracionMin} min
+                    <span className="hidden sm:block">
+                      <ChipObjetivo valor={t.objetivo} />
+                    </span>
+                    <span className="w-12 shrink-0 text-right font-mono text-[11px] text-smoke sm:w-14">
+                      {t.duracionMin}′
                     </span>
                   </li>
                 ))}
@@ -231,12 +233,12 @@ export default function Panel() {
             {misAbiertos
               .sort((a, b) => (a.fechaLimite ?? '9999').localeCompare(b.fechaLimite ?? '9999'))
               .map((c) => (
-                <li key={c.id} className="flex flex-wrap items-center gap-3 p-4">
+                <li key={c.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 p-4">
                   <span
                     className="h-8 w-0.5 shrink-0"
                     style={{ background: IMPORTANCIA[c.importancia].hex }}
                   />
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 basis-[70%] sm:basis-auto">
                     <div className="text-sm">{c.accion}</div>
                     {c.avance && (
                       <div className="mt-0.5 truncate text-xs text-smoke-2">{c.avance}</div>
@@ -278,9 +280,11 @@ export default function Panel() {
           </p>
           <ul className="card divide-y divide-line">
             {arrastrados.slice(0, 6).map((c) => (
-              <li key={c.id} className="flex flex-wrap items-center gap-3 p-4">
+              <li key={c.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 p-4">
                 <ChipImportancia valor={c.importancia} conTexto={false} />
-                <span className="min-w-0 flex-1 truncate text-sm">{c.accion}</span>
+                <span className="min-w-0 flex-1 basis-full truncate text-sm sm:basis-auto">
+                  {c.accion}
+                </span>
                 <span className="text-xs text-smoke">{nombreDe(estado, c.responsableId)}</span>
                 <span
                   className={

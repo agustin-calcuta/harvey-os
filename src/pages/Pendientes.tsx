@@ -62,7 +62,7 @@ export default function Pendientes() {
           arrancan hoy y se cierran dentro de cinco meses: acá no se pierden.
         </p>
 
-        <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
           <Metrica valor={lista.filter((c) => c.estado !== 'hecho').length} etiqueta="Abiertos" />
           <Metrica
             valor={vencidos.length}
@@ -81,7 +81,7 @@ export default function Pendientes() {
         </div>
 
         <div className="mb-5 flex flex-wrap items-center gap-2">
-          <Etiqueta className="mr-1">Agrupar por</Etiqueta>
+          <Etiqueta className="mr-1 basis-full sm:basis-auto">Agrupar por</Etiqueta>
           {(['responsable', 'reunion', 'vencimiento'] as Agrupacion[]).map((a) => (
             <button
               key={a}
@@ -174,7 +174,7 @@ export default function Pendientes() {
                           </div>
                         </div>
 
-                        <div className="flex shrink-0 flex-wrap gap-1">
+                        <div className="grid w-full shrink-0 grid-cols-4 gap-1 sm:flex sm:w-auto sm:flex-wrap">
                           {COLUMNAS_KANBAN.map((s) => (
                             <BotonEstado
                               key={s}
@@ -218,8 +218,8 @@ function BotonEstado({
       title={ESTADO_COMPROMISO[estado].nombre}
       className={
         activo
-          ? 'border border-bone bg-bone px-2 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-ink'
-          : 'border border-line-2 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-smoke transition-colors hover:border-smoke hover:text-bone'
+          ? 'truncate border border-bone bg-bone px-2 py-1.5 font-mono text-[9px] uppercase tracking-[0.1em] text-ink'
+          : 'truncate border border-line-2 px-2 py-1.5 font-mono text-[9px] uppercase tracking-[0.1em] text-smoke transition-colors hover:border-smoke hover:text-bone'
       }
     >
       {ESTADO_COMPROMISO[estado].nombre}

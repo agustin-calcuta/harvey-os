@@ -81,7 +81,7 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
     <div className="space-y-8">
       {/* ── Estado de la carga ── */}
       <div className="card">
-        <div className="grid gap-px bg-line sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-px bg-line sm:grid-cols-4">
           <div className="bg-ink-2 p-4">
             <Etiqueta className="mb-1.5">Estado de la carga</Etiqueta>
             <div className="flex items-center gap-2">
@@ -427,7 +427,7 @@ function TemaOrdenable({
           <FilaTema tema={tema} onEditar={onEditar} onBorrar={onBorrar} />
 
           {puedeOrganizar && (
-            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+            <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-line pt-3 sm:gap-2">
               <span className="label">Tiempo</span>
               {[5, 10, 15, 20, 30].map((m) => (
                 <button
@@ -435,8 +435,8 @@ function TemaOrdenable({
                   onClick={() => onTiempo(m)}
                   className={
                     tema.duracionMin === m
-                      ? 'border border-bone bg-bone px-2.5 py-1 font-mono text-[10px] text-ink'
-                      : 'border border-line-2 px-2.5 py-1 font-mono text-[10px] text-smoke transition-colors hover:border-smoke hover:text-bone'
+                      ? 'border border-bone bg-bone px-2.5 py-1.5 font-mono text-[10px] text-ink'
+                      : 'border border-line-2 px-2.5 py-1.5 font-mono text-[10px] text-smoke transition-colors hover:border-smoke hover:text-bone'
                   }
                 >
                   {m}′
@@ -444,7 +444,7 @@ function TemaOrdenable({
               ))}
               <button
                 onClick={onDiferir}
-                className="ml-auto font-mono text-[10px] uppercase tracking-[0.12em] text-smoke transition-colors hover:text-amber"
+                className="ml-auto py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-smoke transition-colors hover:text-amber"
               >
                 Diferir
               </button>

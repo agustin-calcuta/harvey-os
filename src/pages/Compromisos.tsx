@@ -84,7 +84,7 @@ export default function Compromisos() {
           </Boton>
         }
       >
-        <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
           <Metrica valor={filtrados.filter((c) => c.estado !== 'hecho').length} etiqueta="Abiertos" />
           <Metrica valor={mios.length} etiqueta="A tu nombre" />
           <Metrica
@@ -100,9 +100,9 @@ export default function Compromisos() {
         </div>
 
         {/* Filtros */}
-        <div className="mb-5 flex flex-wrap items-center gap-2">
+        <div className="mb-5 grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap">
           <input
-            className="w-48"
+            className="col-span-2 sm:w-48"
             placeholder="Buscar…"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
@@ -154,7 +154,7 @@ export default function Compromisos() {
 
         {/* Tablero */}
         <DndContext sensors={sensores} onDragStart={alEmpezar} onDragEnd={alSoltar}>
-          <div className="grid gap-3 lg:grid-cols-4">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             {COLUMNAS_KANBAN.map((col) => (
               <Columna
                 key={col}
@@ -175,7 +175,12 @@ export default function Compromisos() {
         </DndContext>
 
         <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-smoke-2">
-          Arrastrá las tarjetas entre columnas para cambiar el estado
+          <span className="hidden xl:inline">
+            Arrastrá las tarjetas entre columnas para cambiar el estado
+          </span>
+          <span className="xl:hidden">
+            Tocá el estado en cada tarjeta para moverla, o arrastrala
+          </span>
         </p>
       </Seccion>
 
@@ -214,7 +219,7 @@ function Columna({
     <div
       ref={setNodeRef}
       className={cx(
-        'flex min-h-[240px] flex-col border transition-colors',
+        'flex flex-col border transition-colors xl:min-h-[240px]',
         isOver ? 'border-signal bg-signal/5' : 'border-line bg-ink-2',
       )}
     >
@@ -228,7 +233,7 @@ function Columna({
 
       <div className="flex-1 space-y-2 p-2">
         {compromisos.length === 0 ? (
-          <div className="flex h-24 items-center justify-center text-center font-mono text-[10px] uppercase tracking-[0.14em] text-line-2">
+          <div className="flex h-16 items-center justify-center text-center font-mono text-[10px] uppercase tracking-[0.14em] text-line-2 xl:h-24">
             Vacío
           </div>
         ) : (
@@ -252,7 +257,7 @@ function Tarjeta({
   onEditar: () => void
   superpuesta?: boolean
 }) {
-  const { estado } = useApp()
+  const { estado, moverCompromiso } = useApp()
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: c.id,
     disabled: superpuesta,
@@ -290,9 +295,10 @@ function Tarjeta({
           <div className="text-xs leading-snug">{c.accion}</div>
           {c.avance && <div className="mt-1 text-[11px] text-smoke-2">{c.avance}</div>}
         </div>
+        {/* En táctil no hay hover: el lápiz queda siempre visible. */}
         <button
           onClick={onEditar}
-          className="shrink-0 text-line-2 opacity-0 transition-all group-hover:opacity-100 hover:text-bone"
+          className="shrink-0 p-1 text-line-2 transition-all hover:text-bone xl:opacity-0 xl:group-hover:opacity-100"
           aria-label="Editar"
         >
           <Pencil size={11} />
@@ -323,6 +329,24 @@ function Tarjeta({
         >
           {reunion.titulo}
         </Link>
+      )}
+
+      {/*
+        Con las columnas apiladas, arrastrar entre ellas no es viable.
+        Debajo de xl la tarjeta trae sus propios botones de estado.
+      */}
+      {!superpuesta && (
+        <div className="mt-2.5 flex flex-wrap gap-1 border-t border-line pt-2.5 xl:hidden">
+          {COLUMNAS_KANBAN.filter((s) => s !== c.estado).map((s) => (
+            <button
+              key={s}
+              onClick={() => moverCompromiso(c.id, s)}
+              className="border border-line-2 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-smoke transition-colors hover:border-smoke hover:text-bone"
+            >
+              → {ESTADO_COMPROMISO[s].nombre}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   )
