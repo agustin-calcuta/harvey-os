@@ -1,0 +1,178 @@
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Copy, ExternalLink, Eye, Mail, Send } from 'lucide-react'
+import { useApp } from '../store/AppContext'
+import { abrirEnClienteDeCorreo } from '../lib/email'
+import { fechaHora, relativo } from '../lib/utils'
+import type { Notificacion, TipoNotificacion } from '../types'
+import { Boton, Chip, Etiqueta, Seccion, Vacio } from '../components/ui'
+
+const TIPO: Record<TipoNotificacion, { nombre: string; fase: string }> = {
+  agenda_cerrada: { nombre: 'Temario cerrado', fase: 'Pre-reunión' },
+  minuta: { nombre: 'Minuta', fase: 'Post-reunión' },
+  recordatorio: { nombre: 'Recordatorio', fase: 'Pre-reunión' },
+  tema_aprobado: { nombre: 'Tema aprobado', fase: 'Pre-reunión' },
+}
+
+export default function Correos() {
+  const { estado, avisar, reenviarNotificacion } = useApp()
+  const [viendo, setViendo] = useState<Notificacion | undefined>()
+
+  const lista = [...estado.notificaciones].sort((a, b) => b.creadoEn.localeCompare(a.creadoEn))
+  const hayProveedor = Boolean(import.meta.env.VITE_EMAIL_ENDPOINT)
+
+  return (
+    <div className="space-y-6">
+      <Seccion kicker="Automatizaciones" titulo="Correos">
+        <p className="mb-5 max-w-2xl text-sm leading-relaxed text-smoke">
+          La plataforma emite dos correos por reunión: uno al cerrarse el temario y otro al
+          cerrarse la sesión, con conclusiones y compromisos. Acá queda el registro de todos.
+        </p>
+
+        {!hayProveedor && (
+          <div className="card mb-5 border-amber/40 p-4">
+            <div className="mb-1.5 flex items-center gap-2">
+              <Mail size={14} className="text-amber" />
+              <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-amber">
+                Sin proveedor de envío conectado
+              </span>
+            </div>
+            <p className="text-xs leading-relaxed text-smoke">
+              Los correos se componen completos y quedan registrados, pero todavía no salen
+              solos. Podés verlos, copiarlos o abrirlos en tu cliente de correo. Para que salgan
+              automáticamente hay que conectar un proveedor de envío.
+            </p>
+          </div>
+        )}
+
+        {lista.length === 0 ? (
+          <Vacio
+            titulo="Todavía no se emitió ningún correo"
+            texto="Cerrá el temario de una reunión para que salga el primero."
+            icono={<Mail size={32} />}
+          />
+        ) : (
+          <ul className="space-y-3">
+            {lista.map((n) => {
+              const reunion = estado.reuniones.find((r) => r.id === n.reunionId)
+              return (
+                <li key={n.id} className="card p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <Chip tono={n.tipo === 'minuta' ? 'cold' : 'amber'}>
+                          {TIPO[n.tipo].nombre}
+                        </Chip>
+                        <Chip>{TIPO[n.tipo].fase}</Chip>
+                        <Chip
+                          tono={
+                            n.estado === 'enviado'
+                              ? 'acid'
+                              : n.estado === 'error'
+                                ? 'signal'
+                                : 'neutro'
+                          }
+                        >
+                          {n.estado === 'enviado'
+                            ? 'Enviado'
+                            : n.estado === 'error'
+                              ? 'Error'
+                              : 'Listo para enviar'}
+                        </Chip>
+                      </div>
+
+                      <div className="text-sm">{n.asunto}</div>
+
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-[0.14em] text-smoke-2">
+                        <span>{n.destinatarios.length} destinatarios</span>
+                        <span>{fechaHora(n.creadoEn)}</span>
+                        <span>{relativo(n.creadoEn)}</span>
+                        {reunion && (
+                          <Link
+                            to={`/reuniones/${reunion.id}`}
+                            className="truncate transition-colors hover:text-bone"
+                          >
+                            {reunion.titulo}
+                          </Link>
+                        )}
+                      </div>
+
+                      {n.error && <p className="mt-2 text-xs text-signal">{n.error}</p>}
+
+                      <div className="mt-2 truncate text-[11px] text-smoke-2">
+                        {n.destinatarios.join(', ')}
+                      </div>
+                    </div>
+
+                    <div className="flex shrink-0 flex-wrap gap-1.5">
+                      <Boton tam="sm" onClick={() => setViendo(n)}>
+                        <Eye size={11} /> Ver
+                      </Boton>
+                      <Boton
+                        tam="sm"
+                        variante="fantasma"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(n.cuerpoTexto)
+                          avisar('Contenido copiado al portapapeles.')
+                        }}
+                        title="Copiar texto"
+                      >
+                        <Copy size={11} />
+                      </Boton>
+                      <Boton
+                        tam="sm"
+                        variante="fantasma"
+                        onClick={() =>
+                          abrirEnClienteDeCorreo(n.destinatarios, n.asunto, n.cuerpoTexto)
+                        }
+                        title="Abrir en el cliente de correo"
+                      >
+                        <ExternalLink size={11} />
+                      </Boton>
+                      {hayProveedor && (
+                        <Boton
+                          tam="sm"
+                          variante="solido"
+                          onClick={() => reenviarNotificacion(n.id)}
+                          title="Reenviar"
+                        >
+                          <Send size={11} />
+                        </Boton>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </Seccion>
+
+      {viendo && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/85 p-4 backdrop-blur-sm sm:p-8">
+          <div className="mx-auto max-w-2xl">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <Etiqueta className="bracket mb-1">
+                  Para {viendo.destinatarios.length} personas
+                </Etiqueta>
+                <div className="truncate text-sm text-bone">{viendo.asunto}</div>
+              </div>
+              <Boton onClick={() => setViendo(undefined)}>Cerrar</Boton>
+            </div>
+            {viendo.cuerpoHtml ? (
+              <div
+                className="overflow-hidden border border-line"
+                dangerouslySetInnerHTML={{ __html: viendo.cuerpoHtml }}
+              />
+            ) : (
+              <pre className="card overflow-x-auto whitespace-pre-wrap p-5 text-xs leading-relaxed text-smoke">
+                {viendo.cuerpoTexto}
+              </pre>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

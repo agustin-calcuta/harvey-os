@@ -1,0 +1,216 @@
+import type { Compromiso, Estado, Reunion, Tema } from '../types'
+import { IMPORTANCIA, OBJETIVOS } from '../types'
+import { agendaDe, compromisosDe, fechaCorta, fechaLarga, hora, minutosAgenda, nombreDe } from './utils'
+
+/* ─────────────────────────────────────────────────────────────
+   Composición de los dos correos automáticos que pidió Fran:
+   1. al cerrar el temario, antes de la reunión
+   2. al cerrar la reunión, con conclusiones y compromisos
+   ───────────────────────────────────────────────────────────── */
+
+const ROJO = '#C0392B'
+const TINTA = '#0A0A0A'
+
+const layout = (titulo: string, kicker: string, cuerpo: string) => `
+<div style="background:${TINTA};padding:32px 16px;font-family:Helvetica,Arial,sans-serif">
+  <div style="max-width:640px;margin:0 auto;background:#111;border:1px solid #262626">
+    <div style="padding:28px 32px;border-bottom:1px solid #262626">
+      <div style="font-size:10px;letter-spacing:3px;color:#8C8C8C;text-transform:uppercase">[ ${kicker} ]</div>
+      <div style="font-size:34px;font-weight:900;color:#F4F2EE;letter-spacing:-1px;text-transform:uppercase;margin-top:10px;line-height:1">${titulo}</div>
+    </div>
+    <div style="padding:28px 32px;color:#D8D6D2;font-size:14px;line-height:1.65">${cuerpo}</div>
+    <div style="padding:18px 32px;border-top:1px solid #262626;font-size:10px;letter-spacing:2px;color:#5C5C5C;text-transform:uppercase">
+      Harvey OS · enviado automáticamente
+    </div>
+  </div>
+</div>`
+
+const chip = (texto: string, color: string) =>
+  `<span style="display:inline-block;padding:2px 8px;border:1px solid ${color};color:${color};font-size:10px;letter-spacing:1.5px;text-transform:uppercase">${texto}</span>`
+
+const filaTema = (e: Estado, t: Tema, i: number) => `
+<tr>
+  <td style="padding:12px 0;border-bottom:1px solid #262626;vertical-align:top;width:28px;color:#5C5C5C;font-size:12px">${String(i + 1).padStart(2, '0')}</td>
+  <td style="padding:12px 0;border-bottom:1px solid #262626;vertical-align:top">
+    <div style="color:#F4F2EE;font-weight:700;font-size:15px">${t.titulo}</div>
+    ${t.detalle ? `<div style="color:#8C8C8C;font-size:13px;margin-top:4px">${t.detalle}</div>` : ''}
+    <div style="margin-top:8px">
+      ${chip(IMPORTANCIA[t.importancia].nombre, IMPORTANCIA[t.importancia].hex)}
+      ${chip(OBJETIVOS[t.objetivo].nombre, '#8C8C8C')}
+      <span style="color:#5C5C5C;font-size:11px;margin-left:6px">Propuso ${nombreDe(e, t.propuestoPor)} · ${t.duracionMin} min</span>
+    </div>
+  </td>
+</tr>`
+
+/* ── 1. Temario cerrado ───────────────────────────────────── */
+
+export function correoAgendaCerrada(e: Estado, r: Reunion) {
+  const temas = agendaDe(e, r.id)
+  const total = minutosAgenda(temas)
+  const cuerpo = `
+    <p style="margin:0 0 20px">
+      Quedó cerrado el temario de <strong style="color:#F4F2EE">${r.titulo}</strong>.
+      Nos vemos el <strong style="color:#F4F2EE">${fechaLarga(r.fecha)} a las ${hora(r.fecha)}</strong>${r.lugar ? ` en ${r.lugar}` : ''}.
+    </p>
+    <div style="border:1px solid #262626;padding:16px;margin-bottom:24px">
+      <span style="color:#8C8C8C;font-size:12px">Modera</span>
+      <span style="color:#F4F2EE;font-size:13px;margin-left:8px">${nombreDe(e, r.moderadorId)}</span>
+      <span style="color:#8C8C8C;font-size:12px;margin-left:20px">Temas</span>
+      <span style="color:#F4F2EE;font-size:13px;margin-left:8px">${temas.length}</span>
+      <span style="color:#8C8C8C;font-size:12px;margin-left:20px">Duración</span>
+      <span style="color:${total > r.duracionPrevistaMin ? ROJO : '#F4F2EE'};font-size:13px;margin-left:8px">${total} min</span>
+    </div>
+    <div style="font-size:10px;letter-spacing:3px;color:#8C8C8C;text-transform:uppercase;margin-bottom:8px">[ Temas a tratar ]</div>
+    <table style="width:100%;border-collapse:collapse">${temas.map((t, i) => filaTema(e, t, i)).join('')}</table>
+    <p style="margin:24px 0 0;color:#8C8C8C;font-size:13px">
+      Llegá con los temas leídos. Ya no se aceptan temas nuevos para esta reunión.
+    </p>`
+
+  const texto = [
+    `Temario cerrado — ${r.titulo}`,
+    `${fechaLarga(r.fecha)} a las ${hora(r.fecha)}${r.lugar ? ` · ${r.lugar}` : ''}`,
+    `Modera: ${nombreDe(e, r.moderadorId)}`,
+    `Duración estimada: ${total} min`,
+    '',
+    'TEMAS A TRATAR',
+    ...temas.map(
+      (t, i) =>
+        `${i + 1}. ${t.titulo} (${t.duracionMin} min) — ${OBJETIVOS[t.objetivo].nombre} · importancia ${IMPORTANCIA[t.importancia].nombre} · propuso ${nombreDe(e, t.propuestoPor)}`,
+    ),
+  ].join('\n')
+
+  return {
+    asunto: `Temario cerrado · ${r.titulo}`,
+    html: layout('Temario cerrado', 'Pre-reunión', cuerpo),
+    texto,
+  }
+}
+
+/* ── 2. Minuta post-reunión ───────────────────────────────── */
+
+const filaCompromiso = (e: Estado, c: Compromiso) => `
+<tr>
+  <td style="padding:10px 0;border-bottom:1px solid #262626;color:#F4F2EE;font-size:13px">
+    ${c.accion}
+    ${c.detalle ? `<div style="color:#8C8C8C;font-size:12px;margin-top:3px">${c.detalle}</div>` : ''}
+  </td>
+  <td style="padding:10px 12px;border-bottom:1px solid #262626;color:#D8D6D2;font-size:13px;white-space:nowrap">${nombreDe(e, c.responsableId)}</td>
+  <td style="padding:10px 0;border-bottom:1px solid #262626;color:${IMPORTANCIA[c.importancia].hex};font-size:13px;white-space:nowrap">${fechaCorta(c.fechaLimite)}</td>
+</tr>`
+
+export function correoMinuta(e: Estado, r: Reunion) {
+  const temas = agendaDe(e, r.id)
+  const comps = compromisosDe(e, r.id)
+
+  const bloquesTemas = temas
+    .map(
+      (t, i) => `
+    <div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid #262626">
+      <div style="color:#F4F2EE;font-weight:700;font-size:15px">${String(i + 1).padStart(2, '0')} · ${t.titulo}</div>
+      <div style="margin:8px 0">
+        ${chip(OBJETIVOS[t.objetivo].nombre, '#8C8C8C')}
+        <span style="color:#5C5C5C;font-size:11px;margin-left:6px">Propuso ${nombreDe(e, t.propuestoPor)}</span>
+      </div>
+      <div style="color:#D8D6D2;font-size:13px;line-height:1.6;white-space:pre-wrap">${t.conclusiones ?? '<span style="color:#5C5C5C">Sin conclusiones registradas.</span>'}</div>
+    </div>`,
+    )
+    .join('')
+
+  const cuerpo = `
+    <p style="margin:0 0 20px">
+      Cerramos <strong style="color:#F4F2EE">${r.titulo}</strong> del ${fechaLarga(r.fecha)}.
+      Acá quedan las conclusiones y los compromisos asumidos.
+    </p>
+    ${
+      r.conclusionesGenerales
+        ? `<div style="font-size:10px;letter-spacing:3px;color:#8C8C8C;text-transform:uppercase;margin-bottom:8px">[ Principales conclusiones ]</div>
+           <div style="border-left:2px solid ${ROJO};padding-left:14px;color:#D8D6D2;font-size:14px;line-height:1.65;margin-bottom:28px;white-space:pre-wrap">${r.conclusionesGenerales}</div>`
+        : ''
+    }
+    <div style="font-size:10px;letter-spacing:3px;color:#8C8C8C;text-transform:uppercase;margin-bottom:12px">[ Tema por tema ]</div>
+    ${bloquesTemas}
+    <div style="font-size:10px;letter-spacing:3px;color:#8C8C8C;text-transform:uppercase;margin:28px 0 8px">[ Próximos compromisos ]</div>
+    ${
+      comps.length
+        ? `<table style="width:100%;border-collapse:collapse">
+            <tr>
+              <th style="text-align:left;padding-bottom:8px;border-bottom:1px solid #333;color:#8C8C8C;font-size:10px;letter-spacing:2px;text-transform:uppercase">Acción</th>
+              <th style="text-align:left;padding:0 12px 8px;border-bottom:1px solid #333;color:#8C8C8C;font-size:10px;letter-spacing:2px;text-transform:uppercase">Responsable</th>
+              <th style="text-align:left;padding-bottom:8px;border-bottom:1px solid #333;color:#8C8C8C;font-size:10px;letter-spacing:2px;text-transform:uppercase">Límite</th>
+            </tr>
+            ${comps.map((c) => filaCompromiso(e, c)).join('')}
+          </table>`
+        : '<div style="color:#5C5C5C;font-size:13px">No se registraron compromisos.</div>'
+    }
+    ${
+      r.observaciones
+        ? `<div style="font-size:10px;letter-spacing:3px;color:#8C8C8C;text-transform:uppercase;margin:28px 0 8px">[ Observaciones adicionales ]</div>
+           <div style="color:#D8D6D2;font-size:13px;line-height:1.6;white-space:pre-wrap">${r.observaciones}</div>`
+        : ''
+    }
+    ${
+      r.proximaReunionFecha
+        ? `<div style="margin-top:28px;padding:14px 16px;border:1px solid #262626">
+             <span style="color:#8C8C8C;font-size:12px">Próxima reunión</span>
+             <span style="color:#F4F2EE;font-size:13px;margin-left:10px">${fechaLarga(r.proximaReunionFecha)} · ${hora(r.proximaReunionFecha)}</span>
+           </div>`
+        : ''
+    }`
+
+  const texto = [
+    `Minuta — ${r.titulo}`,
+    fechaLarga(r.fecha),
+    '',
+    r.conclusionesGenerales ? `CONCLUSIONES\n${r.conclusionesGenerales}\n` : '',
+    'TEMAS',
+    ...temas.map((t, i) => `${i + 1}. ${t.titulo}\n   ${t.conclusiones ?? 'Sin conclusiones.'}`),
+    '',
+    'PRÓXIMOS COMPROMISOS',
+    ...comps.map(
+      (c) => `· ${c.accion} — ${nombreDe(e, c.responsableId)} — vence ${fechaCorta(c.fechaLimite)}`,
+    ),
+    r.observaciones ? `\nOBSERVACIONES\n${r.observaciones}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  return {
+    asunto: `Minuta · ${r.titulo}`,
+    html: layout('Minuta de reunión', 'Post-reunión', cuerpo),
+    texto,
+  }
+}
+
+/* ── Envío ────────────────────────────────────────────────── */
+
+/**
+ * Punto único de salida de correo.
+ *
+ * GitHub Pages es estático, así que no hay proceso propio que pueda mandar
+ * mails. Hoy el correo se compone completo y queda registrado en la
+ * plataforma. Para que salga de verdad alcanza con conectar un proveedor
+ * acá abajo (Resend vía Cloud Function, EmailJS, etc.) y devolver 'enviado'.
+ */
+export async function enviarCorreo(_payload: {
+  destinatarios: string[]
+  asunto: string
+  html: string
+  texto: string
+}): Promise<'simulado' | 'enviado'> {
+  const endpoint = import.meta.env.VITE_EMAIL_ENDPOINT
+  if (!endpoint) return 'simulado'
+
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(_payload),
+  })
+  if (!res.ok) throw new Error(`El proveedor de correo devolvió ${res.status}`)
+  return 'enviado'
+}
+
+/** Abre el cliente de correo del usuario con el mensaje ya armado. */
+export function abrirEnClienteDeCorreo(destinatarios: string[], asunto: string, texto: string) {
+  const url = `mailto:${destinatarios.join(',')}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(texto)}`
+  window.open(url, '_blank')
+}

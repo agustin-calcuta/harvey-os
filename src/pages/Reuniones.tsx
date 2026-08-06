@@ -1,0 +1,332 @@
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { CalendarPlus, Plus } from 'lucide-react'
+import { useApp } from '../store/AppContext'
+import {
+  agendaDe,
+  cuentaRegresiva,
+  deadlineAgenda,
+  fechaCorta,
+  hora,
+  minutosAgenda,
+  nombreDe,
+  ordenarReuniones,
+  paraInputDateTime,
+  temasDe,
+} from '../lib/utils'
+import { ESTADO_REUNION, type EstadoReunion } from '../types'
+import {
+  Avatares,
+  Boton,
+  Campo,
+  Chip,
+  Modal,
+  Seccion,
+  Vacio,
+} from '../components/ui'
+
+const FILTROS: { valor: EstadoReunion | 'todas'; texto: string }[] = [
+  { valor: 'todas', texto: 'Todas' },
+  { valor: 'agenda_abierta', texto: 'Agenda abierta' },
+  { valor: 'agenda_cerrada', texto: 'Agenda cerrada' },
+  { valor: 'en_curso', texto: 'En curso' },
+  { valor: 'cerrada', texto: 'Cerradas' },
+]
+
+export default function Reuniones() {
+  const { estado, puedeOrganizar } = useApp()
+  const [filtro, setFiltro] = useState<EstadoReunion | 'todas'>('todas')
+  const [creando, setCreando] = useState(false)
+
+  const lista = ordenarReuniones(
+    filtro === 'todas' ? estado.reuniones : estado.reuniones.filter((r) => r.estado === filtro),
+  )
+
+  return (
+    <div className="space-y-6">
+      <Seccion
+        kicker="Agenda del equipo"
+        titulo="Reuniones"
+        acciones={
+          puedeOrganizar && (
+            <Boton variante="solido" onClick={() => setCreando(true)}>
+              <Plus size={13} /> Nueva reunión
+            </Boton>
+          )
+        }
+      >
+        <div className="mb-5 flex flex-wrap gap-1.5">
+          {FILTROS.map((f) => (
+            <button
+              key={f.valor}
+              onClick={() => setFiltro(f.valor)}
+              className={
+                filtro === f.valor
+                  ? 'border border-bone bg-bone px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-ink'
+                  : 'border border-line-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-smoke transition-colors hover:border-smoke hover:text-bone'
+              }
+            >
+              {f.texto}
+            </button>
+          ))}
+        </div>
+
+        {lista.length === 0 ? (
+          <Vacio
+            titulo="No hay reuniones"
+            texto="Todavía no se creó ninguna reunión con este filtro."
+            icono={<CalendarPlus size={32} />}
+          />
+        ) : (
+          <div className="space-y-3">
+            {lista.map((r) => {
+              const agenda = agendaDe(estado, r.id)
+              const propuestos = temasDe(estado, r.id).filter((t) => t.estado === 'propuesto')
+              const total = minutosAgenda(agenda)
+              const excedido = total > r.duracionPrevistaMin
+              const cd = cuentaRegresiva(deadlineAgenda(r))
+
+              return (
+                <Link
+                  key={r.id}
+                  to={`/reuniones/${r.id}`}
+                  className="card group block p-5 transition-colors hover:border-signal"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <Chip
+                          tono={
+                            r.estado === 'en_curso'
+                              ? 'signal'
+                              : r.estado === 'agenda_abierta'
+                                ? 'acid'
+                                : r.estado === 'agenda_cerrada'
+                                  ? 'amber'
+                                  : r.estado === 'cerrada'
+                                    ? 'cold'
+                                    : 'neutro'
+                          }
+                        >
+                          {r.estado === 'en_curso' && (
+                            <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-signal" />
+                          )}
+                          {ESTADO_REUNION[r.estado].nombre}
+                        </Chip>
+                        {r.estado === 'agenda_abierta' && (
+                          <span
+                            className={
+                              cd.vencido
+                                ? 'font-mono text-[10px] uppercase tracking-[0.14em] text-signal'
+                                : 'font-mono text-[10px] uppercase tracking-[0.14em] text-amber'
+                            }
+                          >
+                            {cd.vencido ? 'Plazo vencido' : `Cierra en ${cd.texto}`}
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="display text-xl transition-colors group-hover:text-signal sm:text-2xl">
+                        {r.titulo}
+                      </h3>
+
+                      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-smoke">
+                        <span>
+                          {fechaCorta(r.fecha)} · {hora(r.fecha)}
+                        </span>
+                        {r.lugar && <span>{r.lugar}</span>}
+                        <span>Modera {nombreDe(estado, r.moderadorId)}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex shrink-0 flex-col items-end gap-3">
+                      <Avatares
+                        nombres={r.participantesIds
+                          .map((id) => estado.usuarios.find((u) => u.id === id))
+                          .filter(Boolean)
+                          .map((u) => ({ nombre: u!.nombre, url: u!.avatarUrl }))}
+                        max={4}
+                      />
+                      <div className="flex gap-4 font-mono text-[10px] uppercase tracking-[0.14em] text-smoke-2">
+                        <span>{agenda.length} temas</span>
+                        {propuestos.length > 0 && (
+                          <span className="text-amber">{propuestos.length} por aprobar</span>
+                        )}
+                        <span className={excedido ? 'text-signal' : ''}>
+                          {total}/{r.duracionPrevistaMin} min
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        )}
+      </Seccion>
+
+      <ModalNuevaReunion abierto={creando} onCerrar={() => setCreando(false)} />
+    </div>
+  )
+}
+
+/* ── Alta de reunión ──────────────────────────────────────── */
+
+function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {
+  const { estado, crearReunion } = useApp()
+  const navegar = useNavigate()
+
+  const proximoLunes = () => {
+    const d = new Date()
+    d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7))
+    d.setHours(10, 0, 0, 0)
+    return paraInputDateTime(d.toISOString())
+  }
+
+  const siguiente = estado.reuniones.length + 1
+  const [titulo, setTitulo] = useState(`Reunión semanal de socios · #${siguiente}`)
+  const [fecha, setFecha] = useState(proximoLunes())
+  const [duracion, setDuracion] = useState(estado.config.duracionReunionDefaultMin)
+  const [lugar, setLugar] = useState('Showroom Palermo')
+  const [moderadorId, setModeradorId] = useState(
+    estado.usuarios.find((u) => u.rol === 'organizador')?.id ?? estado.usuarios[0]?.id ?? '',
+  )
+  const [horasCierre, setHorasCierre] = useState(estado.config.horasCierreAgendaDefault)
+  const [participantes, setParticipantes] = useState<string[]>(
+    estado.usuarios.filter((u) => u.activo).map((u) => u.id),
+  )
+
+  const alternar = (id: string) =>
+    setParticipantes((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
+
+  const enviar = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const r = await crearReunion({
+      titulo,
+      fecha: new Date(fecha).toISOString(),
+      duracionPrevistaMin: duracion,
+      lugar: lugar || undefined,
+      moderadorId,
+      horasCierreAgenda: horasCierre,
+      participantesIds: participantes,
+      estado: 'agenda_abierta',
+    })
+    onCerrar()
+    navegar(`/reuniones/${r.id}`)
+  }
+
+  return (
+    <Modal abierto={abierto} onCerrar={onCerrar} kicker="Pre-reunión" titulo="Nueva reunión">
+      <form onSubmit={enviar} className="space-y-4">
+        <Campo etiqueta="Título">
+          <input
+            className="w-full"
+            value={titulo}
+            onChange={(e) => setTitulo(e.target.value)}
+            required
+          />
+        </Campo>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Campo etiqueta="Fecha y hora">
+            <input
+              type="datetime-local"
+              className="w-full"
+              value={fecha}
+              onChange={(e) => setFecha(e.target.value)}
+              required
+            />
+          </Campo>
+          <Campo etiqueta="Duración prevista (min)">
+            <input
+              type="number"
+              min={15}
+              step={5}
+              className="w-full"
+              value={duracion}
+              onChange={(e) => setDuracion(Number(e.target.value))}
+            />
+          </Campo>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Campo etiqueta="Lugar">
+            <input className="w-full" value={lugar} onChange={(e) => setLugar(e.target.value)} />
+          </Campo>
+          <Campo etiqueta="Modera">
+            <select
+              className="w-full"
+              value={moderadorId}
+              onChange={(e) => setModeradorId(e.target.value)}
+            >
+              {estado.usuarios.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nombre}
+                </option>
+              ))}
+            </select>
+          </Campo>
+        </div>
+
+        <Campo
+          etiqueta="El temario cierra"
+          ayuda="Horas antes del inicio en que deja de aceptarse la carga de temas."
+        >
+          <div className="flex gap-1.5">
+            {[12, 24, 48, 72].map((h) => (
+              <button
+                key={h}
+                type="button"
+                onClick={() => setHorasCierre(h)}
+                className={
+                  horasCierre === h
+                    ? 'border border-bone bg-bone px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ink'
+                    : 'border border-line-2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-smoke transition-colors hover:border-smoke hover:text-bone'
+                }
+              >
+                {h} h antes
+              </button>
+            ))}
+          </div>
+        </Campo>
+
+        <Campo etiqueta={`Participantes (${participantes.length})`}>
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            {estado.usuarios
+              .filter((u) => u.activo)
+              .map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() => alternar(u.id)}
+                  className={
+                    participantes.includes(u.id)
+                      ? 'flex items-center gap-2 border border-bone/60 bg-ink-3 px-3 py-2 text-left text-xs'
+                      : 'flex items-center gap-2 border border-line px-3 py-2 text-left text-xs text-smoke transition-colors hover:border-smoke'
+                  }
+                >
+                  <span
+                    className={
+                      participantes.includes(u.id)
+                        ? 'h-2 w-2 shrink-0 bg-signal'
+                        : 'h-2 w-2 shrink-0 border border-line-2'
+                    }
+                  />
+                  <span className="truncate">{u.nombre}</span>
+                </button>
+              ))}
+          </div>
+        </Campo>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Boton type="button" variante="fantasma" onClick={onCerrar}>
+            Cancelar
+          </Boton>
+          <Boton type="submit" variante="solido">
+            Crear y abrir agenda
+          </Boton>
+        </div>
+      </form>
+    </Modal>
+  )
+}

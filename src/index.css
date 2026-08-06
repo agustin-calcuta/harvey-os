@@ -1,0 +1,177 @@
+@import 'tailwindcss';
+
+/* ─────────────────────────────────────────────────────────────
+   HARVEY OS — sistema visual
+   Tomado de harveywillys.com: negro absoluto, rojo señal,
+   tipografía condensada en mayúsculas y corchetes [ ] como marca.
+   ───────────────────────────────────────────────────────────── */
+@theme {
+  --color-ink: #0a0a0a;
+  --color-ink-2: #121212;
+  --color-ink-3: #1a1a1a;
+  --color-line: #262626;
+  --color-line-2: #333333;
+  --color-bone: #f4f2ee;
+  --color-smoke: #8c8c8c;
+  --color-smoke-2: #5c5c5c;
+
+  --color-signal: #c0392b;
+  --color-signal-hi: #e04a38;
+  --color-rust: #ae5343;
+  --color-amber: #dc8f38;
+  --color-acid: #b8c832;
+  --color-cold: #4a7fa5;
+
+  --font-display: 'Anton', 'Arial Black', sans-serif;
+  --font-sans: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-ink text-bone font-sans antialiased;
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        rgba(255, 255, 255, 0.014) 0px,
+        rgba(255, 255, 255, 0.014) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+  }
+
+  ::selection {
+    @apply bg-signal text-bone;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-ink);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-line-2);
+    border: 2px solid var(--color-ink);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-signal);
+  }
+
+  input,
+  textarea,
+  select {
+    @apply bg-ink-2 border border-line text-bone px-3 py-2 text-sm outline-none transition-colors;
+  }
+  input:focus,
+  textarea:focus,
+  select:focus {
+    @apply border-signal;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-smoke-2;
+  }
+  select option {
+    @apply bg-ink-2 text-bone;
+  }
+  input[type='date'],
+  input[type='time'],
+  input[type='datetime-local'] {
+    color-scheme: dark;
+  }
+}
+
+@layer components {
+  /* Titular condensado, el gesto central de la marca */
+  .display {
+    font-family: var(--font-display);
+    @apply uppercase tracking-tight leading-[0.88];
+  }
+
+  /* [ ETIQUETA ] — el recurso gráfico que usan en toda la web */
+  .bracket::before {
+    content: '[ ';
+  }
+  .bracket::after {
+    content: ' ]';
+  }
+
+  .label {
+    @apply font-mono text-[10px] uppercase tracking-[0.18em] text-smoke;
+  }
+
+  .card {
+    @apply bg-ink-2 border border-line;
+  }
+
+  .hairline {
+    @apply border-b border-line;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+
+  .marquee {
+    animation: marquee 40s linear infinite;
+  }
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-in {
+    animation: fade-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .pulse-dot {
+    animation: pulse-dot 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.25;
+    }
+  }
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
