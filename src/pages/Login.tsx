@@ -2,12 +2,16 @@ import { ArrowRight } from 'lucide-react'
 import { useApp, ROL_LABEL } from '../store/AppContext'
 import { Avatar } from '../components/ui'
 import { firebaseConfigurado } from '../lib/firebase'
+import { neonConfigurado } from '../lib/neon'
 
 const CINTA =
   'PRE-REUNIÓN · TEMARIO 24 H ANTES · REUNIÓN · MINUTA EN VIVO · POST-REUNIÓN · COMPROMISOS CON RESPONSABLE Y FECHA · '
 
 export default function Login() {
   const { estado, entrarComoDemo, entrarConGoogle } = useApp()
+  // Con base real el acceso es sólo por Google: los perfiles de
+  // prueba existen únicamente en el modo demo.
+  const accesoReal = neonConfigurado || firebaseConfigurado
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -75,51 +79,68 @@ export default function Login() {
               Continuar con Google
             </button>
 
-            {!firebaseConfigurado && (
-              <p className="mb-8 text-xs leading-relaxed text-smoke-2">
-                El acceso con Google se activa al cargar las credenciales de Firebase. Mientras
-                tanto, entrá con uno de los perfiles de prueba para recorrer la plataforma con
-                cada rol.
-              </p>
+            {accesoReal ? (
+              <>
+                <p className="text-xs leading-relaxed text-smoke-2">
+                  Entrá con la cuenta de Google del equipo. Si tu correo ya está cargado, vas a
+                  entrar con tu rol asignado; si no, quedás como miembro hasta que un
+                  administrador lo cambie.
+                </p>
+                <div className="mt-8 border border-line p-4">
+                  <div className="label bracket mb-2">Base compartida</div>
+                  <p className="text-xs leading-relaxed text-smoke-2">
+                    Lo que cargue cada uno lo ven todos al instante. Temario, minuta y
+                    compromisos viven en una sola base.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="mb-8 text-xs leading-relaxed text-smoke-2">
+                  El acceso con Google se activa al cargar las credenciales. Mientras tanto,
+                  entrá con uno de los perfiles de prueba para recorrer la plataforma con cada
+                  rol.
+                </p>
+
+                <div className="my-7 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-line" />
+                  <span className="label">Perfiles de prueba</span>
+                  <div className="h-px flex-1 bg-line" />
+                </div>
+
+                <div className="space-y-1.5">
+                  {estado.usuarios
+                    .filter((u) => u.activo)
+                    .map((u) => (
+                      <button
+                        key={u.id}
+                        onClick={() => entrarComoDemo(u.id)}
+                        className="group flex w-full items-center gap-3 border border-line bg-ink-2 p-3 text-left transition-all hover:border-signal"
+                      >
+                        <Avatar nombre={u.nombre} url={u.avatarUrl} tam="sm" />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm text-bone">{u.nombre}</div>
+                          <div className="truncate text-[11px] text-smoke-2">
+                            {u.cargo ?? u.email}
+                          </div>
+                        </div>
+                        <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.14em] text-smoke">
+                          {ROL_LABEL[u.rol]}
+                        </span>
+                        <ArrowRight
+                          size={14}
+                          className="shrink-0 text-line-2 transition-colors group-hover:text-signal"
+                        />
+                      </button>
+                    ))}
+                </div>
+
+                <p className="mt-8 font-mono text-[10px] uppercase leading-relaxed tracking-[0.14em] text-smoke-2">
+                  Probá con Matías para ver el rol de organizador y con Tomás para ver el de
+                  miembro.
+                </p>
+              </>
             )}
-
-            <div className="my-7 flex items-center gap-3">
-              <div className="h-px flex-1 bg-line" />
-              <span className="label">Perfiles de prueba</span>
-              <div className="h-px flex-1 bg-line" />
-            </div>
-
-            <div className="space-y-1.5">
-              {estado.usuarios
-                .filter((u) => u.activo)
-                .map((u) => (
-                  <button
-                    key={u.id}
-                    onClick={() => entrarComoDemo(u.id)}
-                    className="group flex w-full items-center gap-3 border border-line bg-ink-2 p-3 text-left transition-all hover:border-signal"
-                  >
-                    <Avatar nombre={u.nombre} url={u.avatarUrl} tam="sm" />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm text-bone">{u.nombre}</div>
-                      <div className="truncate text-[11px] text-smoke-2">
-                        {u.cargo ?? u.email}
-                      </div>
-                    </div>
-                    <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.14em] text-smoke">
-                      {ROL_LABEL[u.rol]}
-                    </span>
-                    <ArrowRight
-                      size={14}
-                      className="shrink-0 text-line-2 transition-colors group-hover:text-signal"
-                    />
-                  </button>
-                ))}
-            </div>
-
-            <p className="mt-8 font-mono text-[10px] uppercase leading-relaxed tracking-[0.14em] text-smoke-2">
-              Probá con Matías para ver el rol de organizador y con Tomás para ver el de
-              miembro.
-            </p>
           </div>
         </div>
       </div>

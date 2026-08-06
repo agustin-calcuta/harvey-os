@@ -31,8 +31,11 @@ jobs:
         env:
           # GitHub Pages sirve el sitio bajo /<repo>/
           VITE_BASE: /${{ github.event.repository.name }}/
-          # Se activan al cargar los secrets del repositorio.
-          # Sin ellos la app arranca en modo demo con localStorage.
+          # Neon: Auth con Google + Data API sobre Postgres.
+          # Sin estas variables la app arranca en modo demo.
+          VITE_NEON_AUTH_URL: ${{ secrets.VITE_NEON_AUTH_URL }}
+          VITE_NEON_DATA_API_URL: ${{ secrets.VITE_NEON_DATA_API_URL }}
+          # Alternativa Firebase, si alguna vez se migra.
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
           VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}

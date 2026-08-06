@@ -66,6 +66,7 @@ y fecha.
 
 ```bash
 npm install
+cp .env.example .env   # completar con las URL de Neon
 npm run dev
 ```
 
@@ -76,17 +77,41 @@ navegador y se entra con los perfiles de prueba de la pantalla de acceso.
 Conviene probar con **Matías** (organizador) y con **Tomás** (miembro) para ver
 la diferencia de permisos.
 
-### Conectar Firebase
+## Base de datos
 
-1. Crear un proyecto en la [consola de Firebase](https://console.firebase.google.com).
-2. Habilitar **Authentication → Google** y agregar el dominio de GitHub Pages a
-   los dominios autorizados.
-3. Crear una base **Firestore**.
-4. Copiar `.env.example` a `.env` y completar las claves.
+Corre sobre **Neon Postgres**, con dos piezas:
 
-Con eso el acceso con Google y la base compartida se activan solos: no hace
-falta tocar código. Las mismas claves van como *secrets* del repositorio para
-que el deploy las tome.
+- **Neon Auth** para el ingreso con Google. La identidad se vincula por correo
+  con la ficha del equipo, así cada persona entra con el rol que ya tiene
+  asignado. Quien entre con un correo desconocido queda como miembro.
+- **Data API** (PostgREST) para hablar con la base desde el navegador, sin
+  servidor propio en el medio.
+
+Los permisos **viven en la base**, no en la interfaz: las políticas de Row Level
+Security de `db/rls.sql` hacen que un miembro no pueda crear reuniones aunque
+manipule la aplicación desde el navegador. Un trigger impide además que nadie se
+auto-ascienda de rol.
+
+### Poner la base de cero
+
+```bash
+export PGURL='postgresql://...'   # connection string de Neon
+psql "$PGURL" -f db/schema.sql    # tablas e índices
+psql "$PGURL" -f db/rls.sql       # funciones de rol y políticas (requiere Data API habilitada)
+psql "$PGURL" -f db/seed.sql      # datos de demostración, idempotente
+```
+
+`db/seed.sql` se puede volver a correr en cualquier momento para restablecer la
+demostración a su estado original.
+
+### Variables
+
+Copiar `.env.example` a `.env` y completar `VITE_NEON_AUTH_URL` y
+`VITE_NEON_DATA_API_URL` (Consola de Neon → Auth y Data API). Las mismas van
+como *secrets* del repositorio para que el deploy las tome.
+
+Hay que agregar el dominio de la aplicación a los **trusted domains** de Neon
+Auth, o el ingreso con Google devuelve `Invalid callbackURL`.
 
 ### Envío de correo
 
@@ -111,5 +136,5 @@ GitHub Actions**.
 
 ## Stack
 
-React 19 · TypeScript · Vite · Tailwind CSS v4 · Firebase (Auth + Firestore) ·
-jsPDF · dnd-kit · React Router
+React 19 · TypeScript · Vite · Tailwind CSS v4 · Neon Postgres (Auth + Data API)
+· jsPDF · dnd-kit · React Router

@@ -27,6 +27,8 @@ export const ROLES: Record<Rol, { nombre: string; desc: string }> = {
 
 export interface Usuario {
   id: string
+  /** `sub` del JWT del proveedor de identidad. Se vincula por email al primer ingreso. */
+  authUserId?: string
   nombre: string
   email: string
   rol: Rol

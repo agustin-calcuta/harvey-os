@@ -14,6 +14,12 @@ import {
   loginConGoogle,
   observarSesion,
 } from '../lib/firebase'
+import {
+  entrarConGoogleNeon,
+  neonConfigurado,
+  salirDeNeon,
+  sesionActual,
+} from '../lib/neon'
 import { correoAgendaCerrada, correoMinuta, enviarCorreo } from '../lib/email'
 import { ESTADO_INICIAL } from '../lib/seed'
 import { agendaDe, uid } from '../lib/utils'
@@ -42,7 +48,7 @@ interface Ctx {
   // sesión
   yo: Usuario | null
   cargando: boolean
-  modo: 'demo' | 'firebase'
+  modo: 'demo' | 'firebase' | 'neon'
   entrarComoDemo(usuarioId: string): void
   entrarConGoogle(): Promise<void>
   salir(): Promise<void>
@@ -103,6 +109,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [avisos, setAvisos] = useState<Aviso[]>([])
   const ref = useRef(estado)
   ref.current = estado
+  // `persistir` se define más abajo; el efecto de sesión lo necesita antes.
+  const persistirRef = useRef<
+    (<T extends { id: string }>(col: Coleccion, item: T) => Promise<void>) | null
+  >(null)
 
   /* ── Avisos ─────────────────────────────────────────────── */
 
@@ -121,33 +131,99 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let vivo = true
-    let desuscribir: (() => void) | undefined
 
     ;(async () => {
-      const inicial = await repo.cargar()
-      if (!vivo) return
-      setEstado(inicial)
-
-      if (repo.modo === 'firebase') {
-        // Si Firestore está vacío lo sembramos con los datos de demo,
-        // así la primera visita ya muestra la plataforma con contenido.
-        desuscribir = repo.suscribir((e) => {
-          if (!vivo) return
-          setEstado(e)
-        })
+      // Con Neon la lectura exige token, así que la primera carga
+      // la dispara el efecto de sesión. En demo se carga y listo.
+      if (repo.modo === 'demo') {
+        const inicial = await repo.cargar()
+        if (vivo) setEstado(inicial)
       }
-      setCargando(false)
+      if (vivo && !neonConfigurado) setCargando(false)
     })()
 
     return () => {
       vivo = false
-      desuscribir?.()
     }
   }, [])
 
+  /* Refresco periódico: sólo con sesión abierta y base remota. */
+  useEffect(() => {
+    if (repo.modo === 'demo' || !yo) return
+    return repo.suscribir(setEstado)
+  }, [yo])
+
   /* ── Sesión ─────────────────────────────────────────────── */
 
+  /*
+   * Con Neon la identidad viene del JWT. La primera vez se vincula
+   * por email contra la fila que ya exista en `usuarios`: así el
+   * equipo puede estar precargado con sus roles antes de que entren.
+   */
   useEffect(() => {
+    if (!neonConfigurado) return
+    let vivo = true
+    ;(async () => {
+      const s = await sesionActual()
+      if (!vivo) return
+      if (!s) {
+        setYo(null)
+        setCargando(false)
+        return
+      }
+
+      let datos = ref.current
+      // Al volver del OAuth puede que el estado todavía esté vacío.
+      if (datos.usuarios.length === 0) {
+        try {
+          datos = await repo.cargar()
+          if (!vivo) return
+          setEstado(datos)
+        } catch (e) {
+          console.warn('[harvey] no se pudieron cargar los usuarios:', e)
+        }
+      }
+
+      const porAuth = datos.usuarios.find((u) => u.authUserId === s.id)
+      const porEmail = datos.usuarios.find(
+        (u) => u.email.toLowerCase() === s.email.toLowerCase(),
+      )
+
+      if (porAuth) {
+        setYo(porAuth)
+      } else if (porEmail) {
+        // Primer ingreso de alguien ya cargado: se le pega el authUserId.
+        const vinculado: Usuario = {
+          ...porEmail,
+          authUserId: s.id,
+          avatarUrl: porEmail.avatarUrl ?? s.avatarUrl,
+        }
+        setYo(vinculado)
+        await persistirRef.current?.('usuarios', vinculado)
+      } else {
+        // Alguien nuevo. El rol lo decide el trigger de la base.
+        const nuevo: Usuario = {
+          id: `u_${s.id.slice(0, 12)}`,
+          authUserId: s.id,
+          nombre: s.nombre,
+          email: s.email,
+          rol: datos.usuarios.length === 0 ? 'admin' : 'miembro',
+          avatarUrl: s.avatarUrl,
+          activo: true,
+          creadoEn: new Date().toISOString(),
+        }
+        setYo(nuevo)
+        await persistirRef.current?.('usuarios', nuevo)
+      }
+      setCargando(false)
+    })()
+    return () => {
+      vivo = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (neonConfigurado) return
     if (!firebaseConfigurado) {
       const guardado = localStorage.getItem(CLAVE_SESION)
       if (guardado) {
@@ -191,6 +267,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })
     await repo.guardarDoc(col, item)
   }, [])
+  persistirRef.current = persistir
 
   const eliminar = useCallback(async (col: Coleccion, id: string) => {
     setEstado((prev) => ({
@@ -514,12 +591,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   )
 
   const entrarConGoogle = useCallback(async () => {
-    if (!firebaseConfigurado) {
-      avisar('Todavía no hay credenciales de Google cargadas. Entrá con un perfil de demo.', 'info')
-      return
-    }
     try {
-      await loginConGoogle()
+      if (neonConfigurado) {
+        await entrarConGoogleNeon()
+        return
+      }
+      if (firebaseConfigurado) {
+        await loginConGoogle()
+        return
+      }
+      avisar('Todavía no hay credenciales de Google cargadas. Entrá con un perfil de demo.', 'info')
     } catch (e) {
       avisar(`No se pudo iniciar sesión: ${e instanceof Error ? e.message : e}`, 'error')
     }
@@ -528,6 +609,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const salir = useCallback(async () => {
     localStorage.removeItem(CLAVE_SESION)
     setYo(null)
+    if (neonConfigurado) await salirDeNeon()
     if (firebaseConfigurado) await cerrarSesionFirebase()
   }, [])
 

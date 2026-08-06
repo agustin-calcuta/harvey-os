@@ -7,36 +7,21 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { db, firebaseConfigurado } from '../lib/firebase'
+import { neonConfigurado } from '../lib/neon'
+import { repoNeon } from './repoNeon'
 import { ESTADO_INICIAL } from '../lib/seed'
 import type { Config, Estado } from '../types'
+import { COLECCIONES, type Coleccion, type Repo } from './tipos'
 
 /* ─────────────────────────────────────────────────────────────
-   Repositorio con dos implementaciones intercambiables:
+   Implementaciones intercambiables del repositorio:
+   · neon     → Data API (PostgREST) + Neon Auth, base compartida
+   · firebase → Firestore en vivo
    · demo     → localStorage, funciona sin credenciales
-   · firebase → Firestore en vivo, se activa con las env vars
    ───────────────────────────────────────────────────────────── */
 
-export type Coleccion = 'usuarios' | 'reuniones' | 'temas' | 'compromisos' | 'notificaciones'
-
-export const COLECCIONES: Coleccion[] = [
-  'usuarios',
-  'reuniones',
-  'temas',
-  'compromisos',
-  'notificaciones',
-]
-
-export interface Repo {
-  modo: 'demo' | 'firebase'
-  cargar(): Promise<Estado>
-  /** Devuelve la función para desuscribirse. Sólo en Firestore. */
-  suscribir(cb: (e: Estado) => void): () => void
-  guardarDoc(col: Coleccion, item: { id: string }): Promise<void>
-  borrarDoc(col: Coleccion, id: string): Promise<void>
-  guardarConfig(config: Config): Promise<void>
-  /** Vuelca el estado completo. Usado para reset y para sembrar Firestore. */
-  reemplazar(estado: Estado): Promise<void>
-}
+export { COLECCIONES }
+export type { Coleccion, Repo }
 
 /* ── Demo ─────────────────────────────────────────────────── */
 
@@ -176,4 +161,12 @@ function limpiar<T extends Record<string, unknown>>(o: T): T {
   return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T
 }
 
-export const repo: Repo = firebaseConfigurado && db ? repoFirebase : repoDemo
+/*
+ * Se elige por lo que haya configurado, en este orden:
+ * Neon (Data API + Neon Auth) → Firebase → demo con localStorage.
+ */
+export const repo: Repo = neonConfigurado
+  ? repoNeon
+  : firebaseConfigurado && db
+    ? repoFirebase
+    : repoDemo

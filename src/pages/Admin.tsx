@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Database, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useApp, ROL_LABEL } from '../store/AppContext'
 import { firebaseConfigurado } from '../lib/firebase'
+import { neonConfigurado } from '../lib/neon'
 import { fechaCorta, uid } from '../lib/utils'
 import { ROLES, type Rol, type Usuario } from '../types'
 import {
@@ -192,22 +193,42 @@ export default function Admin() {
         <div className="card divide-y divide-line">
           <Fila
             etiqueta="Persistencia"
-            valor={modo === 'firebase' ? 'Firestore' : 'Navegador (localStorage)'}
-            tono={modo === 'firebase' ? 'acid' : 'amber'}
+            valor={
+              modo === 'neon'
+                ? 'Neon Postgres'
+                : modo === 'firebase'
+                  ? 'Firestore'
+                  : 'Navegador (localStorage)'
+            }
+            tono={modo === 'demo' ? 'amber' : 'acid'}
             nota={
-              modo === 'firebase'
-                ? 'Los datos se comparten en vivo entre todos los usuarios.'
-                : 'Cada navegador guarda su propia copia. Al cargar Firebase pasa a ser compartido.'
+              modo === 'neon'
+                ? 'Base compartida vía Data API, con Row Level Security por rol. Se refresca cada 12 segundos y al volver a la pestaña.'
+                : modo === 'firebase'
+                  ? 'Los datos se comparten en vivo entre todos los usuarios.'
+                  : 'Cada navegador guarda su propia copia. Al cargar las credenciales pasa a ser compartida.'
             }
           />
           <Fila
             etiqueta="Acceso con Google"
-            valor={firebaseConfigurado ? 'Activo' : 'Pendiente de credenciales'}
-            tono={firebaseConfigurado ? 'acid' : 'amber'}
+            valor={neonConfigurado || firebaseConfigurado ? 'Activo' : 'Pendiente de credenciales'}
+            tono={neonConfigurado || firebaseConfigurado ? 'acid' : 'amber'}
             nota={
-              firebaseConfigurado
-                ? 'Firebase Authentication con proveedor de Google.'
-                : 'Se activa al cargar las variables VITE_FIREBASE_* del proyecto.'
+              neonConfigurado
+                ? 'Neon Auth. La identidad se vincula por correo con la ficha del equipo, así cada uno entra con su rol.'
+                : firebaseConfigurado
+                  ? 'Firebase Authentication con proveedor de Google.'
+                  : 'Se activa al cargar las variables del proveedor.'
+            }
+          />
+          <Fila
+            etiqueta="Permisos"
+            valor={modo === 'neon' ? 'En la base' : 'En la aplicación'}
+            tono={modo === 'neon' ? 'acid' : 'amber'}
+            nota={
+              modo === 'neon'
+                ? 'Las políticas viven en Postgres: un miembro no puede crear reuniones aunque manipule la app desde el navegador.'
+                : 'Los roles se aplican en la interfaz. Con base real pasan a estar respaldados por la base.'
             }
           />
           <Fila
@@ -220,11 +241,16 @@ export default function Admin() {
             <div>
               <div className="text-sm">Datos de demostración</div>
               <div className="text-xs text-smoke-2">
-                Vuelve todo al estado original: {estado.reuniones.length} reuniones,{' '}
-                {estado.temas.length} temas y {estado.compromisos.length} compromisos.
+                {modo === 'neon'
+                  ? 'Con base compartida el restablecimiento se hace desde el repositorio, corriendo db/seed.sql. Así nadie borra el trabajo del resto por accidente.'
+                  : `Vuelve todo al estado original: ${estado.reuniones.length} reuniones, ${estado.temas.length} temas y ${estado.compromisos.length} compromisos.`}
               </div>
             </div>
-            <Boton variante="peligro" onClick={() => setConfirmarReset(true)}>
+            <Boton
+              variante="peligro"
+              onClick={() => setConfirmarReset(true)}
+              disabled={modo === 'neon'}
+            >
               <RotateCcw size={12} /> Restablecer
             </Boton>
           </div>
