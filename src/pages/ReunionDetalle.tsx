@@ -83,7 +83,7 @@ export default function ReunionDetalle() {
       <div>
         <Link
           to="/reuniones"
-          className="mb-4 inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-smoke transition-colors hover:text-bone"
+          className="mb-4 inline-flex items-center gap-1.5 font-semibold text-[10px] uppercase tracking-[0.14em] text-suave transition-colors hover:text-tinta"
         >
           <ArrowLeft size={12} /> Reuniones
         </Link>
@@ -109,14 +109,11 @@ export default function ReunionDetalle() {
                 )}
                 {est.nombre}
               </Chip>
-              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-smoke-2">
-                {est.desc}
-              </span>
             </div>
 
             <h1 className="display text-3xl sm:text-4xl">{reunion.titulo}</h1>
 
-            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-smoke">
+            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-suave">
               <span>
                 {fechaLarga(reunion.fecha)} · {hora(reunion.fecha)}
               </span>
@@ -167,7 +164,7 @@ export default function ReunionDetalle() {
       </div>
 
       {/* ── Fases ── */}
-      <div className="flex gap-px overflow-x-auto border border-line bg-line no-scrollbar">
+      <div className="flex gap-px overflow-x-auto border border-borde bg-borde no-scrollbar">
         {FASES.map((f) => {
           const activa = fase === f.id
           const sugerida = faseSugerida(reunion.estado) === f.id
@@ -177,29 +174,17 @@ export default function ReunionDetalle() {
               onClick={() => setFase(f.id)}
               className={
                 activa
-                  ? 'flex flex-1 items-center gap-2 whitespace-nowrap bg-bone px-3 py-3 text-left text-ink sm:gap-3 sm:px-5 sm:py-4'
-                  : 'flex flex-1 items-center gap-2 whitespace-nowrap bg-ink-2 px-3 py-3 text-left text-smoke transition-colors hover:bg-ink-3 hover:text-bone sm:gap-3 sm:px-5 sm:py-4'
+                  ? 'flex flex-1 items-center justify-center gap-2 whitespace-nowrap bg-tinta px-3 py-2.5 text-fondo'
+                  : 'flex flex-1 items-center justify-center gap-2 whitespace-nowrap bg-panel px-3 py-2.5 text-suave transition-colors hover:bg-hueco hover:text-tinta'
               }
             >
-              <span
-                className={
-                  activa
-                    ? 'display text-xl text-signal sm:text-2xl'
-                    : 'display text-xl text-line-2 sm:text-2xl'
-                }
-              >
-                {f.num}
+              <span className={activa ? 'text-signal' : 'text-borde2'}>{f.num}</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
+                {f.texto}
               </span>
-              <span className="min-w-0">
-                <span className="block font-mono text-[10px] uppercase tracking-[0.12em] sm:text-[11px] sm:tracking-[0.14em]">
-                  {f.texto}
-                </span>
-                {sugerida && !activa && (
-                  <span className="block font-mono text-[9px] uppercase tracking-[0.14em] text-signal">
-                    ● Acá estás
-                  </span>
-                )}
-              </span>
+              {sugerida && !activa && (
+                <span className="h-1.5 w-1.5 rounded-full bg-signal" title="Acá estás" />
+              )}
             </button>
           )
         })}
@@ -374,15 +359,15 @@ function ModalEditarReunion({
                   onClick={() => alternar(u.id)}
                   className={
                     participantes.includes(u.id)
-                      ? 'flex items-center gap-2 border border-bone/60 bg-ink-3 px-3 py-2 text-left text-xs'
-                      : 'flex items-center gap-2 border border-line px-3 py-2 text-left text-xs text-smoke transition-colors hover:border-smoke'
+                      ? 'flex items-center gap-2 border border-tinta/60 bg-hueco px-3 py-2 text-left text-xs'
+                      : 'flex items-center gap-2 border border-borde px-3 py-2 text-left text-xs text-suave transition-colors hover:border-suave'
                   }
                 >
                   <span
                     className={
                       participantes.includes(u.id)
                         ? 'h-2 w-2 shrink-0 bg-signal'
-                        : 'h-2 w-2 shrink-0 border border-line-2'
+                        : 'h-2 w-2 shrink-0 border border-borde2'
                     }
                   />
                   <span className="truncate">{u.nombre}</span>

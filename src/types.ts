@@ -99,7 +99,7 @@ export const OBJETIVOS: Record<Objetivo, { nombre: string; desc: string; sigla: 
 export type EstadoTema = 'propuesto' | 'aprobado' | 'rechazado' | 'diferido' | 'tratado'
 
 export const ESTADO_TEMA: Record<EstadoTema, { nombre: string; color: string }> = {
-  propuesto: { nombre: 'Propuesto', color: 'text-smoke' },
+  propuesto: { nombre: 'Propuesto', color: 'text-suave' },
   aprobado: { nombre: 'En agenda', color: 'text-acid' },
   rechazado: { nombre: 'Rechazado', color: 'text-signal' },
   diferido: { nombre: 'Diferido', color: 'text-amber' },
@@ -139,8 +139,8 @@ export const ESTADO_REUNION: Record<
 > = {
   borrador: {
     nombre: 'Borrador',
-    color: 'text-smoke',
-    bg: 'bg-smoke-2/20',
+    color: 'text-suave',
+    bg: 'bg-tenue/20',
     desc: 'Todavía no se abrió la carga de temas.',
   },
   agenda_abierta: {
@@ -202,9 +202,9 @@ export const ESTADO_COMPROMISO: Record<
 > = {
   pendiente: {
     nombre: 'Pendiente',
-    color: 'text-smoke',
-    bg: 'bg-smoke-2/15',
-    border: 'border-smoke-2',
+    color: 'text-suave',
+    bg: 'bg-tenue/15',
+    border: 'border-tenue',
   },
   en_curso: {
     nombre: 'En curso',

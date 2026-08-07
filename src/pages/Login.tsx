@@ -25,8 +25,8 @@ export default function Login() {
   return (
     <div className="flex min-h-screen flex-col">
       {/* Cinta superior, como la de la tienda */}
-      <div className="overflow-hidden border-b border-line bg-signal py-2">
-        <div className="marquee flex whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.2em] text-bone">
+      <div className="overflow-hidden border-b border-borde bg-signal py-2">
+        <div className="marquee flex whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.2em] text-white">
           <span>{CINTA.repeat(4)}</span>
           <span>{CINTA.repeat(4)}</span>
         </div>
@@ -34,12 +34,12 @@ export default function Login() {
 
       <div className="grid flex-1 lg:grid-cols-[1.1fr_1fr]">
         {/* ── Marca ── */}
-        <div className="relative flex flex-col justify-between overflow-hidden border-b border-line p-8 lg:border-b-0 lg:border-r lg:p-12">
+        <div className="relative flex flex-col justify-between overflow-hidden border-b border-borde p-8 lg:border-b-0 lg:border-r lg:p-12">
           <div
-            className="pointer-events-none absolute inset-0 opacity-[0.045]"
+            className="pointer-events-none absolute inset-0 opacity-[0.05]"
             style={{
               backgroundImage:
-                'repeating-linear-gradient(45deg,#F4F2EE 0,#F4F2EE 1px,transparent 1px,transparent 14px)',
+                'repeating-linear-gradient(45deg,#14120F 0,#14120F 1px,transparent 1px,transparent 14px)',
             }}
           />
           <div className="relative">
@@ -52,7 +52,7 @@ export default function Login() {
               <br />
               <span className="text-signal">OS</span>
             </h1>
-            <p className="mt-6 max-w-md text-sm leading-relaxed text-smoke">
+            <p className="mt-6 max-w-md text-sm leading-relaxed text-suave">
               Las reuniones dejan de perderse. Temario cargado con anticipación, tiempos
               asignados, minuta que se arma sola y compromisos con nombre y fecha.
             </p>
@@ -60,7 +60,7 @@ export default function Login() {
               {['Pre-reunión', 'Reunión', 'Post-reunión'].map((f, i) => (
                 <div
                   key={f}
-                  className="flex items-center gap-2 border border-line-2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em]"
+                  className="flex items-center gap-2 border border-borde2 px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.14em]"
                 >
                   <span className="text-signal">{String(i + 1).padStart(2, '0')}</span>
                   {f}
@@ -69,7 +69,7 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="relative font-mono text-[10px] uppercase tracking-[0.16em] text-smoke-2">
+          <div className="relative font-semibold text-[10px] uppercase tracking-[0.16em] text-tenue">
             Vista previa · {new Date().getFullYear()}
           </div>
         </div>
@@ -82,25 +82,25 @@ export default function Login() {
 
             <button
               onClick={entrarConGoogle}
-              className="group mb-3 flex w-full items-center justify-center gap-3 border border-line-2 bg-bone px-5 py-4 font-mono text-[11px] uppercase tracking-[0.14em] text-ink transition-all hover:bg-white"
+              className="group mb-3 flex w-full items-center justify-center gap-3 border border-borde2 bg-tinta px-5 py-4 font-semibold text-[11px] uppercase tracking-[0.14em] text-fondo transition-all hover:bg-white"
             >
               <GoogleIcono />
               Continuar con Google
             </button>
 
-            <p className="text-xs leading-relaxed text-smoke-2">
+            <p className="text-xs leading-relaxed text-tenue">
               {accesoReal
                 ? 'Si tu correo ya está cargado, entrás con tu rol asignado; si no, quedás como miembro hasta que un administrador lo cambie.'
                 : 'El acceso con Google se activa al cargar las credenciales.'}
             </p>
 
             <div className="my-7 flex items-center gap-3">
-              <div className="h-px flex-1 bg-line" />
+              <div className="h-px flex-1 bg-borde" />
               <span className="label">O mirá cómo se ve cada rol</span>
-              <div className="h-px flex-1 bg-line" />
+              <div className="h-px flex-1 bg-borde" />
             </div>
 
-            <p className="mb-4 text-xs leading-relaxed text-smoke-2">
+            <p className="mb-4 text-xs leading-relaxed text-tenue">
               Entrás sin iniciar sesión, con datos de ejemplo. Sirve para ver de un vistazo qué
               puede hacer cada uno. Nada de lo que toques sale de este navegador.
             </p>
@@ -113,21 +113,21 @@ export default function Login() {
                   <button
                     key={u.id}
                     onClick={() => entrarComoDemo(u.id)}
-                    className="group flex w-full items-center gap-3 border border-line bg-ink-2 p-3 text-left transition-all hover:border-signal"
+                    className="group flex w-full items-center gap-3 border border-borde bg-panel p-3 text-left transition-all hover:border-signal"
                   >
                     <Avatar nombre={u.nombre} url={u.avatarUrl} tam="sm" />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm text-bone">
+                      <div className="truncate text-sm text-tinta">
                         {ROL_LABEL[u.rol]}
-                        <span className="ml-2 text-[11px] text-smoke-2">{u.nombre}</span>
+                        <span className="ml-2 text-[11px] text-tenue">{u.nombre}</span>
                       </div>
-                      <div className="truncate text-[11px] leading-snug text-smoke-2">
+                      <div className="truncate text-[11px] leading-snug text-tenue">
                         {v.que}
                       </div>
                     </div>
                     <ArrowRight
                       size={14}
-                      className="shrink-0 text-line-2 transition-colors group-hover:text-signal"
+                      className="shrink-0 text-borde2 transition-colors group-hover:text-signal"
                     />
                   </button>
                 )

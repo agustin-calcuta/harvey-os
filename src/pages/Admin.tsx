@@ -69,8 +69,8 @@ export default function Admin() {
   if (!esAdmin) {
     return (
       <div className="card p-8 text-center">
-        <div className="display mb-2 text-2xl text-smoke">Sin acceso</div>
-        <p className="text-sm text-smoke-2">Esta sección es sólo para administradores.</p>
+        <div className="display mb-2 text-2xl text-suave">Sin acceso</div>
+        <p className="text-sm text-tenue">Esta sección es sólo para administradores.</p>
       </div>
     )
   }
@@ -91,19 +91,19 @@ export default function Admin() {
           {(Object.keys(ROLES) as Rol[]).map((r) => (
             <div key={r} className="card p-3">
               <div className="mb-1 flex items-center justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-[0.14em]">
+                <span className="font-semibold text-[10px] uppercase tracking-[0.14em]">
                   {ROLES[r].nombre}
                 </span>
-                <span className="font-mono text-[10px] text-smoke-2">
+                <span className="font-semibold text-[10px] text-tenue">
                   {estado.usuarios.filter((u) => u.rol === r).length}
                 </span>
               </div>
-              <p className="text-[11px] leading-relaxed text-smoke-2">{ROLES[r].desc}</p>
+              <p className="text-[11px] leading-relaxed text-tenue">{ROLES[r].desc}</p>
             </div>
           ))}
         </div>
 
-        <ul className="card divide-y divide-line">
+        <ul className="card divide-y divide-borde">
           {estado.usuarios.map((u) => (
             <li key={u.id} className="flex flex-wrap items-center gap-3 p-4">
               <Avatar nombre={u.nombre} url={u.avatarUrl} />
@@ -112,7 +112,7 @@ export default function Admin() {
                   <span className="text-sm">{u.nombre}</span>
                   {!u.activo && <Chip>Inactivo</Chip>}
                 </div>
-                <div className="truncate text-xs text-smoke-2">
+                <div className="truncate text-xs text-tenue">
                   {u.email}
                   {u.cargo && ` · ${u.cargo}`}
                 </div>
@@ -122,19 +122,19 @@ export default function Admin() {
               >
                 {ROL_LABEL[u.rol]}
               </Chip>
-              <span className="hidden font-mono text-[10px] text-smoke-2 sm:block">
+              <span className="hidden font-semibold text-[10px] text-tenue sm:block">
                 Desde {fechaCorta(u.creadoEn)}
               </span>
               <div className="flex gap-1">
                 <button
                   onClick={() => setEditando(u)}
-                  className="border border-line-2 p-1.5 text-smoke transition-colors hover:border-bone hover:text-bone"
+                  className="border border-borde2 p-1.5 text-suave transition-colors hover:border-tinta hover:text-tinta"
                 >
                   <Pencil size={12} />
                 </button>
                 <button
                   onClick={() => setPorBorrar(u)}
-                  className="border border-line-2 p-1.5 text-smoke transition-colors hover:border-signal hover:text-signal"
+                  className="border border-borde2 p-1.5 text-suave transition-colors hover:border-signal hover:text-signal"
                 >
                   <Trash2 size={12} />
                 </button>
@@ -176,8 +176,8 @@ export default function Admin() {
                   onClick={() => actualizarConfig({ horasCierreAgendaDefault: h })}
                   className={
                     estado.config.horasCierreAgendaDefault === h
-                      ? 'border border-bone bg-bone px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ink'
-                      : 'border border-line-2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-smoke transition-colors hover:border-smoke hover:text-bone'
+                      ? 'border border-tinta bg-tinta px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-fondo'
+                      : 'border border-borde2 px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
                   }
                 >
                   {h} h antes
@@ -222,7 +222,7 @@ export default function Admin() {
             />
             <span>
               <span className="block text-sm">Correos automáticos</span>
-              <span className="block text-xs text-smoke-2">
+              <span className="block text-xs text-tenue">
                 Emitir el aviso al cerrar el temario y la minuta al cerrar la reunión.
               </span>
             </span>
@@ -232,7 +232,7 @@ export default function Admin() {
 
       {/* ── Estado técnico ── */}
       <Seccion kicker="Debajo del capot" titulo="Estado técnico">
-        <div className="card divide-y divide-line">
+        <div className="card divide-y divide-borde">
           <Fila
             etiqueta="Persistencia"
             valor={
@@ -276,10 +276,10 @@ export default function Admin() {
           <div className="flex flex-wrap items-center justify-between gap-3 p-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <Send size={13} className="text-smoke-2" />
+                <Send size={13} className="text-tenue" />
                 <span className="text-sm">Envío de correo</span>
               </div>
-              <p className="mt-1 max-w-xl pl-5 text-xs text-smoke-2">
+              <p className="mt-1 max-w-xl pl-5 text-xs text-tenue">
                 {correoConfigurado
                   ? 'Salen solos al cerrar el temario y al cerrar la reunión. Probalo acá para confirmar que la casilla responde.'
                   : 'Los correos se componen siempre y quedan registrados en la sección Correos, listos para copiar o abrir en el cliente de correo.'}
@@ -299,7 +299,7 @@ export default function Admin() {
           <div className="flex flex-wrap items-center justify-between gap-3 p-4">
             <div>
               <div className="text-sm">Datos de demostración</div>
-              <div className="text-xs text-smoke-2">
+              <div className="text-xs text-tenue">
                 {modo === 'neon'
                   ? 'Con base compartida el restablecimiento se hace desde el repositorio, corriendo db/seed.sql. Así nadie borra el trabajo del resto por accidente.'
                   : `Vuelve todo al estado original: ${estado.reuniones.length} reuniones, ${estado.temas.length} temas y ${estado.compromisos.length} compromisos.`}
@@ -368,10 +368,10 @@ function Fila({
     <div className="flex flex-wrap items-start justify-between gap-3 p-4">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <Database size={13} className="text-smoke-2" />
+          <Database size={13} className="text-tenue" />
           <span className="text-sm">{etiqueta}</span>
         </div>
-        {nota && <p className="mt-1 max-w-xl pl-5 text-xs text-smoke-2">{nota}</p>}
+        {nota && <p className="mt-1 max-w-xl pl-5 text-xs text-tenue">{nota}</p>}
       </div>
       <Chip tono={tono}>{valor}</Chip>
     </div>

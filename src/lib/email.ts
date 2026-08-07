@@ -8,18 +8,23 @@ import { agendaDe, compromisosDe, fechaCorta, fechaLarga, hora, minutosAgenda, n
    2. al cerrar la reunión, con conclusiones y compromisos
    ───────────────────────────────────────────────────────────── */
 
+/* Mismos valores que el tema de la aplicación. */
 const ROJO = '#C0392B'
-const TINTA = '#0A0A0A'
+const TINTA = '#14120F'
+const FONDO = '#F7F5F1'
+const SUAVE = '#6B665D'
+const TENUE = '#9A948A'
+const BORDE = '#E3DED4'
 
 const layout = (titulo: string, kicker: string, cuerpo: string) => `
-<div style="background:${TINTA};padding:32px 16px;font-family:Helvetica,Arial,sans-serif">
-  <div style="max-width:640px;margin:0 auto;background:#111;border:1px solid #262626">
-    <div style="padding:28px 32px;border-bottom:1px solid #262626">
-      <div style="font-size:10px;letter-spacing:3px;color:#8C8C8C;text-transform:uppercase">[ ${kicker} ]</div>
-      <div style="font-size:34px;font-weight:900;color:#F4F2EE;letter-spacing:-1px;text-transform:uppercase;margin-top:10px;line-height:1">${titulo}</div>
+<div style="background:${FONDO};padding:32px 16px;font-family:Inter,Helvetica,Arial,sans-serif">
+  <div style="max-width:640px;margin:0 auto;background:#FFFFFF;border:1px solid ${BORDE}">
+    <div style="padding:28px 32px;border-bottom:1px solid ${BORDE}">
+      <div style="font-size:10px;letter-spacing:3px;color:${SUAVE};text-transform:uppercase">[ ${kicker} ]</div>
+      <div style="font-size:32px;font-weight:800;color:${TINTA};letter-spacing:-0.5px;text-transform:uppercase;margin-top:10px;line-height:1.1">${titulo}</div>
     </div>
-    <div style="padding:28px 32px;color:#D8D6D2;font-size:14px;line-height:1.65">${cuerpo}</div>
-    <div style="padding:18px 32px;border-top:1px solid #262626;font-size:10px;letter-spacing:2px;color:#5C5C5C;text-transform:uppercase">
+    <div style="padding:28px 32px;color:#2C2924;font-size:14px;line-height:1.65">${cuerpo}</div>
+    <div style="padding:18px 32px;border-top:1px solid ${BORDE};font-size:10px;letter-spacing:2px;color:${TENUE};text-transform:uppercase">
       Harvey OS · enviado automáticamente
     </div>
   </div>
@@ -30,14 +35,14 @@ const chip = (texto: string, color: string) =>
 
 const filaTema = (e: Estado, t: Tema, i: number) => `
 <tr>
-  <td style="padding:12px 0;border-bottom:1px solid #262626;vertical-align:top;width:28px;color:#5C5C5C;font-size:12px">${String(i + 1).padStart(2, '0')}</td>
-  <td style="padding:12px 0;border-bottom:1px solid #262626;vertical-align:top">
-    <div style="color:#F4F2EE;font-weight:700;font-size:15px">${t.titulo}</div>
-    ${t.detalle ? `<div style="color:#8C8C8C;font-size:13px;margin-top:4px">${t.detalle}</div>` : ''}
+  <td style="padding:12px 0;border-bottom:1px solid ${BORDE};vertical-align:top;width:28px;color:${TENUE};font-size:12px">${String(i + 1).padStart(2, '0')}</td>
+  <td style="padding:12px 0;border-bottom:1px solid ${BORDE};vertical-align:top">
+    <div style="color:${TINTA};font-weight:700;font-size:15px">${t.titulo}</div>
+    ${t.detalle ? `<div style="color:${SUAVE};font-size:13px;margin-top:4px">${t.detalle}</div>` : ''}
     <div style="margin-top:8px">
       ${chip(IMPORTANCIA[t.importancia].nombre, IMPORTANCIA[t.importancia].hex)}
-      ${chip(OBJETIVOS[t.objetivo].nombre, '#8C8C8C')}
-      <span style="color:#5C5C5C;font-size:11px;margin-left:6px">Propuso ${nombreDe(e, t.propuestoPor)} · ${t.duracionMin} min</span>
+      ${chip(OBJETIVOS[t.objetivo].nombre, SUAVE)}
+      <span style="color:${TENUE};font-size:11px;margin-left:6px">Propuso ${nombreDe(e, t.propuestoPor)} · ${t.duracionMin} min</span>
     </div>
   </td>
 </tr>`
@@ -49,20 +54,20 @@ export function correoAgendaCerrada(e: Estado, r: Reunion) {
   const total = minutosAgenda(temas)
   const cuerpo = `
     <p style="margin:0 0 20px">
-      Quedó cerrado el temario de <strong style="color:#F4F2EE">${r.titulo}</strong>.
-      Nos vemos el <strong style="color:#F4F2EE">${fechaLarga(r.fecha)} a las ${hora(r.fecha)}</strong>${r.lugar ? ` en ${r.lugar}` : ''}.
+      Quedó cerrado el temario de <strong style="color:${TINTA}">${r.titulo}</strong>.
+      Nos vemos el <strong style="color:${TINTA}">${fechaLarga(r.fecha)} a las ${hora(r.fecha)}</strong>${r.lugar ? ` en ${r.lugar}` : ''}.
     </p>
-    <div style="border:1px solid #262626;padding:16px;margin-bottom:24px">
-      <span style="color:#8C8C8C;font-size:12px">Modera</span>
-      <span style="color:#F4F2EE;font-size:13px;margin-left:8px">${nombreDe(e, r.moderadorId)}</span>
-      <span style="color:#8C8C8C;font-size:12px;margin-left:20px">Temas</span>
-      <span style="color:#F4F2EE;font-size:13px;margin-left:8px">${temas.length}</span>
-      <span style="color:#8C8C8C;font-size:12px;margin-left:20px">Duración</span>
-      <span style="color:${total > r.duracionPrevistaMin ? ROJO : '#F4F2EE'};font-size:13px;margin-left:8px">${total} min</span>
+    <div style="border:1px solid ${BORDE};padding:16px;margin-bottom:24px">
+      <span style="color:${SUAVE};font-size:12px">Modera</span>
+      <span style="color:${TINTA};font-size:13px;margin-left:8px">${nombreDe(e, r.moderadorId)}</span>
+      <span style="color:${SUAVE};font-size:12px;margin-left:20px">Temas</span>
+      <span style="color:${TINTA};font-size:13px;margin-left:8px">${temas.length}</span>
+      <span style="color:${SUAVE};font-size:12px;margin-left:20px">Duración</span>
+      <span style="color:${total > r.duracionPrevistaMin ? ROJO : TINTA};font-size:13px;margin-left:8px">${total} min</span>
     </div>
-    <div style="font-size:10px;letter-spacing:3px;color:#8C8C8C;text-transform:uppercase;margin-bottom:8px">[ Temas a tratar ]</div>
+    <div style="font-size:10px;letter-spacing:3px;color:${SUAVE};text-transform:uppercase;margin-bottom:8px">[ Temas a tratar ]</div>
     <table style="width:100%;border-collapse:collapse">${temas.map((t, i) => filaTema(e, t, i)).join('')}</table>
-    <p style="margin:24px 0 0;color:#8C8C8C;font-size:13px">
+    <p style="margin:24px 0 0;color:${SUAVE};font-size:13px">
       Llegá con los temas leídos. Ya no se aceptan temas nuevos para esta reunión.
     </p>`
 
@@ -90,12 +95,12 @@ export function correoAgendaCerrada(e: Estado, r: Reunion) {
 
 const filaCompromiso = (e: Estado, c: Compromiso) => `
 <tr>
-  <td style="padding:10px 0;border-bottom:1px solid #262626;color:#F4F2EE;font-size:13px">
+  <td style="padding:10px 0;border-bottom:1px solid ${BORDE};color:${TINTA};font-size:13px">
     ${c.accion}
-    ${c.detalle ? `<div style="color:#8C8C8C;font-size:12px;margin-top:3px">${c.detalle}</div>` : ''}
+    ${c.detalle ? `<div style="color:${SUAVE};font-size:12px;margin-top:3px">${c.detalle}</div>` : ''}
   </td>
-  <td style="padding:10px 12px;border-bottom:1px solid #262626;color:#D8D6D2;font-size:13px;white-space:nowrap">${nombreDe(e, c.responsableId)}</td>
-  <td style="padding:10px 0;border-bottom:1px solid #262626;color:${IMPORTANCIA[c.importancia].hex};font-size:13px;white-space:nowrap">${fechaCorta(c.fechaLimite)}</td>
+  <td style="padding:10px 12px;border-bottom:1px solid ${BORDE};color:#2C2924;font-size:13px;white-space:nowrap">${nombreDe(e, c.responsableId)}</td>
+  <td style="padding:10px 0;border-bottom:1px solid ${BORDE};color:${IMPORTANCIA[c.importancia].hex};font-size:13px;white-space:nowrap">${fechaCorta(c.fechaLimite)}</td>
 </tr>`
 
 export function correoMinuta(e: Estado, r: Reunion) {
@@ -105,54 +110,54 @@ export function correoMinuta(e: Estado, r: Reunion) {
   const bloquesTemas = temas
     .map(
       (t, i) => `
-    <div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid #262626">
-      <div style="color:#F4F2EE;font-weight:700;font-size:15px">${String(i + 1).padStart(2, '0')} · ${t.titulo}</div>
+    <div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid ${BORDE}">
+      <div style="color:${TINTA};font-weight:700;font-size:15px">${String(i + 1).padStart(2, '0')} · ${t.titulo}</div>
       <div style="margin:8px 0">
-        ${chip(OBJETIVOS[t.objetivo].nombre, '#8C8C8C')}
-        <span style="color:#5C5C5C;font-size:11px;margin-left:6px">Propuso ${nombreDe(e, t.propuestoPor)}</span>
+        ${chip(OBJETIVOS[t.objetivo].nombre, SUAVE)}
+        <span style="color:${TENUE};font-size:11px;margin-left:6px">Propuso ${nombreDe(e, t.propuestoPor)}</span>
       </div>
-      <div style="color:#D8D6D2;font-size:13px;line-height:1.6;white-space:pre-wrap">${t.conclusiones ?? '<span style="color:#5C5C5C">Sin conclusiones registradas.</span>'}</div>
+      <div style="color:#2C2924;font-size:13px;line-height:1.6;white-space:pre-wrap">${t.conclusiones ?? `<span style="color:${TENUE}">Sin conclusiones registradas.</span>`}</div>
     </div>`,
     )
     .join('')
 
   const cuerpo = `
     <p style="margin:0 0 20px">
-      Cerramos <strong style="color:#F4F2EE">${r.titulo}</strong> del ${fechaLarga(r.fecha)}.
+      Cerramos <strong style="color:${TINTA}">${r.titulo}</strong> del ${fechaLarga(r.fecha)}.
       Acá quedan las conclusiones y los compromisos asumidos.
     </p>
     ${
       r.conclusionesGenerales
-        ? `<div style="font-size:10px;letter-spacing:3px;color:#8C8C8C;text-transform:uppercase;margin-bottom:8px">[ Principales conclusiones ]</div>
-           <div style="border-left:2px solid ${ROJO};padding-left:14px;color:#D8D6D2;font-size:14px;line-height:1.65;margin-bottom:28px;white-space:pre-wrap">${r.conclusionesGenerales}</div>`
+        ? `<div style="font-size:10px;letter-spacing:3px;color:${SUAVE};text-transform:uppercase;margin-bottom:8px">[ Principales conclusiones ]</div>
+           <div style="border-left:2px solid ${ROJO};padding-left:14px;color:#2C2924;font-size:14px;line-height:1.65;margin-bottom:28px;white-space:pre-wrap">${r.conclusionesGenerales}</div>`
         : ''
     }
-    <div style="font-size:10px;letter-spacing:3px;color:#8C8C8C;text-transform:uppercase;margin-bottom:12px">[ Tema por tema ]</div>
+    <div style="font-size:10px;letter-spacing:3px;color:${SUAVE};text-transform:uppercase;margin-bottom:12px">[ Tema por tema ]</div>
     ${bloquesTemas}
-    <div style="font-size:10px;letter-spacing:3px;color:#8C8C8C;text-transform:uppercase;margin:28px 0 8px">[ Próximos compromisos ]</div>
+    <div style="font-size:10px;letter-spacing:3px;color:${SUAVE};text-transform:uppercase;margin:28px 0 8px">[ Próximos compromisos ]</div>
     ${
       comps.length
         ? `<table style="width:100%;border-collapse:collapse">
             <tr>
-              <th style="text-align:left;padding-bottom:8px;border-bottom:1px solid #333;color:#8C8C8C;font-size:10px;letter-spacing:2px;text-transform:uppercase">Acción</th>
-              <th style="text-align:left;padding:0 12px 8px;border-bottom:1px solid #333;color:#8C8C8C;font-size:10px;letter-spacing:2px;text-transform:uppercase">Responsable</th>
-              <th style="text-align:left;padding-bottom:8px;border-bottom:1px solid #333;color:#8C8C8C;font-size:10px;letter-spacing:2px;text-transform:uppercase">Límite</th>
+              <th style="text-align:left;padding-bottom:8px;border-bottom:1px solid ${BORDE};color:${SUAVE};font-size:10px;letter-spacing:2px;text-transform:uppercase">Acción</th>
+              <th style="text-align:left;padding:0 12px 8px;border-bottom:1px solid ${BORDE};color:${SUAVE};font-size:10px;letter-spacing:2px;text-transform:uppercase">Responsable</th>
+              <th style="text-align:left;padding-bottom:8px;border-bottom:1px solid ${BORDE};color:${SUAVE};font-size:10px;letter-spacing:2px;text-transform:uppercase">Límite</th>
             </tr>
             ${comps.map((c) => filaCompromiso(e, c)).join('')}
           </table>`
-        : '<div style="color:#5C5C5C;font-size:13px">No se registraron compromisos.</div>'
+        : '<div style="color:${TENUE};font-size:13px">No se registraron compromisos.</div>'
     }
     ${
       r.observaciones
-        ? `<div style="font-size:10px;letter-spacing:3px;color:#8C8C8C;text-transform:uppercase;margin:28px 0 8px">[ Observaciones adicionales ]</div>
-           <div style="color:#D8D6D2;font-size:13px;line-height:1.6;white-space:pre-wrap">${r.observaciones}</div>`
+        ? `<div style="font-size:10px;letter-spacing:3px;color:${SUAVE};text-transform:uppercase;margin:28px 0 8px">[ Observaciones adicionales ]</div>
+           <div style="color:#2C2924;font-size:13px;line-height:1.6;white-space:pre-wrap">${r.observaciones}</div>`
         : ''
     }
     ${
       r.proximaReunionFecha
-        ? `<div style="margin-top:28px;padding:14px 16px;border:1px solid #262626">
-             <span style="color:#8C8C8C;font-size:12px">Próxima reunión</span>
-             <span style="color:#F4F2EE;font-size:13px;margin-left:10px">${fechaLarga(r.proximaReunionFecha)} · ${hora(r.proximaReunionFecha)}</span>
+        ? `<div style="margin-top:28px;padding:14px 16px;border:1px solid ${BORDE}">
+             <span style="color:${SUAVE};font-size:12px">Próxima reunión</span>
+             <span style="color:${TINTA};font-size:13px;margin-left:10px">${fechaLarga(r.proximaReunionFecha)} · ${hora(r.proximaReunionFecha)}</span>
            </div>`
         : ''
     }`

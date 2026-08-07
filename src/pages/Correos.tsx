@@ -24,7 +24,7 @@ export default function Correos() {
   return (
     <div className="space-y-6">
       <Seccion kicker="Automatizaciones" titulo="Correos">
-        <p className="mb-5 max-w-2xl text-sm leading-relaxed text-smoke">
+        <p className="mb-5 max-w-2xl text-sm leading-relaxed text-suave">
           La plataforma emite dos correos por reunión: uno al cerrarse el temario y otro al
           cerrarse la sesión, con conclusiones y compromisos. Acá queda el registro de todos.
         </p>
@@ -39,14 +39,14 @@ export default function Correos() {
             <span
               className={
                 hayProveedor
-                  ? 'font-mono text-[11px] uppercase tracking-[0.14em] text-acid'
-                  : 'font-mono text-[11px] uppercase tracking-[0.14em] text-amber'
+                  ? 'font-semibold text-[11px] uppercase tracking-[0.14em] text-acid'
+                  : 'font-semibold text-[11px] uppercase tracking-[0.14em] text-amber'
               }
             >
               {hayProveedor ? 'Envío automático activo' : 'Sin proveedor de envío conectado'}
             </span>
           </div>
-          <p className="text-xs leading-relaxed text-smoke">
+          <p className="text-xs leading-relaxed text-suave">
             {hayProveedor
               ? 'Los correos salen solos al cerrarse el temario y al cerrarse la reunión. Acá queda el registro de cada uno, con su contenido y sus destinatarios.'
               : 'Los correos se componen completos y quedan registrados, pero todavía no salen solos. Podés verlos, copiarlos o abrirlos en tu cliente de correo. Para que salgan automáticamente hay que conectar la casilla de envío.'}
@@ -91,14 +91,14 @@ export default function Correos() {
 
                       <div className="text-sm">{n.asunto}</div>
 
-                      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-[0.14em] text-smoke-2">
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
                         <span>{n.destinatarios.length} destinatarios</span>
                         <span>{fechaHora(n.creadoEn)}</span>
                         <span>{relativo(n.creadoEn)}</span>
                         {reunion && (
                           <Link
                             to={`/reuniones/${reunion.id}`}
-                            className="truncate transition-colors hover:text-bone"
+                            className="truncate transition-colors hover:text-tinta"
                           >
                             {reunion.titulo}
                           </Link>
@@ -107,7 +107,7 @@ export default function Correos() {
 
                       {n.error && <p className="mt-2 text-xs text-signal">{n.error}</p>}
 
-                      <div className="mt-2 truncate text-[11px] text-smoke-2">
+                      <div className="mt-2 truncate text-[11px] text-tenue">
                         {n.destinatarios.join(', ')}
                       </div>
                     </div>
@@ -164,17 +164,17 @@ export default function Correos() {
                 <Etiqueta className="bracket mb-1">
                   Para {viendo.destinatarios.length} personas
                 </Etiqueta>
-                <div className="truncate text-sm text-bone">{viendo.asunto}</div>
+                <div className="truncate text-sm text-tinta">{viendo.asunto}</div>
               </div>
               <Boton onClick={() => setViendo(undefined)}>Cerrar</Boton>
             </div>
             {viendo.cuerpoHtml ? (
               <div
-                className="overflow-hidden border border-line"
+                className="overflow-hidden border border-borde"
                 dangerouslySetInnerHTML={{ __html: viendo.cuerpoHtml }}
               />
             ) : (
-              <pre className="card overflow-x-auto whitespace-pre-wrap p-5 text-xs leading-relaxed text-smoke">
+              <pre className="card overflow-x-auto whitespace-pre-wrap p-5 text-xs leading-relaxed text-suave">
                 {viendo.cuerpoTexto}
               </pre>
             )}

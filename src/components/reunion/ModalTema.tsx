@@ -146,7 +146,7 @@ export default function ModalTema({
         </div>
 
         {!tema && !entraDirecto && (
-          <p className="border border-line bg-ink-3 p-3 text-xs leading-relaxed text-smoke">
+          <p className="border border-borde bg-hueco p-3 text-xs leading-relaxed text-suave">
             El tema queda como propuesto. El organizador decide si entra en la agenda de esta
             reunión.
           </p>

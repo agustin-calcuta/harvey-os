@@ -57,7 +57,7 @@ export default function Pendientes() {
   return (
     <div className="space-y-6">
       <Seccion kicker="Historial vivo" titulo="Pendientes">
-        <p className="mb-5 max-w-2xl text-sm leading-relaxed text-smoke">
+        <p className="mb-5 max-w-2xl text-sm leading-relaxed text-suave">
           Todo lo que quedó abierto, sin importar de qué reunión venga. Hay decisiones que
           arrancan hoy y se cierran dentro de cinco meses: acá no se pierden.
         </p>
@@ -88,14 +88,14 @@ export default function Pendientes() {
               onClick={() => setAgrupar(a)}
               className={
                 agrupar === a
-                  ? 'border border-bone bg-bone px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-ink'
-                  : 'border border-line-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-smoke transition-colors hover:border-smoke hover:text-bone'
+                  ? 'border border-tinta bg-tinta px-3 py-1.5 font-semibold text-[10px] uppercase tracking-[0.12em] text-fondo'
+                  : 'border border-borde2 px-3 py-1.5 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
               }
             >
               {a}
             </button>
           ))}
-          <label className="ml-auto flex cursor-pointer items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-smoke">
+          <label className="ml-auto flex cursor-pointer items-center gap-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave">
             <input
               type="checkbox"
               className="h-3.5 w-3.5 accent-[#C0392B]"
@@ -119,16 +119,16 @@ export default function Pendientes() {
                 <div className="mb-2 flex items-center gap-3">
                   {agrupar === 'responsable' && <Avatar nombre={clave} tam="sm" />}
                   <h3 className="display text-lg">{clave}</h3>
-                  <span className="font-mono text-[10px] text-smoke-2">{items.length}</span>
+                  <span className="font-semibold text-[10px] text-tenue">{items.length}</span>
                   {items.some((c) => estaVencido(c)) && (
                     <Chip tono="signal">
                       {items.filter((c) => estaVencido(c)).length} vencidos
                     </Chip>
                   )}
-                  <div className="h-px flex-1 bg-line" />
+                  <div className="h-px flex-1 bg-borde" />
                 </div>
 
-                <ul className="card divide-y divide-line">
+                <ul className="card divide-y divide-borde">
                   {items.map((c) => (
                     <li key={c.id} className="p-4">
                       <div className="flex flex-wrap items-start gap-3">
@@ -140,20 +140,20 @@ export default function Pendientes() {
                           <div
                             className={cx(
                               'text-sm leading-snug',
-                              c.estado === 'hecho' && 'text-smoke line-through',
+                              c.estado === 'hecho' && 'text-suave line-through',
                             )}
                           >
                             {c.accion}
                           </div>
                           {c.detalle && (
-                            <p className="mt-1 text-xs text-smoke">{c.detalle}</p>
+                            <p className="mt-1 text-xs text-suave">{c.detalle}</p>
                           )}
                           {c.avance && (
-                            <p className="mt-1 border-l border-line-2 pl-2 text-xs text-smoke-2">
+                            <p className="mt-1 border-l border-borde2 pl-2 text-xs text-tenue">
                               {c.avance}
                             </p>
                           )}
-                          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-[0.14em] text-smoke-2">
+                          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
                             {agrupar !== 'responsable' && (
                               <span>{nombreDe(estado, c.responsableId)}</span>
                             )}
@@ -166,7 +166,7 @@ export default function Pendientes() {
                             {agrupar !== 'reunion' && (
                               <Link
                                 to={`/reuniones/${c.reunionId}`}
-                                className="truncate transition-colors hover:text-bone"
+                                className="truncate transition-colors hover:text-tinta"
                               >
                                 {estado.reuniones.find((r) => r.id === c.reunionId)?.titulo}
                               </Link>
@@ -218,8 +218,8 @@ function BotonEstado({
       title={ESTADO_COMPROMISO[estado].nombre}
       className={
         activo
-          ? 'truncate border border-bone bg-bone px-2 py-1.5 font-mono text-[9px] uppercase tracking-[0.1em] text-ink'
-          : 'truncate border border-line-2 px-2 py-1.5 font-mono text-[9px] uppercase tracking-[0.1em] text-smoke transition-colors hover:border-smoke hover:text-bone'
+          ? 'truncate border border-tinta bg-tinta px-2 py-1.5 font-semibold text-[9px] uppercase tracking-[0.1em] text-fondo'
+          : 'truncate border border-borde2 px-2 py-1.5 font-semibold text-[9px] uppercase tracking-[0.1em] text-suave transition-colors hover:border-suave hover:text-tinta'
       }
     >
       {ESTADO_COMPROMISO[estado].nombre}

@@ -63,8 +63,8 @@ export default function Reuniones() {
               onClick={() => setFiltro(f.valor)}
               className={
                 filtro === f.valor
-                  ? 'shrink-0 whitespace-nowrap border border-bone bg-bone px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ink'
-                  : 'shrink-0 whitespace-nowrap border border-line-2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-smoke transition-colors hover:border-smoke hover:text-bone'
+                  ? 'shrink-0 whitespace-nowrap border border-tinta bg-tinta px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-fondo'
+                  : 'shrink-0 whitespace-nowrap border border-borde2 px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
               }
             >
               {f.texto}
@@ -118,8 +118,8 @@ export default function Reuniones() {
                           <span
                             className={
                               cd.vencido
-                                ? 'font-mono text-[10px] uppercase tracking-[0.14em] text-signal'
-                                : 'font-mono text-[10px] uppercase tracking-[0.14em] text-amber'
+                                ? 'font-semibold text-[10px] uppercase tracking-[0.14em] text-signal'
+                                : 'font-semibold text-[10px] uppercase tracking-[0.14em] text-amber'
                             }
                           >
                             {cd.vencido ? 'Plazo vencido' : `Cierra en ${cd.texto}`}
@@ -131,7 +131,7 @@ export default function Reuniones() {
                         {r.titulo}
                       </h3>
 
-                      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-smoke">
+                      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-suave">
                         <span>
                           {fechaCorta(r.fecha)} · {hora(r.fecha)}
                         </span>
@@ -148,7 +148,7 @@ export default function Reuniones() {
                           .map((u) => ({ nombre: u!.nombre, url: u!.avatarUrl }))}
                         max={4}
                       />
-                      <div className="flex gap-4 font-mono text-[10px] uppercase tracking-[0.14em] text-smoke-2">
+                      <div className="flex gap-4 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
                         <span>{agenda.length} temas</span>
                         {propuestos.length > 0 && (
                           <span className="text-amber">{propuestos.length} por aprobar</span>
@@ -281,8 +281,8 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
                 onClick={() => setHorasCierre(h)}
                 className={
                   horasCierre === h
-                    ? 'border border-bone bg-bone px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ink'
-                    : 'border border-line-2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-smoke transition-colors hover:border-smoke hover:text-bone'
+                    ? 'border border-tinta bg-tinta px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-fondo'
+                    : 'border border-borde2 px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
                 }
               >
                 {h} h antes
@@ -302,15 +302,15 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
                   onClick={() => alternar(u.id)}
                   className={
                     participantes.includes(u.id)
-                      ? 'flex items-center gap-2 border border-bone/60 bg-ink-3 px-3 py-2 text-left text-xs'
-                      : 'flex items-center gap-2 border border-line px-3 py-2 text-left text-xs text-smoke transition-colors hover:border-smoke'
+                      ? 'flex items-center gap-2 border border-tinta/60 bg-hueco px-3 py-2 text-left text-xs'
+                      : 'flex items-center gap-2 border border-borde px-3 py-2 text-left text-xs text-suave transition-colors hover:border-suave'
                   }
                 >
                   <span
                     className={
                       participantes.includes(u.id)
                         ? 'h-2 w-2 shrink-0 bg-signal'
-                        : 'h-2 w-2 shrink-0 border border-line-2'
+                        : 'h-2 w-2 shrink-0 border border-borde2'
                     }
                   />
                   <span className="truncate">{u.nombre}</span>

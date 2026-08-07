@@ -76,7 +76,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
             <RotateCcw size={12} /> Reabrir para editar
           </Boton>
         )}
-        <label className="flex w-full cursor-pointer items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-smoke sm:ml-auto sm:w-auto">
+        <label className="flex w-full cursor-pointer items-center gap-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave sm:ml-auto sm:w-auto">
           <input
             type="checkbox"
             className="h-3.5 w-3.5 accent-[#C0392B]"
@@ -89,7 +89,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
 
       {/* ── Ficha, tal cual la minuta de Fran ── */}
       <div className="card">
-        <div className="grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-px bg-borde sm:grid-cols-2 lg:grid-cols-4">
           <Dato etiqueta="Participantes">
             {reunion.participantesIds.map((id) => nombreDe(estado, id)).join(', ')}
           </Dato>
@@ -97,7 +97,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
             {fechaLarga(reunion.fecha)} · {hora(reunion.fecha)}
           </Dato>
           <Dato etiqueta="Moderador">{nombreDe(estado, reunion.moderadorId)}</Dato>
-          <div className="bg-ink-2 p-4">
+          <div className="bg-panel p-4">
             <Etiqueta className="mb-1.5">Próxima reunión</Etiqueta>
             {editable ? (
               <input
@@ -125,7 +125,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
             placeholder="Los hallazgos, definiciones y decisiones que dejó la reunión."
           />
         ) : (
-          <p className="card whitespace-pre-wrap p-4 text-sm leading-relaxed text-smoke">
+          <p className="card whitespace-pre-wrap p-4 text-sm leading-relaxed text-suave">
             {conclusiones || 'Sin conclusiones registradas.'}
           </p>
         )}
@@ -143,7 +143,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-3">
-                      <span className="font-mono text-xs text-smoke-2">
+                      <span className="font-semibold text-xs text-tenue">
                         {String(i + 1).padStart(2, '0')}
                       </span>
                       <h4 className="text-base">{t.titulo}</h4>
@@ -151,29 +151,29 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 sm:pl-8">
                       <ChipImportancia valor={t.importancia} />
                       <Chip>{OBJETIVOS[t.objetivo].nombre}</Chip>
-                      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-smoke-2">
+                      <span className="font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
                         Propuso {nombreDe(estado, t.propuestoPor)}
                       </span>
                     </div>
                   </div>
                   <div className="shrink-0 text-right">
-                    <div className="font-mono text-xs text-smoke">
+                    <div className="font-semibold text-xs text-suave">
                       {t.duracionRealSeg ? mmss(t.duracionRealSeg) : '—'}
-                      <span className="text-smoke-2"> / {t.duracionMin}:00</span>
+                      <span className="text-tenue"> / {t.duracionMin}:00</span>
                     </div>
                     {t.duracionRealSeg && t.duracionRealSeg > t.duracionMin * 60 && (
-                      <div className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-signal">
+                      <div className="mt-0.5 font-semibold text-[9px] uppercase tracking-[0.14em] text-signal">
                         Se pasó {mmss(t.duracionRealSeg - t.duracionMin * 60)}
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="mt-3 border-t border-line pt-3 sm:pl-8">
+                <div className="mt-3 border-t border-borde pt-3 sm:pl-8">
                   {editable ? (
                     <NotaEditable temaId={t.id} valor={t.conclusiones ?? ''} />
                   ) : (
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-smoke">
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-suave">
                       {t.conclusiones || 'Sin conclusiones registradas.'}
                     </p>
                   )}
@@ -201,12 +201,12 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
           <div className="card overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
-                <tr className="border-b border-line">
+                <tr className="border-b border-borde">
                   {['Acción / compromiso', 'Responsable', 'Fecha límite', 'Estado', ''].map(
                     (h) => (
                       <th
                         key={h}
-                        className="p-3 text-left font-mono text-[9px] font-normal uppercase tracking-[0.16em] text-smoke"
+                        className="p-3 text-left font-semibold text-[9px] font-normal uppercase tracking-[0.16em] text-suave"
                       >
                         {h}
                       </th>
@@ -214,9 +214,9 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
                   )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line">
+              <tbody className="divide-y divide-borde">
                 {compromisos.map((c) => (
-                  <tr key={c.id} className="transition-colors hover:bg-ink-3">
+                  <tr key={c.id} className="transition-colors hover:bg-hueco">
                     <td className="p-3">
                       <div className="flex items-start gap-2.5">
                         <span
@@ -226,17 +226,17 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
                         <div>
                           <div>{c.accion}</div>
                           {c.detalle && (
-                            <div className="mt-0.5 text-xs text-smoke-2">{c.detalle}</div>
+                            <div className="mt-0.5 text-xs text-tenue">{c.detalle}</div>
                           )}
                         </div>
                       </div>
                     </td>
-                    <td className="p-3 text-xs text-smoke">{nombreDe(estado, c.responsableId)}</td>
+                    <td className="p-3 text-xs text-suave">{nombreDe(estado, c.responsableId)}</td>
                     <td
                       className={
                         estaVencido(c)
-                          ? 'p-3 font-mono text-xs text-signal'
-                          : 'p-3 font-mono text-xs text-smoke'
+                          ? 'p-3 font-semibold text-xs text-signal'
+                          : 'p-3 font-semibold text-xs text-suave'
                       }
                     >
                       {fechaCorta(c.fechaLimite)}
@@ -261,13 +261,13 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
                         <div className="flex justify-end gap-1">
                           <button
                             onClick={() => setEditando(c)}
-                            className="border border-line-2 p-1.5 text-smoke transition-colors hover:border-bone hover:text-bone"
+                            className="border border-borde2 p-1.5 text-suave transition-colors hover:border-tinta hover:text-tinta"
                           >
                             <Pencil size={11} />
                           </button>
                           <button
                             onClick={() => setPorBorrar(c)}
-                            className="border border-line-2 p-1.5 text-smoke transition-colors hover:border-signal hover:text-signal"
+                            className="border border-borde2 p-1.5 text-suave transition-colors hover:border-signal hover:text-signal"
                           >
                             <Trash2 size={11} />
                           </button>
@@ -286,21 +286,21 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
       {arrastrados.length > 0 && (
         <section>
           <Etiqueta className="bracket mb-3">Pendientes de reuniones anteriores</Etiqueta>
-          <p className="mb-3 max-w-2xl text-xs text-smoke-2">
+          <p className="mb-3 max-w-2xl text-xs text-tenue">
             No forman parte de esta minuta, pero quedan a un click para repasarlos. Podés
             incluirlos en el PDF con la casilla de arriba.
           </p>
-          <ul className="card divide-y divide-line">
+          <ul className="card divide-y divide-borde">
             {arrastrados.map((c) => (
               <li key={c.id} className="flex flex-wrap items-center gap-3 p-3">
                 <ChipImportancia valor={c.importancia} conTexto={false} />
                 <span className="min-w-0 flex-1 truncate text-sm">{c.accion}</span>
-                <span className="text-xs text-smoke">{nombreDe(estado, c.responsableId)}</span>
+                <span className="text-xs text-suave">{nombreDe(estado, c.responsableId)}</span>
                 <span
                   className={
                     estaVencido(c)
-                      ? 'font-mono text-[11px] text-signal'
-                      : 'font-mono text-[11px] text-smoke-2'
+                      ? 'font-semibold text-[11px] text-signal'
+                      : 'font-semibold text-[11px] text-tenue'
                   }
                 >
                   {fechaCorta(c.fechaLimite)}
@@ -323,7 +323,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
             placeholder="Riesgos, pendientes o comentarios que deban quedar registrados."
           />
         ) : (
-          <p className="card whitespace-pre-wrap p-4 text-sm leading-relaxed text-smoke">
+          <p className="card whitespace-pre-wrap p-4 text-sm leading-relaxed text-suave">
             {observaciones || 'Sin observaciones.'}
           </p>
         )}
@@ -362,7 +362,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
 
 function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
   return (
-    <div className="bg-ink-2 p-4">
+    <div className="bg-panel p-4">
       <Etiqueta className="mb-1.5">{etiqueta}</Etiqueta>
       <div className="text-sm leading-snug">{children}</div>
     </div>
@@ -413,12 +413,12 @@ function VistaCorreo({
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <Etiqueta className="bracket mb-1">Se envía a {destinatarios.length} personas</Etiqueta>
-            <div className="text-sm text-bone">{correo.asunto}</div>
+            <div className="text-sm text-tinta">{correo.asunto}</div>
           </div>
           <Boton onClick={onCerrar}>Cerrar</Boton>
         </div>
         <div
-          className="overflow-hidden border border-line"
+          className="overflow-hidden border border-borde"
           dangerouslySetInnerHTML={{ __html: correo.html }}
         />
       </div>

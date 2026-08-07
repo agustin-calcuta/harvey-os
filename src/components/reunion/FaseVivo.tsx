@@ -20,7 +20,7 @@ import {
   nombreDe,
 } from '../../lib/utils'
 import { IMPORTANCIA, OBJETIVOS, type Reunion } from '../../types'
-import { Boton, Capa, Chip, ChipImportancia, Confirmar, Etiqueta, Vacio } from '../ui'
+import { Boton, Capa, Confirmar, Etiqueta, Vacio } from '../ui'
 import ModalCompromiso from './ModalCompromiso'
 
 export default function FaseVivo({ reunion }: { reunion: Reunion }) {
@@ -107,7 +107,7 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="pulse-dot h-2 w-2 rounded-full bg-signal" />
-          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-signal">
+          <span className="font-semibold text-[11px] uppercase tracking-[0.16em] text-signal">
             Reunión en curso
           </span>
         </div>
@@ -115,7 +115,7 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
           <Boton tam="sm" onClick={() => setVerPendientes(true)}>
             <History size={12} /> Pendientes anteriores
             {arrastrados.length > 0 && (
-              <span className="ml-1 bg-signal px-1.5 text-[9px] text-bone">
+              <span className="ml-1 bg-signal px-1.5 text-[9px] text-tinta">
                 {arrastrados.length}
               </span>
             )}
@@ -136,8 +136,8 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
             onClick={() => guardarYSaltar(i)}
             className={
               i === indice
-                ? 'flex shrink-0 items-center gap-2 border border-bone bg-bone px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ink'
-                : 'flex shrink-0 items-center gap-2 border border-line px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-smoke transition-colors hover:border-smoke hover:text-bone'
+                ? 'flex shrink-0 items-center gap-2 border border-tinta bg-tinta px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-fondo'
+                : 'flex shrink-0 items-center gap-2 border border-borde px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
             }
           >
             <span
@@ -150,27 +150,35 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
         ))}
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
-        {/* ── Tema en curso ── */}
+      {/*
+        Modo foco: mientras la reunión corre, en pantalla sólo está el
+        tema, el reloj y las notas. Todo lo demás se abre a un click.
+      */}
+      <div className="mx-auto w-full max-w-3xl">
         <div className="space-y-5">
           <div className="card">
-            <div className="border-b border-line p-5">
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <Chip>
+            <div className="border-b border-borde p-5">
+              <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-suave">
+                <span>
                   Tema {indice + 1} de {agenda.length}
-                </Chip>
-                <ChipImportancia valor={tema.importancia} />
-                <Chip>{OBJETIVOS[tema.objetivo].nombre}</Chip>
+                </span>
+                <span className="text-borde2">·</span>
+                <span style={{ color: IMPORTANCIA[tema.importancia].hex }}>
+                  Importancia {IMPORTANCIA[tema.importancia].nombre.toLowerCase()}
+                </span>
+                <span className="text-borde2">·</span>
+                <span title={OBJETIVOS[tema.objetivo].desc}>
+                  {OBJETIVOS[tema.objetivo].nombre}
+                </span>
+                <span className="text-borde2">·</span>
+                <span>Propuso {nombreDe(estado, tema.propuestoPor)}</span>
               </div>
               <h2 className="display text-2xl sm:text-3xl lg:text-4xl">{tema.titulo}</h2>
               {tema.detalle && (
-                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-smoke">
+                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-suave">
                   {tema.detalle}
                 </p>
               )}
-              <div className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-smoke-2">
-                Propuso {nombreDe(estado, tema.propuestoPor)} · {OBJETIVOS[tema.objetivo].desc}
-              </div>
             </div>
 
             {/* Cronómetro */}
@@ -186,7 +194,7 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
                   >
                     {mmss(seg)}
                   </span>
-                  <span className="font-mono text-xs text-smoke">
+                  <span className="font-semibold text-xs text-suave">
                     / {tema.duracionMin}:00
                   </span>
                 </div>
@@ -209,13 +217,13 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
                 </div>
               </div>
 
-              <div className="h-1.5 w-full bg-ink-3">
+              <div className="h-1.5 w-full bg-hueco">
                 <div
                   className={excedido ? 'h-full bg-signal' : 'h-full bg-acid transition-all'}
                   style={{ width: `${excedido ? 100 : progreso}%` }}
                 />
               </div>
-              <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-smoke-2">
+              <div className="mt-2 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
                 {excedido
                   ? `Pasado ${mmss(seg - asignado)} del tiempo asignado`
                   : `Quedan ${mmss(restante)}`}
@@ -225,7 +233,15 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
 
           {/* Notas */}
           <div className="card p-5">
-            <Etiqueta className="bracket mb-3">Conclusiones del tema</Etiqueta>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <Etiqueta>Conclusiones del tema</Etiqueta>
+              <Boton tam="sm" onClick={() => setNuevoCompromiso(true)}>
+                <Plus size={11} /> Compromiso
+                {delTema.length > 0 && (
+                  <span className="ml-1 text-tenue">{delTema.length}</span>
+                )}
+              </Boton>
+            </div>
             <textarea
               className="w-full resize-y font-sans text-sm leading-relaxed"
               rows={7}
@@ -233,9 +249,23 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
               onChange={(e) => setNotas(e.target.value)}
               placeholder="Qué se dijo, qué se definió, qué quedó abierto…"
             />
-            <div className="mt-2 font-mono text-[9px] uppercase tracking-[0.14em] text-smoke-2">
-              Se guarda solo mientras escribís
-            </div>
+            <div className="mt-2 text-xs text-tenue">Se guarda solo mientras escribís</div>
+
+            {delTema.length > 0 && (
+              <ul className="mt-4 divide-y divide-borde border-t border-borde">
+                {delTema.map((c) => (
+                  <li key={c.id} className="flex flex-wrap items-center gap-2 py-2.5 text-xs">
+                    <span
+                      className="h-4 w-0.5 shrink-0"
+                      style={{ background: IMPORTANCIA[c.importancia].hex }}
+                    />
+                    <span className="min-w-0 flex-1">{c.accion}</span>
+                    <span className="text-suave">{nombreDe(estado, c.responsableId)}</span>
+                    <span className="text-tenue">{fechaCorta(c.fechaLimite)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Navegación */}
@@ -246,8 +276,9 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
             >
               <ChevronLeft size={13} /> Anterior
             </Boton>
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-smoke-2">
-              {indice + 1} / {agenda.length}
+            <span className="text-xs text-tenue">
+              {agenda.filter((t) => t.conclusiones?.trim()).length} de {agenda.length} con notas ·{' '}
+              {compromisosDe(estado, reunion.id).length} compromisos
             </span>
             <Boton
               variante={indice === agenda.length - 1 ? 'linea' : 'solido'}
@@ -258,57 +289,6 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
             </Boton>
           </div>
         </div>
-
-        {/* ── Compromisos del tema ── */}
-        <aside className="space-y-3">
-          <div className="card xl:sticky xl:top-4">
-            <div className="flex items-center justify-between gap-2 border-b border-line p-4">
-              <Etiqueta className="bracket">Compromisos</Etiqueta>
-              <Boton tam="sm" variante="solido" onClick={() => setNuevoCompromiso(true)}>
-                <Plus size={11} />
-              </Boton>
-            </div>
-
-            {delTema.length === 0 ? (
-              <p className="p-4 text-xs leading-relaxed text-smoke-2">
-                Sin compromisos para este tema todavía. Registralos en el momento, con
-                responsable y fecha.
-              </p>
-            ) : (
-              <ul className="divide-y divide-line">
-                {delTema.map((c) => (
-                  <li key={c.id} className="p-4">
-                    <div className="text-xs leading-snug">{c.accion}</div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <ChipImportancia valor={c.importancia} conTexto={false} />
-                      <span className="font-mono text-[10px] text-smoke">
-                        {nombreDe(estado, c.responsableId)}
-                      </span>
-                      <span className="ml-auto font-mono text-[10px] text-smoke-2">
-                        {fechaCorta(c.fechaLimite)}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {/* Resumen de la reunión */}
-            <div className="grid grid-cols-2 gap-px border-t border-line bg-line">
-              <div className="bg-ink-2 p-3">
-                <Etiqueta className="mb-1">Temas con notas</Etiqueta>
-                <div className="display text-xl">
-                  {agenda.filter((t) => t.conclusiones?.trim()).length}
-                  <span className="text-sm text-smoke">/{agenda.length}</span>
-                </div>
-              </div>
-              <div className="bg-ink-2 p-3">
-                <Etiqueta className="mb-1">Compromisos</Etiqueta>
-                <div className="display text-xl">{compromisosDe(estado, reunion.id).length}</div>
-              </div>
-            </div>
-          </div>
-        </aside>
       </div>
 
       {/* ── Modales ── */}
@@ -368,12 +348,12 @@ function PanelPendientes({
 
   return (
     <Capa onCerrar={onCerrar} alinear="end">
-      <div className="flex w-full max-w-lg flex-col border-l border-line bg-ink">
-        <div className="flex items-start justify-between gap-3 border-b border-line p-5">
+      <div className="flex w-full max-w-lg flex-col border-l border-borde bg-fondo">
+        <div className="flex items-start justify-between gap-3 border-b border-borde p-5">
           <div>
             <Etiqueta className="bracket mb-2">Vienen de atrás</Etiqueta>
             <h3 className="display text-2xl">Pendientes anteriores</h3>
-            <p className="mt-2 text-xs text-smoke">
+            <p className="mt-2 text-xs text-suave">
               {lista.length} compromisos abiertos de reuniones previas.
             </p>
           </div>
@@ -384,11 +364,11 @@ function PanelPendientes({
 
         <div className="flex-1 overflow-y-auto">
           {lista.length === 0 ? (
-            <div className="p-8 text-center text-sm text-smoke">
+            <div className="p-8 text-center text-sm text-suave">
               No quedó nada abierto de reuniones anteriores.
             </div>
           ) : (
-            <ul className="divide-y divide-line">
+            <ul className="divide-y divide-borde">
               {lista.map((c) => {
                 const reunion = estado.reuniones.find((r) => r.id === c.reunionId)
                 return (
@@ -401,9 +381,9 @@ function PanelPendientes({
                       <div className="min-w-0 flex-1">
                         <div className="text-sm leading-snug">{c.accion}</div>
                         {c.avance && (
-                          <p className="mt-1 text-xs text-smoke">{c.avance}</p>
+                          <p className="mt-1 text-xs text-suave">{c.avance}</p>
                         )}
-                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] uppercase tracking-[0.14em] text-smoke-2">
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
                           <span>{nombreDe(estado, c.responsableId)}</span>
                           <span className={estaVencido(c) ? 'text-signal' : ''}>
                             {estaVencido(c) ? 'Vencido ' : 'Vence '}
@@ -420,8 +400,8 @@ function PanelPendientes({
                           onClick={() => moverCompromiso(c.id, s)}
                           className={
                             c.estado === s
-                              ? 'border border-bone bg-bone px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-ink'
-                              : 'border border-line-2 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-smoke transition-colors hover:border-smoke hover:text-bone'
+                              ? 'border border-tinta bg-tinta px-2.5 py-1 font-semibold text-[9px] uppercase tracking-[0.12em] text-fondo'
+                              : 'border border-borde2 px-2.5 py-1 font-semibold text-[9px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
                           }
                         >
                           {s.replace('_', ' ')}

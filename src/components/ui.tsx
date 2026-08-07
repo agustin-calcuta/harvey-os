@@ -26,7 +26,7 @@ export function Boton({
   ...props
 }: BotonProps) {
   const base =
-    'inline-flex items-center justify-center gap-2 font-mono uppercase tracking-[0.12em] transition-all disabled:opacity-35 disabled:cursor-not-allowed select-none border'
+    'inline-flex items-center justify-center gap-2 font-semibold uppercase tracking-[0.12em] transition-all disabled:opacity-35 disabled:cursor-not-allowed select-none border'
   // Alturas cómodas para el dedo: nada por debajo de ~34 px de alto real.
   const tamanos = {
     sm: 'text-[10px] px-3 py-2',
@@ -34,10 +34,10 @@ export function Boton({
     lg: 'text-xs px-6 py-3.5',
   }
   const variantes = {
-    solido: 'bg-signal border-signal text-bone hover:bg-signal-hi hover:border-signal-hi',
-    linea: 'bg-transparent border-line-2 text-bone hover:border-signal hover:text-signal',
-    fantasma: 'bg-transparent border-transparent text-smoke hover:text-bone',
-    peligro: 'bg-transparent border-signal/50 text-signal hover:bg-signal hover:text-bone',
+    solido: 'bg-signal border-signal text-white hover:bg-signal-hi hover:border-signal-hi',
+    linea: 'bg-panel border-borde2 text-tinta hover:border-signal hover:text-signal',
+    fantasma: 'bg-transparent border-transparent text-suave hover:text-tinta',
+    peligro: 'bg-panel border-signal/40 text-signal hover:bg-signal hover:text-white',
   }
   return (
     <button className={cx(base, tamanos[tam], variantes[variante], className)} {...props}>
@@ -64,7 +64,7 @@ export function Chip({
   title?: string
 }) {
   const tonos = {
-    neutro: 'border-line-2 text-smoke',
+    neutro: 'border-borde2 text-suave',
     signal: 'border-signal/60 text-signal',
     amber: 'border-amber/60 text-amber',
     acid: 'border-acid/60 text-acid',
@@ -74,7 +74,7 @@ export function Chip({
     <span
       title={title}
       className={cx(
-        'inline-flex items-center gap-1.5 border px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] whitespace-nowrap',
+        'inline-flex items-center gap-1.5 border px-2 py-0.5 font-semibold text-[9px] uppercase tracking-[0.14em] whitespace-nowrap',
         tonos[tono],
         className,
       )}
@@ -122,7 +122,7 @@ export function Avatar({
       <img
         src={url}
         alt={nombre}
-        className={cx(tamanos[tam], 'shrink-0 border border-line object-cover')}
+        className={cx(tamanos[tam], 'shrink-0 border border-borde object-cover')}
       />
     )
   }
@@ -131,7 +131,7 @@ export function Avatar({
       title={nombre}
       className={cx(
         tamanos[tam],
-        'shrink-0 border border-line-2 bg-ink-3 flex items-center justify-center font-mono tracking-wider text-smoke',
+        'shrink-0 border border-borde2 bg-hueco flex items-center justify-center font-semibold tracking-wider text-suave',
       )}
     >
       {iniciales(nombre)}
@@ -151,12 +151,12 @@ export function Avatares({
   return (
     <div className="flex items-center -space-x-1.5">
       {visibles.map((n, i) => (
-        <div key={i} className="ring-1 ring-ink">
+        <div key={i} className="ring-1 ring-fondo">
           <Avatar nombre={n.nombre} url={n.url} tam="sm" />
         </div>
       ))}
       {resto > 0 && (
-        <div className="h-7 w-7 border border-line-2 bg-ink-3 flex items-center justify-center font-mono text-[9px] text-smoke ring-1 ring-ink">
+        <div className="h-7 w-7 border border-borde2 bg-hueco flex items-center justify-center font-semibold text-[9px] text-suave ring-1 ring-fondo">
           +{resto}
         </div>
       )}
@@ -197,14 +197,14 @@ export function Modal({
   return (
     <Capa onCerrar={onCerrar}>
       <div className={cx('card animate-in relative my-auto w-full', ancho)}>
-        <div className="flex items-start justify-between gap-4 border-b border-line p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-4 border-b border-borde p-4 sm:p-5">
           <div>
             {kicker && <div className="label bracket mb-2">{kicker}</div>}
             <h2 className="display text-xl sm:text-2xl">{titulo}</h2>
           </div>
           <button
             onClick={onCerrar}
-            className="shrink-0 border border-line-2 p-1.5 text-smoke transition-colors hover:border-signal hover:text-signal"
+            className="shrink-0 border border-borde2 p-1.5 text-suave transition-colors hover:border-signal hover:text-signal"
             aria-label="Cerrar"
           >
             <X size={14} />
@@ -235,7 +235,7 @@ export function Capa({
   return createPortal(
     <div
       className={cx(
-        'fixed inset-0 z-50 flex overflow-y-auto bg-black/85 backdrop-blur-sm',
+        'fixed inset-0 z-50 flex overflow-y-auto bg-tinta/45 backdrop-blur-sm',
         // items-start + my-auto en el hijo: centra si entra en pantalla y
         // deja scrollear desde arriba si el contenido es más alto.
         alinear === 'end' ? 'justify-end' : 'items-start justify-center p-3 sm:p-8',
@@ -267,7 +267,7 @@ export function Campo({
     <label className={cx('block', className)}>
       <span className="label mb-1.5 block">{etiqueta}</span>
       {children}
-      {ayuda && <span className="mt-1.5 block text-xs text-smoke-2">{ayuda}</span>}
+      {ayuda && <span className="mt-1.5 block text-xs text-tenue">{ayuda}</span>}
     </label>
   )
 }
@@ -293,10 +293,10 @@ export function Segmentado<T extends string>({
           title={o.title}
           onClick={() => onChange(o.valor)}
           className={cx(
-            'flex items-center gap-1.5 border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] transition-all',
+            'flex items-center gap-1.5 border px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] transition-all',
             valor === o.valor
-              ? 'border-bone bg-bone text-ink'
-              : 'border-line-2 text-smoke hover:border-smoke hover:text-bone',
+              ? 'border-tinta bg-tinta text-fondo'
+              : 'border-borde2 text-suave hover:border-suave hover:text-tinta',
           )}
         >
           {o.color && (
@@ -356,9 +356,9 @@ export function Vacio({
 }) {
   return (
     <div className="card flex flex-col items-center gap-3 px-6 py-14 text-center">
-      {icono && <div className="text-line-2">{icono}</div>}
-      <div className="display text-xl text-smoke">{titulo}</div>
-      {texto && <p className="max-w-sm text-sm text-smoke-2">{texto}</p>}
+      {icono && <div className="text-borde2">{icono}</div>}
+      <div className="display text-xl text-suave">{titulo}</div>
+      {texto && <p className="max-w-sm text-sm text-tenue">{texto}</p>}
       {accion && <div className="mt-2">{accion}</div>}
     </div>
   )
@@ -386,7 +386,7 @@ export function Metrica({
       <div className="label mb-2">{etiqueta}</div>
       <div className={cx('display text-4xl leading-none', tono && colores[tono])}>
         {valor}
-        {sufijo && <span className="ml-1 text-lg text-smoke">{sufijo}</span>}
+        {sufijo && <span className="ml-1 text-lg text-suave">{sufijo}</span>}
       </div>
     </div>
   )
@@ -413,7 +413,7 @@ export function Confirmar({
 }) {
   return (
     <Modal abierto={abierto} onCerrar={onCancelar} titulo={titulo} ancho="max-w-md">
-      <p className="text-sm leading-relaxed text-smoke">{texto}</p>
+      <p className="text-sm leading-relaxed text-suave">{texto}</p>
       <div className="mt-6 flex justify-end gap-2">
         <Boton variante="fantasma" onClick={onCancelar}>
           Cancelar

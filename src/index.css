@@ -2,54 +2,63 @@
 
 /* ─────────────────────────────────────────────────────────────
    HARVEY OS — sistema visual
-   Tomado de harveywillys.com: negro absoluto, rojo señal,
-   tipografía condensada en mayúsculas y corchetes [ ] como marca.
+
+   Tomado de la marca: fondo hueso, tinta casi negra y el rojo
+   señal de la tienda. Las dos familias son las mismas que usa
+   harveywillys.com: Inter para el texto y Almarai para titulares.
+
+   Los nombres son semánticos a propósito (fondo, panel, tinta) y
+   no descriptivos: si alguna vez se invierte el esquema, cambian
+   los valores acá y el resto de la aplicación no se toca.
    ───────────────────────────────────────────────────────────── */
 @theme {
-  --color-ink: #0a0a0a;
-  --color-ink-2: #121212;
-  --color-ink-3: #1a1a1a;
-  --color-line: #262626;
-  --color-line-2: #333333;
-  --color-bone: #f4f2ee;
-  --color-smoke: #8c8c8c;
-  --color-smoke-2: #5c5c5c;
+  /* Superficies, de la más al fondo a la más cercana */
+  --color-fondo: #f7f5f1;
+  --color-panel: #ffffff;
+  --color-hueco: #efece6;
 
+  /* Texto */
+  --color-tinta: #14120f;
+  --color-suave: #6b665d;
+  --color-tenue: #9a948a;
+
+  /* Bordes */
+  --color-borde: #e3ded4;
+  --color-borde2: #cdc6b8;
+
+  /* Acentos, calibrados para leerse sobre fondo claro */
   --color-signal: #c0392b;
-  --color-signal-hi: #e04a38;
+  --color-signal-hi: #a52f23;
   --color-rust: #ae5343;
-  --color-amber: #dc8f38;
-  --color-acid: #b8c832;
-  --color-cold: #4a7fa5;
+  --color-amber: #b26b18;
+  --color-acid: #5f7d1c;
+  --color-cold: #2e6285;
 
-  --font-display: 'Anton', 'Arial Black', sans-serif;
-  --font-sans: 'Archivo', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  /* Contraparte oscura: barra lateral y portada */
+  --color-noche: #14120f;
+  --color-noche2: #1f1c18;
+  --color-nocheborde: #322d26;
+
+  --font-display: 'Almarai', 'Inter', sans-serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
   * {
-    border-color: var(--color-line);
+    border-color: var(--color-borde);
   }
 
   html {
-    color-scheme: dark;
+    color-scheme: light;
   }
 
   body {
-    @apply bg-ink text-bone font-sans antialiased;
-    background-image:
-      repeating-linear-gradient(
-        0deg,
-        rgba(255, 255, 255, 0.014) 0px,
-        rgba(255, 255, 255, 0.014) 1px,
-        transparent 1px,
-        transparent 3px
-      );
+    @apply bg-fondo text-tinta font-sans antialiased;
   }
 
   ::selection {
-    @apply bg-signal text-bone;
+    @apply bg-signal text-white;
   }
 
   ::-webkit-scrollbar {
@@ -57,20 +66,20 @@
     height: 10px;
   }
   ::-webkit-scrollbar-track {
-    background: var(--color-ink);
+    background: var(--color-hueco);
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--color-line-2);
-    border: 2px solid var(--color-ink);
+    background: var(--color-borde2);
+    border: 2px solid var(--color-hueco);
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-signal);
+    background: var(--color-suave);
   }
 
   input,
   textarea,
   select {
-    @apply bg-ink-2 border border-line text-bone px-3 py-2 text-sm outline-none transition-colors;
+    @apply bg-panel border border-borde2 text-tinta px-3 py-2 text-sm outline-none transition-colors;
   }
   input:focus,
   textarea:focus,
@@ -79,23 +88,23 @@
   }
   input::placeholder,
   textarea::placeholder {
-    @apply text-smoke-2;
+    @apply text-tenue;
   }
   select option {
-    @apply bg-ink-2 text-bone;
-  }
-  input[type='date'],
-  input[type='time'],
-  input[type='datetime-local'] {
-    color-scheme: dark;
+    @apply bg-panel text-tinta;
   }
 }
 
 @layer components {
-  /* Titular condensado, el gesto central de la marca */
+  /*
+   * Titular de la marca: Almarai en su peso más alto y bien
+   * apretado. Da el aire de cartel sin traer una condensada ajena
+   * al sistema tipográfico de Harvey.
+   */
   .display {
     font-family: var(--font-display);
-    @apply uppercase tracking-tight leading-[0.88];
+    font-weight: 800;
+    @apply uppercase tracking-[-0.02em] leading-[1.06];
   }
 
   /* [ ETIQUETA ] — el recurso gráfico que usan en toda la web */
@@ -107,15 +116,20 @@
   }
 
   .label {
-    @apply font-mono text-[10px] uppercase tracking-[0.18em] text-smoke;
+    @apply text-[10px] font-semibold uppercase tracking-[0.16em] text-suave;
   }
 
   .card {
-    @apply bg-ink-2 border border-line;
+    @apply bg-panel border border-borde;
   }
 
-  .hairline {
-    @apply border-b border-line;
+  /* Zonas sobre la contraparte oscura */
+  .noche {
+    background: var(--color-noche);
+    color: #f2efe9;
+  }
+  .noche .label {
+    color: #8f887c;
   }
 }
 
@@ -140,9 +154,9 @@
   }
 
   /*
-   * `backwards` y no `both`: con `both` el elemento queda con el keyframe
-   * final aplicado para siempre, se vuelve bloque contenedor y rompe los
-   * `fixed` y `sticky` que tenga adentro.
+   * `backwards` y no `both`: con `both` el elemento queda con el
+   * keyframe final aplicado para siempre, se vuelve bloque
+   * contenedor y rompe los `fixed` y `sticky` que tenga adentro.
    */
   .animate-in {
     animation: fade-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) backwards;

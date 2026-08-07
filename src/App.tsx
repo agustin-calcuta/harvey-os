@@ -48,7 +48,7 @@ function Cargando() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4">
       <div className="display text-5xl">Harvey</div>
-      <div className="h-px w-32 overflow-hidden bg-line">
+      <div className="h-px w-32 overflow-hidden bg-borde">
         <div className="h-full w-1/3 animate-pulse bg-signal" />
       </div>
       <div className="label">Cargando</div>

@@ -132,8 +132,8 @@ export default function Compromisos() {
             onClick={() => setSoloVencidos((v) => !v)}
             className={
               soloVencidos
-                ? 'border border-signal bg-signal px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-bone'
-                : 'border border-line-2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-smoke transition-colors hover:border-signal hover:text-signal'
+                ? 'border border-signal bg-signal px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-tinta'
+                : 'border border-borde2 px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-signal hover:text-signal'
             }
           >
             Sólo vencidos
@@ -143,8 +143,8 @@ export default function Compromisos() {
               onClick={() => setResponsable(responsable === yo.id ? 'todos' : yo.id)}
               className={
                 responsable === yo.id
-                  ? 'border border-bone bg-bone px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ink'
-                  : 'border border-line-2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-smoke transition-colors hover:border-smoke hover:text-bone'
+                  ? 'border border-tinta bg-tinta px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-fondo'
+                  : 'border border-borde2 px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
               }
             >
               Sólo míos
@@ -174,7 +174,7 @@ export default function Compromisos() {
           </DragOverlay>
         </DndContext>
 
-        <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-smoke-2">
+        <p className="mt-4 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
           <span className="hidden xl:inline">
             Arrastrá las tarjetas entre columnas para cambiar el estado
           </span>
@@ -220,20 +220,20 @@ function Columna({
       ref={setNodeRef}
       className={cx(
         'flex flex-col border transition-colors xl:min-h-[240px]',
-        isOver ? 'border-signal bg-signal/5' : 'border-line bg-ink-2',
+        isOver ? 'border-signal bg-signal/5' : 'border-borde bg-panel',
       )}
     >
-      <div className="flex items-center justify-between gap-2 border-b border-line p-3">
+      <div className="flex items-center justify-between gap-2 border-b border-borde p-3">
         <div className="flex items-center gap-2">
           <span className={cx('h-2 w-2', meta.bg, 'border', meta.border)} />
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em]">{meta.nombre}</span>
+          <span className="font-semibold text-[10px] uppercase tracking-[0.14em]">{meta.nombre}</span>
         </div>
-        <span className="font-mono text-[10px] text-smoke-2">{compromisos.length}</span>
+        <span className="font-semibold text-[10px] text-tenue">{compromisos.length}</span>
       </div>
 
       <div className="flex-1 space-y-2 p-2">
         {compromisos.length === 0 ? (
-          <div className="flex h-16 items-center justify-center text-center font-mono text-[10px] uppercase tracking-[0.14em] text-line-2 xl:h-24">
+          <div className="flex h-16 items-center justify-center text-center font-semibold text-[10px] uppercase tracking-[0.14em] text-borde2 xl:h-24">
             Vacío
           </div>
         ) : (
@@ -273,16 +273,16 @@ function Tarjeta({
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
       className={cx(
-        'group border bg-ink p-3 transition-colors',
-        isDragging ? 'opacity-30' : 'hover:border-line-2',
-        vencido ? 'border-signal/50' : 'border-line',
+        'group border bg-fondo p-3 transition-colors',
+        isDragging ? 'opacity-30' : 'hover:border-borde2',
+        vencido ? 'border-signal/50' : 'border-borde',
       )}
     >
       <div className="flex items-start gap-2">
         <button
           {...attributes}
           {...listeners}
-          className="mt-0.5 shrink-0 cursor-grab text-line-2 transition-colors hover:text-bone active:cursor-grabbing"
+          className="mt-0.5 shrink-0 cursor-grab text-borde2 transition-colors hover:text-tinta active:cursor-grabbing"
           aria-label="Mover"
         >
           <GripVertical size={13} />
@@ -293,12 +293,12 @@ function Tarjeta({
         />
         <div className="min-w-0 flex-1">
           <div className="text-xs leading-snug">{c.accion}</div>
-          {c.avance && <div className="mt-1 text-[11px] text-smoke-2">{c.avance}</div>}
+          {c.avance && <div className="mt-1 text-[11px] text-tenue">{c.avance}</div>}
         </div>
         {/* En táctil no hay hover: el lápiz queda siempre visible. */}
         <button
           onClick={onEditar}
-          className="shrink-0 p-1 text-line-2 transition-all hover:text-bone xl:opacity-0 xl:group-hover:opacity-100"
+          className="shrink-0 p-1 text-borde2 transition-all hover:text-tinta xl:opacity-0 xl:group-hover:opacity-100"
           aria-label="Editar"
         >
           <Pencil size={11} />
@@ -307,12 +307,12 @@ function Tarjeta({
 
       <div className="mt-2.5 flex flex-wrap items-center gap-2 pl-[26px]">
         <Avatar nombre={responsable?.nombre ?? '?'} url={responsable?.avatarUrl} tam="xs" />
-        <span className="text-[10px] text-smoke">{nombreDe(estado, c.responsableId)}</span>
+        <span className="text-[10px] text-suave">{nombreDe(estado, c.responsableId)}</span>
         {c.fechaLimite && (
           <span
             className={cx(
-              'ml-auto flex items-center gap-1 font-mono text-[10px]',
-              vencido ? 'text-signal' : proximo ? 'text-amber' : 'text-smoke-2',
+              'ml-auto flex items-center gap-1 font-semibold text-[10px]',
+              vencido ? 'text-signal' : proximo ? 'text-amber' : 'text-tenue',
             )}
             title={fechaCorta(c.fechaLimite)}
           >
@@ -325,7 +325,7 @@ function Tarjeta({
       {reunion && (
         <Link
           to={`/reuniones/${reunion.id}`}
-          className="mt-2 block truncate pl-[26px] font-mono text-[9px] uppercase tracking-[0.12em] text-line-2 transition-colors hover:text-smoke"
+          className="mt-2 block truncate pl-[26px] font-semibold text-[9px] uppercase tracking-[0.12em] text-borde2 transition-colors hover:text-suave"
         >
           {reunion.titulo}
         </Link>
@@ -336,12 +336,12 @@ function Tarjeta({
         Debajo de xl la tarjeta trae sus propios botones de estado.
       */}
       {!superpuesta && (
-        <div className="mt-2.5 flex flex-wrap gap-1 border-t border-line pt-2.5 xl:hidden">
+        <div className="mt-2.5 flex flex-wrap gap-1 border-t border-borde pt-2.5 xl:hidden">
           {COLUMNAS_KANBAN.filter((s) => s !== c.estado).map((s) => (
             <button
               key={s}
               onClick={() => moverCompromiso(c.id, s)}
-              className="border border-line-2 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-smoke transition-colors hover:border-smoke hover:text-bone"
+              className="border border-borde2 px-2 py-1 font-semibold text-[9px] uppercase tracking-[0.1em] text-suave transition-colors hover:border-suave hover:text-tinta"
             >
               → {ESTADO_COMPROMISO[s].nombre}
             </button>

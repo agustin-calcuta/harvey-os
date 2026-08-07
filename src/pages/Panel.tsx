@@ -61,7 +61,7 @@ export default function Panel() {
         <h1 className="display text-4xl sm:text-5xl">
           Hola, {yo?.nombre.split(' ')[0]}
         </h1>
-        <p className="mt-2 max-w-xl text-sm text-smoke">
+        <p className="mt-2 max-w-xl text-sm text-suave">
           {misAbiertos.length === 0
             ? 'No tenés compromisos abiertos. Todo al día.'
             : `Tenés ${misAbiertos.length} compromiso${misAbiertos.length > 1 ? 's' : ''} abierto${misAbiertos.length > 1 ? 's' : ''}${
@@ -92,14 +92,14 @@ export default function Panel() {
       {proxima ? (
         <Seccion kicker="Lo que viene" titulo="Próxima reunión">
           <div className="card">
-            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-borde p-5">
               <div className="min-w-0">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <Chip tono={proxima.estado === 'agenda_abierta' ? 'acid' : 'amber'}>
                     {ESTADO_REUNION[proxima.estado].nombre}
                   </Chip>
                   {proxima.estado === 'agenda_abierta' && (
-                    <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-amber">
+                    <span className="flex items-center gap-1.5 font-semibold text-[10px] uppercase tracking-[0.14em] text-amber">
                       <Clock size={11} />
                       Temario cierra en {cuentaRegresiva(deadlineAgenda(proxima)).texto}
                     </span>
@@ -111,7 +111,7 @@ export default function Panel() {
                 >
                   {proxima.titulo}
                 </Link>
-                <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-smoke">
+                <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-suave">
                   <span>
                     {fechaLarga(proxima.fecha)} · {hora(proxima.fecha)}
                   </span>
@@ -135,16 +135,16 @@ export default function Panel() {
             </div>
 
             {/* Agenda */}
-            <div className="grid grid-cols-2 gap-px bg-line sm:grid-cols-3">
-              <div className="bg-ink-2 p-4">
+            <div className="grid grid-cols-2 gap-px bg-borde sm:grid-cols-3">
+              <div className="bg-panel p-4">
                 <div className="label mb-1">En agenda</div>
                 <div className="display text-2xl">{agenda.length}</div>
               </div>
-              <div className="bg-ink-2 p-4">
+              <div className="bg-panel p-4">
                 <div className="label mb-1">Esperando aprobación</div>
                 <div className="display text-2xl">{propuestos.length}</div>
               </div>
-              <div className="col-span-2 bg-ink-2 p-4 sm:col-span-1">
+              <div className="col-span-2 bg-panel p-4 sm:col-span-1">
                 <div className="label mb-1">Tiempo asignado</div>
                 <div
                   className={
@@ -154,7 +154,7 @@ export default function Panel() {
                   }
                 >
                   {minutosAgenda(agenda)}
-                  <span className="ml-1 text-sm text-smoke">
+                  <span className="ml-1 text-sm text-suave">
                     / {proxima.duracionPrevistaMin} min
                   </span>
                 </div>
@@ -162,10 +162,10 @@ export default function Panel() {
             </div>
 
             {agenda.length > 0 && (
-              <ul className="divide-y divide-line border-t border-line">
+              <ul className="divide-y divide-borde border-t border-borde">
                 {agenda.map((t, i) => (
                   <li key={t.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
-                    <span className="hidden w-6 shrink-0 font-mono text-[11px] text-smoke-2 sm:block">
+                    <span className="hidden w-6 shrink-0 font-semibold text-[11px] text-tenue sm:block">
                       {String(i + 1).padStart(2, '0')}
                     </span>
                     <span
@@ -176,7 +176,7 @@ export default function Panel() {
                     <span className="hidden sm:block">
                       <ChipObjetivo valor={t.objetivo} />
                     </span>
-                    <span className="w-12 shrink-0 text-right font-mono text-[11px] text-smoke sm:w-14">
+                    <span className="w-12 shrink-0 text-right font-semibold text-[11px] text-suave sm:w-14">
                       {t.duracionMin}′
                     </span>
                   </li>
@@ -185,7 +185,7 @@ export default function Panel() {
             )}
 
             {propuestos.length > 0 && puedeOrganizar && (
-              <div className="flex items-center justify-between gap-3 border-t border-line bg-amber/5 px-5 py-3">
+              <div className="flex items-center justify-between gap-3 border-t border-borde bg-amber/5 px-5 py-3">
                 <span className="text-xs text-amber">
                   Hay {propuestos.length} tema{propuestos.length > 1 ? 's' : ''} esperando tu
                   aprobación.
@@ -229,7 +229,7 @@ export default function Panel() {
         {misAbiertos.length === 0 ? (
           <Vacio titulo="Sin pendientes" texto="No tenés compromisos abiertos a tu nombre." />
         ) : (
-          <ul className="card divide-y divide-line">
+          <ul className="card divide-y divide-borde">
             {misAbiertos
               .sort((a, b) => (a.fechaLimite ?? '9999').localeCompare(b.fechaLimite ?? '9999'))
               .map((c) => (
@@ -241,15 +241,15 @@ export default function Panel() {
                   <div className="min-w-0 flex-1 basis-[70%] sm:basis-auto">
                     <div className="text-sm">{c.accion}</div>
                     {c.avance && (
-                      <div className="mt-0.5 truncate text-xs text-smoke-2">{c.avance}</div>
+                      <div className="mt-0.5 truncate text-xs text-tenue">{c.avance}</div>
                     )}
                   </div>
                   <Chip tono={c.estado === 'bloqueado' ? 'signal' : 'neutro'}>{c.estado.replace('_', ' ')}</Chip>
                   <span
                     className={
                       estaVencido(c)
-                        ? 'font-mono text-[11px] text-signal'
-                        : 'font-mono text-[11px] text-smoke'
+                        ? 'font-semibold text-[11px] text-signal'
+                        : 'font-semibold text-[11px] text-suave'
                     }
                   >
                     {estaVencido(c) && <AlertTriangle size={11} className="mr-1 inline" />}
@@ -274,23 +274,23 @@ export default function Panel() {
             </Link>
           }
         >
-          <p className="mb-4 max-w-2xl text-sm text-smoke">
+          <p className="mb-4 max-w-2xl text-sm text-suave">
             Compromisos abiertos de reuniones anteriores. Este es el bloque que se repasa al
             arrancar, sin ensuciar la minuta del día.
           </p>
-          <ul className="card divide-y divide-line">
+          <ul className="card divide-y divide-borde">
             {arrastrados.slice(0, 6).map((c) => (
               <li key={c.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 p-4">
                 <ChipImportancia valor={c.importancia} conTexto={false} />
                 <span className="min-w-0 flex-1 basis-full truncate text-sm sm:basis-auto">
                   {c.accion}
                 </span>
-                <span className="text-xs text-smoke">{nombreDe(estado, c.responsableId)}</span>
+                <span className="text-xs text-suave">{nombreDe(estado, c.responsableId)}</span>
                 <span
                   className={
                     estaVencido(c)
-                      ? 'w-20 text-right font-mono text-[11px] text-signal'
-                      : 'w-20 text-right font-mono text-[11px] text-smoke'
+                      ? 'w-20 text-right font-semibold text-[11px] text-signal'
+                      : 'w-20 text-right font-semibold text-[11px] text-suave'
                   }
                 >
                   {fechaCorta(c.fechaLimite)}
@@ -324,14 +324,14 @@ export default function Panel() {
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <Chip tono="cold">{ESTADO_REUNION[r.estado].nombre}</Chip>
-                  <span className="font-mono text-[10px] text-smoke-2">
+                  <span className="font-semibold text-[10px] text-tenue">
                     {fechaCorta(r.fecha)}
                   </span>
                 </div>
                 <div className="text-sm transition-colors group-hover:text-signal">
                   {r.titulo}
                 </div>
-                <div className="mt-2 flex gap-4 font-mono text-[10px] uppercase tracking-[0.14em] text-smoke-2">
+                <div className="mt-2 flex gap-4 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
                   <span>{agendaDe(estado, r.id).length} temas</span>
                   <span>
                     {estado.compromisos.filter((c) => c.reunionId === r.id).length} compromisos
