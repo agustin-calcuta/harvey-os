@@ -2,6 +2,8 @@
 
 Plataforma de gestión de reuniones para **Harvey**, desarrollada por **Calcuta**.
 
+> **[ESTADO.md](ESTADO.md)** — qué está hecho, qué falta y cómo se opera. Empezá por ahí.
+
 Nace del diagnóstico del equipo: son cuatro socios que se reúnen seguido y las
 reuniones se dispersan. La respuesta es un ciclo de tres fases —
 **pre-reunión → reunión → post-reunión** — donde cada tema llega cargado con
