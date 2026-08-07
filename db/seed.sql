@@ -24,13 +24,10 @@ select
 /* ── Equipo ───────────────────────────────────────────────── */
 
 insert into public.usuarios (id, nombre, email, rol, cargo, activo, "creadoEn") values
-  ('u_matias',  'Matías Harvey',        'matias@harveywillys.com',        'organizador', 'Socio · Operaciones',           true, now() - interval '120 days'),
-  ('u_tomas',   'Tomás Harvey',         'tomas@harveywillys.com',         'miembro',     'Socio · Producto y diseño',     true, now() - interval '120 days'),
-  ('u_nico',    'Nicolás Harvey',       'nicolas@harveywillys.com',       'miembro',     'Socio · Comercial y retail',    true, now() - interval '120 days'),
-  ('u_lucas',   'Lucas Harvey',         'lucas@harveywillys.com',         'miembro',     'Socio · Marketing y comunidad', true, now() - interval '120 days'),
-  ('u_fran',    'Francisco Lebermann',  'francisco@calcutaconsulting.com','admin',       'Calcuta · Consultoría',         true, now() - interval '140 days'),
-  ('u_ariel',   'Ariel',                'ariel@calcutaconsulting.com',    'admin',       'Calcuta · Consultoría',         true, now() - interval '140 days'),
-  ('u_agustin', 'Agustín Ducculi',      'agustin@calcutaconsulting.com',  'admin',       'Calcuta · Tecnología',          true, now() - interval '140 days');
+  ('u_matias', 'Matías Harvey',  'matias@harveywillys.com',  'organizador', 'Socio · Operaciones',           true, now() - interval '120 days'),
+  ('u_tomas',  'Tomás Harvey',   'tomas@harveywillys.com',   'miembro',     'Socio · Producto y diseño',     true, now() - interval '120 days'),
+  ('u_nico',   'Nicolás Harvey', 'nicolas@harveywillys.com', 'admin',       'Socio · Comercial y retail',    true, now() - interval '120 days'),
+  ('u_lucas',  'Lucas Harvey',   'lucas@harveywillys.com',   'miembro',     'Socio · Marketing y comunidad', true, now() - interval '120 days');
 
 /* ── Reuniones ────────────────────────────────────────────── */
 
@@ -41,7 +38,7 @@ insert into public.reuniones
 select * from (
   select
     'r_s12', 'Reunión semanal de socios · #12', f.lunes_menos2 - interval '1 week', 60, 'Showroom Palermo',
-    'u_matias', array['u_matias','u_tomas','u_nico','u_lucas','u_fran','u_ariel'],
+    'u_matias', array['u_matias','u_tomas','u_nico','u_lucas'],
     'cerrada', 24,
     'Se aprobó el presupuesto de la campaña de invierno y se definió adelantar el drop cápsula a la primera semana de agosto. Queda pendiente cerrar el proveedor de denim: el taller actual viene con dos semanas de atraso sostenido.',
     'Riesgo abierto: si el taller de denim no confirma entrega antes de fin de mes, hay que activar el proveedor alternativo aunque el costo suba ~12%.',
@@ -51,10 +48,10 @@ select * from (
   union all
   select
     'r_s13', 'Reunión semanal de socios · #13', f.lunes_esta, 60, 'Showroom Palermo',
-    'u_matias', array['u_matias','u_tomas','u_nico','u_lucas','u_fran','u_ariel'],
+    'u_matias', array['u_matias','u_tomas','u_nico','u_lucas'],
     'cerrada', 24,
     'Se cerró la lista de precios de primavera/verano con un ajuste promedio del 18%. Nicolás presentó los números del local de Córdoba: el punto de equilibrio se alcanza recién en el cuarto mes, se decide seguir adelante igual. El equipo acordó que las reuniones pasen a tener temario cargado con 24 h de anticipación.',
-    'Se acordó probar la plataforma de gestión de reuniones que está armando Calcuta a partir de la semana próxima.',
+    'Se empieza a usar la plataforma de gestión de reuniones a partir de la semana próxima.',
     date_trunc('day', now()) + interval '16 hours 30 minutes',
     f.lunes_esta - interval '1 day', f.lunes_esta, f.lunes_esta,
     'u_matias', now() - interval '12 days'
@@ -63,7 +60,7 @@ select * from (
   select
     'r_s14', 'Reunión semanal de socios · #14',
     date_trunc('day', now()) + interval '16 hours 30 minutes', 60, 'Showroom Palermo',
-    'u_matias', array['u_matias','u_tomas','u_nico','u_lucas','u_fran','u_ariel','u_agustin'],
+    'u_matias', array['u_matias','u_tomas','u_nico','u_lucas'],
     'agenda_cerrada', 24, null, null,
     f.lunes_prox, now() - interval '1 day', null, null,
     'u_matias', now() - interval '6 days'
@@ -71,7 +68,7 @@ select * from (
   union all
   select
     'r_s15', 'Reunión semanal de socios · #15', f.lunes_prox, 60, 'Showroom Palermo',
-    'u_matias', array['u_matias','u_tomas','u_nico','u_lucas','u_fran','u_ariel'],
+    'u_matias', array['u_matias','u_tomas','u_nico','u_lucas'],
     'agenda_abierta', 24, null, null,
     f.lunes_prox2, null, null, null,
     'u_matias', now() - interval '2 days'
@@ -105,8 +102,8 @@ values
    'Ajuste promedio del 18%. Remeras suben 15%, denim 22%, abrigos 20%. Se mantiene el 10% off por transferencia y las 3 cuotas sin interés.',null, now() - interval '13 days'),
   ('t_5','r_s13','Números del local de Córdoba',null,'alta','exploratoria','u_nico',15,1320,'tratado',1,
    'El punto de equilibrio llega al cuarto mes. Se decide sostener la apertura. Nicolás arma un tablero mensual de seguimiento.',null, now() - interval '13 days'),
-  ('t_6','r_s13','Cómo ordenamos estas reuniones','Propuesta de Calcuta: pre-reunión, reunión y post-reunión.','media','comunicativa','u_fran',15,1140,'tratado',2,
-   'Se adopta el esquema de tres fases. El temario se carga con 24 h de anticipación y Matías aprueba qué entra. Calcuta arma la plataforma.',null, now() - interval '13 days'),
+  ('t_6','r_s13','Cómo ordenamos estas reuniones','Dividir cada reunión en tres fases: pre-reunión, reunión y post-reunión.','media','comunicativa','u_matias',15,1140,'tratado',2,
+   'Se adopta el esquema de tres fases. El temario se carga con 24 h de anticipación y Matías aprueba qué entra.',null, now() - interval '13 days'),
 
   -- #14 (lista para correr en vivo)
   ('t_7','r_s14','Definir proveedor de denim','Ya están las dos cotizaciones. El alternativo entrega en 3 semanas pero sale 12% más caro. Hay que decidir hoy porque la producción de PV arranca el lunes.','alta','decision','u_tomas',15,null,'aprobado',0,null,null, now() - interval '5 days'),
@@ -135,7 +132,7 @@ values
   ('c_5','r_s13','t_4','Cargar la nueva lista de precios en el ecommerce y en el POS',null,'u_nico', now() + interval '2 days','alta','en_curso','Ecommerce listo. Falta el POS de los tres locales.',null, now() - interval '12 days'),
   ('c_6','r_s13','t_5','Armar tablero mensual de seguimiento del local de Córdoba','Ventas, ticket promedio, costo fijo y avance al punto de equilibrio.','u_nico', now() + interval '6 days','media','pendiente',null,null, now() - interval '12 days'),
   ('c_7','r_s13','t_6','Definir quién aprueba los temas de cada reunión',null,'u_matias', now() - interval '4 days','baja','hecho','Queda Matías como organizador fijo.', now() - interval '5 days', now() - interval '12 days'),
-  ('c_8','r_s13','t_6','Presentar la plataforma de gestión de reuniones',null,'u_agustin', now() + interval '1 day','alta','en_curso','Primera versión funcionando. Se presenta en la próxima reunión.',null, now() - interval '12 days'),
+  ('c_8','r_s13','t_6','Cargar los temas de la próxima con 24 h de anticipación','Estrenar el esquema acordado en la reunión que viene.','u_matias', now() + interval '1 day','alta','en_curso','Temario de la #14 ya cargado y cerrado.',null, now() - interval '12 days'),
   ('c_9','r_s13',null,'Renegociar el alquiler del showroom de Palermo','Vence el contrato en noviembre. Adelantarse a la negociación.','u_matias', now() + interval '20 days','media','pendiente',null,null, now() - interval '12 days'),
   ('c_10','r_s12',null,'Definir la campaña de ropa de invierno 2027','Proyecto largo: arranca ahora y cierra recién en cinco meses.','u_lucas', now() + interval '140 days','baja','pendiente',null,null, now() - interval '25 days');
 

@@ -314,7 +314,7 @@ function ModalEditarReunion({
               value={moderadorId}
               onChange={(e) => setModeradorId(e.target.value)}
             >
-              {estado.usuarios.map((u) => (
+              {estado.usuarios.filter((u) => u.activo).map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.nombre}
                 </option>

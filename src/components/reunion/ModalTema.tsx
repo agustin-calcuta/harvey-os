@@ -136,7 +136,7 @@ export default function ModalTema({
               onChange={(e) => setPropuestoPor(e.target.value)}
               disabled={!puedeOrganizar}
             >
-              {estado.usuarios.map((u) => (
+              {estado.usuarios.filter((u) => u.activo).map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.nombre}
                 </option>
