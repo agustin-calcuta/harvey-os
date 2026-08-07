@@ -50,6 +50,25 @@ El organizador da de alta a alguien con nombre y correo sin salir de la
 pantalla. Cuando esa persona entra con Google con ese correo, **se engancha sola
 con la ficha que ya existía** — no hace falta código ni enlace de invitación.
 
+### Pedir entrar, y salir
+
+Al crear una sala, si el nombre **ya existe se avisa antes de crearla**, aunque
+sea de un equipo del que no formás parte: dice cómo se llama, quién la organiza
+y cuánta gente hay, y ofrece **pedir unirse** en vez de armar una segunda igual.
+El organizador ve los pedidos al entrar a Salas y los acepta o rechaza; aceptar
+suma a la persona en el acto. Si aun así se quiere una sala con el mismo nombre,
+se puede, pero hay que confirmarlo.
+
+Eso exige saber que una sala existe sin poder verla. Lo resuelve la vista
+`directorio_salas`, que atraviesa las políticas pero **sólo expone nombre,
+organizador y cantidad de integrantes** — nada de reuniones, temas ni
+compromisos— y es de sólo lectura.
+
+**Cualquiera puede salir de una sala** por su cuenta. Lo único que no se permite
+es que se vaya el último organizador y la sala quede sin quien arme la agenda:
+ahí avisa que primero hay que pasarle el rol a alguien. Lo cuida un disparador
+de la base, no la interfaz.
+
 ---
 
 ## Lo que hace
@@ -60,9 +79,10 @@ con la ficha que ya existía** — no hace falta código ni enlace de invitació
 - Cada tema lleva **importancia** (el semáforo rojo / amarillo / verde de Fran),
   **objetivo** (Decisión, Exploratoria, Comunicativa, Informativa) y quién lo
   propuso. El organizador puede cargarlo a nombre de otra persona.
-- **Banco de temas**: el *"banco de suplentes"* que pidió Fran. Se anota un tema
-  sin que exista una reunión, y aparece cuando se arma la próxima para que el
-  organizador elija cuáles baja a la agenda.
+- **Banco de temas**: el *"banco de suplentes"* que pidió Fran, con sección
+  propia (**Temario**) en el menú. Se anota un tema sin que exista ninguna
+  reunión —no hace falta que haya una armada— y queda ahí, sin fecha, hasta que
+  el organizador lo baja a la agenda de la que elija.
 - El temario cierra por plazo (24 h antes, configurable) **o a mano**, cuando el
   organizador quiera.
 - Se ordena la agenda arrastrando y se ajusta el tiempo de cada tema. Avisa si la
@@ -113,8 +133,11 @@ Los **permisos viven en la base**. Está verificado contra la base real:
   (403) y no alcanza la sala de socios ni consultándola de frente.
 - Lucas ve sus dos salas, con el rol que le toca en cada una.
 - Quien pide para sí el alcance de soporte queda como usuario normal.
+- El único organizador de una sala no puede salir y dejarla sin conducción.
+- Un pedido de entrada lo ve quien lo hizo y quien organiza esa sala; nadie más.
+  Sólo el organizador lo resuelve, y nadie puede pedir en nombre de otro.
 
-Hay 31 políticas sobre 8 tablas. El esquema, las políticas y los datos de ejemplo
+Hay 35 políticas sobre 9 tablas. El esquema, las políticas y los datos de ejemplo
 están en `db/` y se pueden volver a aplicar en cualquier momento.
 
 **Identidad visual** tomada de la marca: fondo hueso, tinta casi negra, el rojo
@@ -146,6 +169,7 @@ equipo y queda fuera de toda lista donde se elige gente.**
 | | Renata, Julieta | Miembros |
 | **Marketing** | Lucas | Organizador |
 | | Pedro, Camila | Miembros |
+| _sin sala_ | Sofía Ledesma | Pidió entrar a Socios, esperando respuesta |
 
 > Los correos son **inventados** (`@harveywillys.com`). Cuando estén los reales,
 > se cambian desde la sala y entran directo con su rol.

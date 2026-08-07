@@ -5,6 +5,7 @@ import type {
   Notificacion,
   Reunion,
   Sala,
+  Solicitud,
   Tema,
   Usuario,
 } from '../types'
@@ -73,6 +74,10 @@ export const USUARIOS: Usuario[] = [
   socio('u_juli', 'Julieta Paz', 'julieta@harveywillys.com', 'Diseño · Estampas'),
   socio('u_pedro', 'Pedro Arana', 'pedro@harveywillys.com', 'Marketing · Contenido'),
   socio('u_cami', 'Camila Ruiz', 'camila@harveywillys.com', 'Marketing · Community'),
+
+  // Entró hace poco y todavía no está en ninguna sala: pidió sumarse
+  // a la de socios y el pedido espera respuesta.
+  socio('u_sofia', 'Sofía Ledesma', 'sofia@harveywillys.com', 'Gerencia · Operaciones'),
 ]
 
 const SOCIOS = ['u_matias', 'u_tomas', 'u_nico', 'u_lucas']
@@ -633,12 +638,26 @@ export const NOTIFICACIONES: Notificacion[] = [
   },
 ]
 
+/* ── Pedidos de entrada ───────────────────────────────────── */
+
+const SOLICITUDES: Solicitud[] = [
+  {
+    id: 'sol_1',
+    salaId: S_GERENCIAL,
+    usuarioId: 'u_sofia',
+    mensaje: 'Arranqué en operaciones y me pidieron seguir los temas de la semanal.',
+    estado: 'pendiente',
+    creadaEn: en(-1),
+  },
+]
+
 /* ── Estado inicial ───────────────────────────────────────── */
 
 export const ESTADO_INICIAL: Estado = {
   usuarios: USUARIOS,
   salas: SALAS,
   membresias: MEMBRESIAS,
+  solicitudes: SOLICITUDES,
   reuniones: REUNIONES,
   temas: TEMAS,
   compromisos: COMPROMISOS,

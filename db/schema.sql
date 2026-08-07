@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────────────
--- Harvey OS — esquema
+-- Harvey — esquema
 --
 -- La app es 100 % cliente: habla con la Data API de Neon
 -- (PostgREST) usando el JWT de Neon Auth. Toda la seguridad vive
@@ -62,6 +62,29 @@ create table if not exists public.membresias (
   desde       timestamptz not null default now(),
   unique ("salaId", "usuarioId")
 );
+
+/*
+ * Pedidos de entrada a una sala.
+ *
+ * Aparecen cuando alguien intenta crear una sala que ya existe: en vez
+ * de armar una segunda con el mismo nombre, pide sumarse a la que hay
+ * y el organizador resuelve.
+ */
+create table if not exists public.solicitudes (
+  id          text primary key,
+  "salaId"    text not null references public.salas(id) on delete cascade,
+  "usuarioId" text not null references public.usuarios(id) on delete cascade,
+  mensaje     text,
+  estado      text not null default 'pendiente'
+                check (estado in ('pendiente', 'aceptada', 'rechazada')),
+  "creadaEn"  timestamptz not null default now(),
+  "resueltaEn" timestamptz
+);
+
+-- Una sola solicitud pendiente por persona y sala; las resueltas quedan
+-- como historial y no estorban un pedido nuevo.
+create unique index if not exists solicitudes_pendiente_idx
+  on public.solicitudes ("salaId", "usuarioId") where estado = 'pendiente';
 
 /* ── Reuniones ───────────────────────────────────────────── */
 
@@ -164,6 +187,8 @@ create table if not exists public.config (
 
 create index if not exists membresias_usuario_idx  on public.membresias ("usuarioId");
 create index if not exists membresias_sala_idx     on public.membresias ("salaId");
+create index if not exists solicitudes_sala_idx    on public.solicitudes ("salaId");
+create index if not exists solicitudes_usuario_idx on public.solicitudes ("usuarioId");
 create index if not exists reuniones_sala_idx      on public.reuniones ("salaId");
 create index if not exists reuniones_fecha_idx     on public.reuniones (fecha desc);
 create index if not exists temas_reunion_idx       on public.temas ("reunionId");

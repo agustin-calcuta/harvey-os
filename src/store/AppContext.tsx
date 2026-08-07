@@ -28,6 +28,8 @@ import type {
   Reunion,
   RolSala,
   Sala,
+  SalaAjena,
+  Solicitud,
   Tema,
   Usuario,
 } from '../types'
@@ -76,6 +78,19 @@ interface Ctx {
   sumarAlaSala(salaId: string, usuarioId: string, rol: RolSala): Promise<void>
   cambiarRolEnSala(salaId: string, usuarioId: string, rol: RolSala): Promise<void>
   sacarDeLaSala(salaId: string, usuarioId: string): Promise<void>
+  /** Irse de una sala por decisión propia. */
+  salirDeSala(salaId: string): Promise<void>
+
+  // pedidos de entrada a salas ajenas
+  /** Qué salas existen además de las propias, para no duplicar nombres. */
+  cargarDirectorio(): Promise<SalaAjena[]>
+  pedirEntrar(salaId: string, mensaje?: string): Promise<void>
+  retirarSolicitud(id: string): Promise<void>
+  resolverSolicitud(id: string, decision: 'aceptada' | 'rechazada'): Promise<void>
+  /** Pedidos que me toca resolver, de todas las salas que organizo. */
+  solicitudesPendientes: Solicitud[]
+  /** Mis pedidos todavía sin respuesta. */
+  misSolicitudes: Solicitud[]
 
   // permisos, siempre relativos a la sala activa
   esSuperadmin: boolean
@@ -453,6 +468,109 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     },
     [eliminar, avisar],
+  )
+
+  const salirDeSala = useCallback(
+    async (sId: string) => {
+      if (!yo) return
+      const m = ref.current.membresias.find(
+        (x) => x.salaId === sId && x.usuarioId === yo.id,
+      )
+      if (!m) return
+      const nombre = ref.current.salas.find((s) => s.id === sId)?.nombre ?? 'la sala'
+      try {
+        await eliminar('membresias', m.id)
+      } catch (e) {
+        // El trigger de la base corta si se iba el último organizador.
+        avisar(e instanceof Error ? e.message : 'No se pudo salir de la sala.', 'error')
+        return
+      }
+      if (salaId === sId) {
+        setSalaId(null)
+        localStorage.removeItem(CLAVE_SALA)
+      }
+      avisar(`Saliste de «${nombre}».`, 'info')
+    },
+    [yo, salaId, eliminar, avisar],
+  )
+
+  /* ── Pedidos de entrada ─────────────────────────────────── */
+
+  const cargarDirectorio = useCallback(() => repo.directorioSalas(), [])
+
+  const pedirEntrar = useCallback(
+    async (sId: string, mensaje?: string) => {
+      if (!yo) return
+      const ya = ref.current.solicitudes.find(
+        (s) => s.salaId === sId && s.usuarioId === yo.id && s.estado === 'pendiente',
+      )
+      if (ya) {
+        avisar('Ya hay un pedido esperando respuesta en esa sala.', 'info')
+        return
+      }
+      await persistir('solicitudes', {
+        id: uid('sol'),
+        salaId: sId,
+        usuarioId: yo.id,
+        mensaje: mensaje?.trim() || undefined,
+        estado: 'pendiente',
+        creadaEn: new Date().toISOString(),
+      })
+      avisar('Pedido enviado. Cuando el organizador lo acepte vas a ver la sala acá.')
+    },
+    [yo, persistir, avisar],
+  )
+
+  const retirarSolicitud = useCallback(
+    async (id: string) => {
+      await eliminar('solicitudes', id)
+      avisar('Pedido retirado.', 'info')
+    },
+    [eliminar, avisar],
+  )
+
+  /*
+   * Aceptar es sumar: la membresía se crea acá para que la interfaz
+   * responda al instante. En la base un trigger hace lo mismo, por si
+   * el pedido se resuelve desde otro lado.
+   */
+  const resolverSolicitud = useCallback(
+    async (id: string, decision: 'aceptada' | 'rechazada') => {
+      const s = ref.current.solicitudes.find((x) => x.id === id)
+      if (!s) return
+      const quien = ref.current.usuarios.find((u) => u.id === s.usuarioId)?.nombre ?? 'La persona'
+      if (decision === 'aceptada') {
+        await sumarAlaSala(s.salaId, s.usuarioId, 'miembro')
+      }
+      await persistir('solicitudes', {
+        ...s,
+        estado: decision,
+        resueltaEn: new Date().toISOString(),
+      })
+      avisar(
+        decision === 'aceptada'
+          ? `${quien} ya es parte de la sala.`
+          : `Pedido de ${quien} rechazado.`,
+        decision === 'aceptada' ? 'ok' : 'info',
+      )
+    },
+    [sumarAlaSala, persistir, avisar],
+  )
+
+  /* Los pedidos que puedo resolver: los de las salas que organizo. */
+  const solicitudesPendientes = useMemo(
+    () =>
+      estado.solicitudes.filter(
+        (s) =>
+          s.estado === 'pendiente' &&
+          (esSuperadmin || rolEnSala(estado, s.salaId, yo?.id) === 'organizador'),
+      ),
+    [estado, yo, esSuperadmin],
+  )
+
+  const misSolicitudes = useMemo(
+    () => estado.solicitudes.filter((s) => s.usuarioId === yo?.id && s.estado === 'pendiente'),
+    [estado.solicitudes, yo],
   )
 
   /* ── Notificaciones ─────────────────────────────────────── */
@@ -862,7 +980,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       estado,
       misSalas, salaActiva, elegirSala,
       crearSala, actualizarSala, archivarSala,
-      sumarAlaSala, cambiarRolEnSala, sacarDeLaSala,
+      sumarAlaSala, cambiarRolEnSala, sacarDeLaSala, salirDeSala,
+      cargarDirectorio, pedirEntrar, retirarSolicitud, resolverSolicitud,
+      solicitudesPendientes, misSolicitudes,
       esSuperadmin, miRol, puedeOrganizar, puedeModerar, compromisosVisibles,
       crearReunion, actualizarReunion, borrarReunion,
       abrirAgenda, cerrarAgenda, iniciarReunion, cerrarReunion, reabrirReunion,
@@ -878,6 +998,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       puedeOrganizar, puedeModerar, compromisosVisibles, avisos,
       entrarComoDemo, entrarConGoogle, salir, elegirSala,
       crearSala, actualizarSala, archivarSala, sumarAlaSala, cambiarRolEnSala, sacarDeLaSala,
+      salirDeSala, cargarDirectorio, pedirEntrar, retirarSolicitud, resolverSolicitud,
+      solicitudesPendientes, misSolicitudes,
       crearReunion, actualizarReunion, borrarReunion, abrirAgenda, cerrarAgenda,
       iniciarReunion, cerrarReunion, reabrirReunion,
       proponerTema, actualizarTema, borrarTema, reordenarTemas, bajarDelBanco, devolverAlBanco,

@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────────────
--- Harvey OS — seguridad
+-- Harvey — seguridad
 --
 -- Se aplica DESPUÉS de habilitar la Data API: recién ahí Neon crea
 -- el esquema `auth` (con auth.user_id()) y el rol `authenticated`.
@@ -75,6 +75,47 @@ language sql stable security definer set search_path = public as $$
   select m."salaId" from public.membresias m where m."usuarioId" = public.mi_usuario_id()
 $$;
 
+/* ── Directorio de salas ─────────────────────────────────── */
+
+/**
+ * Nombre reducido a lo comparable: sin mayúsculas, tildes ni signos.
+ * «Marketing», «marketing» y «Márketing » son el mismo nombre.
+ */
+create or replace function public.clave_nombre(t text) returns text
+language sql immutable as $$
+  select regexp_replace(
+    translate(lower(coalesce(t, '')), 'áéíóúüñàèìòùç', 'aeiouunaeiouc'),
+    '[^a-z0-9]+', '', 'g')
+$$;
+
+/**
+ * Qué salas existen, para no crear dos veces la misma.
+ *
+ * Corre con los permisos del dueño (`security_invoker = false`), así que
+ * atraviesa el RLS de `salas`: es la única manera de avisar «esto ya
+ * existe» sobre una sala a la que todavía no pertenecés.
+ *
+ * Expone lo mínimo para decidir: cómo se llama, a quién pedirle entrar y
+ * cuánta gente hay. Nada de reuniones, temas ni compromisos.
+ */
+drop view if exists public.directorio_salas;
+create view public.directorio_salas
+with (security_invoker = false) as
+select
+  s.id,
+  s.nombre,
+  public.clave_nombre(s.nombre) as clave,
+  coalesce(
+    (select u.nombre
+       from public.membresias m
+       join public.usuarios u on u.id = m."usuarioId"
+      where m."salaId" = s.id and m.rol = 'organizador'
+      order by m.desde limit 1),
+    '—') as organizador,
+  (select count(*)::int from public.membresias m where m."salaId" = s.id) as integrantes
+from public.salas s
+where not s.archivada;
+
 /*
  * Nadie se auto-asciende ni se vuelve superadmin solo. Al crear o
  * modificar la propia ficha, el alcance queda congelado salvo que
@@ -128,6 +169,51 @@ begin
 end;
 $$;
 
+/*
+ * Una sala sin organizador queda sin nadie que arme la agenda ni
+ * gestione quién entra. Antes de que se vaya el último, se corta.
+ */
+create or replace function public.cuidar_ultimo_organizador() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if old.rol = 'organizador' and not exists (
+    select 1 from public.membresias m
+    where m."salaId" = old."salaId" and m.rol = 'organizador' and m.id <> old.id
+  ) then
+    raise exception 'La sala quedaría sin organizador. Pasale el rol a alguien antes de salir.'
+      using errcode = 'check_violation';
+  end if;
+  return old;
+end;
+$$;
+
+drop trigger if exists membresias_ultimo_organizador on public.membresias;
+create trigger membresias_ultimo_organizador
+  before delete on public.membresias
+  for each row execute function public.cuidar_ultimo_organizador();
+
+/*
+ * Aceptar una solicitud es sumar a la persona: la membresía la crea el
+ * mismo movimiento, para que no queden pedidos aceptados sin efecto.
+ */
+create or replace function public.aplicar_solicitud() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.estado = 'aceptada' and coalesce(old.estado, '') <> 'aceptada' then
+    insert into public.membresias (id, "salaId", "usuarioId", rol)
+    values ('m_' || substr(md5(random()::text || new.id), 1, 12),
+            new."salaId", new."usuarioId", 'miembro')
+    on conflict ("salaId", "usuarioId") do nothing;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists solicitudes_aplicar on public.solicitudes;
+create trigger solicitudes_aplicar
+  after update on public.solicitudes
+  for each row execute function public.aplicar_solicitud();
+
 drop trigger if exists salas_alta on public.salas;
 create trigger salas_alta
   after insert on public.salas
@@ -145,13 +231,19 @@ alter default privileges in schema public
 
 grant execute on function public.mi_usuario_id, public.mi_email, public.soy_superadmin,
                           public.soy_de_la_sala, public.organizo_la_sala,
-                          public.mis_salas to authenticated;
+                          public.mis_salas, public.clave_nombre to authenticated;
+
+-- El directorio es de sólo lectura. El `grant on all tables` de arriba lo
+-- alcanza también a él, y sobre una vista que atraviesa RLS eso no va.
+revoke all on public.directorio_salas from authenticated;
+grant select on public.directorio_salas to authenticated;
 
 /* ── RLS ─────────────────────────────────────────────────── */
 
 alter table public.usuarios       enable row level security;
 alter table public.salas          enable row level security;
 alter table public.membresias     enable row level security;
+alter table public.solicitudes    enable row level security;
 alter table public.reuniones      enable row level security;
 alter table public.temas          enable row level security;
 alter table public.compromisos    enable row level security;
@@ -262,8 +354,51 @@ create policy membresias_editar on public.membresias
   for update to authenticated
   using (public.organizo_la_sala("salaId")) with check (public.organizo_la_sala("salaId"));
 
+-- El organizador saca a alguien; cualquiera puede irse por su cuenta.
+-- Que no quede sin organizador lo cuida el trigger.
 create policy membresias_borrar on public.membresias
-  for delete to authenticated using (public.organizo_la_sala("salaId"));
+  for delete to authenticated
+  using (public.organizo_la_sala("salaId") or "usuarioId" = public.mi_usuario_id());
+
+/* solicitudes ─ la pido yo, la resuelve quien organiza */
+
+drop policy if exists solicitudes_leer   on public.solicitudes;
+drop policy if exists solicitudes_alta   on public.solicitudes;
+drop policy if exists solicitudes_editar on public.solicitudes;
+drop policy if exists solicitudes_borrar on public.solicitudes;
+
+-- Veo las mías y las que me toca resolver. Nadie más.
+create policy solicitudes_leer on public.solicitudes
+  for select to authenticated
+  using (
+    "usuarioId" = public.mi_usuario_id()
+    or public.organizo_la_sala("salaId")
+  );
+
+-- Sólo se pide para uno mismo, y sólo si todavía no se es de la sala.
+-- La pertenencia se pregunta por función: dentro de un `with check`, una
+-- subconsulta que nombre `solicitudes` se resuelve contra la tabla entera
+-- y no contra la fila que se está insertando.
+create policy solicitudes_alta on public.solicitudes
+  for insert to authenticated
+  with check (
+    "usuarioId" = public.mi_usuario_id()
+    and not public.soy_de_la_sala("salaId")
+  );
+
+-- Aceptar o rechazar es del organizador de esa sala.
+create policy solicitudes_editar on public.solicitudes
+  for update to authenticated
+  using (public.organizo_la_sala("salaId"))
+  with check (public.organizo_la_sala("salaId"));
+
+-- El pedido propio se puede retirar; el organizador también lo descarta.
+create policy solicitudes_borrar on public.solicitudes
+  for delete to authenticated
+  using (
+    "usuarioId" = public.mi_usuario_id()
+    or public.organizo_la_sala("salaId")
+  );
 
 /* reuniones ─ las minutas se ven por sala, no por asistencia */
 

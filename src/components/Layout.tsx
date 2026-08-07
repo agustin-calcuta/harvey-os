@@ -8,6 +8,7 @@ import {
   ChevronDown,
   DoorOpen,
   Eye,
+  Inbox,
   Info,
   LayoutDashboard,
   ListChecks,
@@ -18,14 +19,23 @@ import {
   X,
 } from 'lucide-react'
 import { useApp } from '../store/AppContext'
-import { cx, cuentaRegresiva, deadlineAgenda, estaVencido, proximaReunion } from '../lib/utils'
+import {
+  bancoDe,
+  cx,
+  cuentaRegresiva,
+  deadlineAgenda,
+  estaVencido,
+  proximaReunion,
+} from '../lib/utils'
 import { ROLES_SALA } from '../types'
 
 const NAV = [
   { a: '/', icono: LayoutDashboard, texto: 'Panel', exacto: true },
   { a: '/reuniones', icono: CalendarDays, texto: 'Reuniones' },
+  { a: '/temario', icono: Inbox, texto: 'Temario' },
   { a: '/compromisos', icono: ListChecks, texto: 'Compromisos' },
   { a: '/correos', icono: Mail, texto: 'Correos' },
+  { a: '/salas', icono: DoorOpen, texto: 'Salas' },
 ]
 
 export default function Layout() {
@@ -40,6 +50,7 @@ export default function Layout() {
     miRol,
     esSuperadmin,
     compromisosVisibles,
+    solicitudesPendientes,
   } = useApp()
 
   const [abierto, setAbierto] = useState(false)
@@ -63,6 +74,7 @@ export default function Layout() {
   )
   const vencidos = compromisosVisibles.filter((c) => estaVencido(c))
   const proxima = salaActiva ? proximaReunion(estado, salaActiva.id) : undefined
+  const enBanco = salaActiva ? bancoDe(estado, salaActiva.id).length : 0
 
   const enlaces = esSuperadmin
     ? [...NAV, { a: '/admin', icono: Settings, texto: 'Administración' }]
@@ -177,6 +189,23 @@ export default function Layout() {
                     </span>
                   )
                 ))}
+              {n.a === '/temario' && enBanco > 0 && (
+                <span
+                  className="bg-white/15 px-1.5 py-0.5 text-[9px] text-white"
+                  title={`${enBanco} en el banco`}
+                >
+                  {enBanco}
+                </span>
+              )}
+              {/* Alguien esperando entrar a una sala que organizo. */}
+              {n.a === '/salas' && solicitudesPendientes.length > 0 && (
+                <span
+                  className="bg-signal px-1.5 py-0.5 text-[9px] text-white"
+                  title={`${solicitudesPendientes.length} piden entrar`}
+                >
+                  {solicitudesPendientes.length}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

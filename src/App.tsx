@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Panel from './pages/Panel'
 import Salas from './pages/Salas'
 import Reuniones from './pages/Reuniones'
+import Temario from './pages/Temario'
 import ReunionDetalle from './pages/ReunionDetalle'
 import Compromisos from './pages/Compromisos'
 import Correos from './pages/Correos'
@@ -36,6 +37,7 @@ function Rutas() {
         <Route path="salas" element={<Salas />} />
         <Route path="reuniones" element={<Reuniones />} />
         <Route path="reuniones/:id" element={<ReunionDetalle />} />
+          <Route path="temario" element={<Temario />} />
         <Route path="compromisos" element={<Compromisos />} />
         <Route path="correos" element={<Correos />} />
         <Route path="admin" element={<Admin />} />

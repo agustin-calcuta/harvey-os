@@ -5,6 +5,8 @@ import type {
   Reunion,
   RolSala,
   Sala,
+  SalaAjena,
+  Solicitud,
   Tema,
   Usuario,
 } from '../types'
@@ -115,6 +117,56 @@ export function salasDe(e: Estado, usuario?: Usuario | null): Sala[] {
       ? e.salas
       : e.salas.filter((s) => e.membresias.some((m) => m.salaId === s.id && m.usuarioId === usuario.id))
   return visibles.filter((s) => !s.archivada).sort((a, b) => a.nombre.localeCompare(b.nombre))
+}
+
+/**
+ * Nombre reducido a lo comparable: sin mayúsculas, tildes ni signos.
+ * «Marketing», «marketing» y «Márketing » son el mismo nombre.
+ * Réplica exacta de `clave_nombre()` en la base.
+ */
+export const claveNombre = (t: string): string =>
+  t
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '')
+
+/**
+ * Salas ya existentes que se parecen al nombre que se está escribiendo.
+ *
+ * Coincide el nombre exacto y también el que contiene al otro —«Equipo
+ * de marketing» encuentra «Marketing»— con un piso de cuatro caracteres
+ * para que una palabra corta no traiga media empresa.
+ */
+export function salasParecidas(directorio: SalaAjena[], nombre: string): SalaAjena[] {
+  const q = claveNombre(nombre)
+  if (q.length < 3) return []
+  return directorio.filter((s) => {
+    const c = claveNombre(s.nombre)
+    if (c === q) return true
+    const corta = c.length < q.length ? c : q
+    return corta.length >= 4 && (c.includes(q) || q.includes(c))
+  })
+    .sort((a, b) => Number(claveNombre(b.nombre) === q) - Number(claveNombre(a.nombre) === q))
+}
+
+/** Pedidos de entrada esperando respuesta en una sala. */
+export const solicitudesDe = (e: Estado, salaId?: string): Solicitud[] =>
+  e.solicitudes
+    .filter((s) => s.salaId === salaId && s.estado === 'pendiente')
+    .sort((a, b) => a.creadaEn.localeCompare(b.creadaEn))
+
+/**
+ * Si me voy, ¿la sala queda sin organizador?
+ * Mismo criterio que el trigger de la base, para avisar antes de
+ * intentarlo en vez de mostrar el error crudo.
+ */
+export function dejariaSinOrganizador(e: Estado, salaId: string, usuarioId: string): boolean {
+  const mia = membresia(e, salaId, usuarioId)
+  if (mia?.rol !== 'organizador') return false
+  return !e.membresias.some(
+    (m) => m.salaId === salaId && m.rol === 'organizador' && m.usuarioId !== usuarioId,
+  )
 }
 
 /* ── Reglas de negocio ────────────────────────────────────── */

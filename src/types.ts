@@ -79,6 +79,33 @@ export interface Membresia {
   desde: string
 }
 
+/**
+ * Pedido de entrada a una sala ajena.
+ *
+ * Aparece cuando alguien va a crear una sala que ya existe: en vez de
+ * armar una segunda con el mismo nombre, pide sumarse a la que hay.
+ */
+export interface Solicitud {
+  id: string
+  salaId: string
+  usuarioId: string
+  mensaje?: string
+  estado: 'pendiente' | 'aceptada' | 'rechazada'
+  creadaEn: string
+  resueltaEn?: string
+}
+
+/**
+ * Lo que se puede saber de una sala ajena: que existe, cómo se llama y
+ * a quién pedirle entrar. Nada de su contenido.
+ */
+export interface SalaAjena {
+  id: string
+  nombre: string
+  organizador: string
+  integrantes: number
+}
+
 /* ── Temas ────────────────────────────────────────────────── */
 
 /** Semáforo de importancia — el "rojo / amarillo / verde" que pidió Fran. */
@@ -358,6 +385,7 @@ export interface Estado {
   usuarios: Usuario[]
   salas: Sala[]
   membresias: Membresia[]
+  solicitudes: Solicitud[]
   reuniones: Reunion[]
   temas: Tema[]
   compromisos: Compromiso[]

@@ -10,7 +10,7 @@ import { db, firebaseConfigurado } from '../lib/firebase'
 import { neonConfigurado } from '../lib/neon'
 import { repoNeon } from './repoNeon'
 import { ESTADO_INICIAL } from '../lib/seed'
-import type { Config, Estado } from '../types'
+import type { Config, Estado, SalaAjena } from '../types'
 import { COLECCIONES, type Coleccion, type Repo } from './tipos'
 
 /* ─────────────────────────────────────────────────────────────
@@ -54,6 +54,26 @@ function escribirLocal(e: Estado) {
   }
 }
 
+/*
+ * Sin RLS de por medio el estado tiene todas las salas, así que el
+ * directorio se arma leyéndolo. Misma forma que devuelve la vista de
+ * Neon, para que la app no distinga el origen.
+ */
+function directorioDe(e: Estado): SalaAjena[] {
+  return e.salas
+    .filter((s) => !s.archivada)
+    .map((s) => {
+      const suyas = e.membresias.filter((m) => m.salaId === s.id)
+      const org = suyas.find((m) => m.rol === 'organizador')
+      return {
+        id: s.id,
+        nombre: s.nombre,
+        organizador: e.usuarios.find((u) => u.id === org?.usuarioId)?.nombre ?? '—',
+        integrantes: suyas.length,
+      }
+    })
+}
+
 export const repoDemo: Repo = {
   modo: 'demo',
   async cargar() {
@@ -84,6 +104,9 @@ export const repoDemo: Repo = {
   async reemplazar(estado) {
     escribirLocal(estado)
   },
+  async directorioSalas() {
+    return directorioDe(leerLocal())
+  },
 }
 
 /* ── Firestore ────────────────────────────────────────────── */
@@ -96,6 +119,7 @@ export const repoFirebase: Repo = {
       usuarios: [],
       salas: [],
       membresias: [],
+      solicitudes: [],
       reuniones: [],
       temas: [],
       compromisos: [],
@@ -110,6 +134,7 @@ export const repoFirebase: Repo = {
       usuarios: [],
       salas: [],
       membresias: [],
+      solicitudes: [],
       reuniones: [],
       temas: [],
       compromisos: [],
@@ -159,6 +184,10 @@ export const repoFirebase: Repo = {
     }
     batch.set(doc(db, 'config', 'global'), estado.config)
     await batch.commit()
+  },
+
+  async directorioSalas() {
+    return directorioDe(await this.cargar())
   },
 }
 
@@ -213,4 +242,5 @@ export const repo: Repo = {
   borrarDoc: (col, id) => activo.borrarDoc(col, id),
   guardarConfig: (config) => activo.guardarConfig(config),
   reemplazar: (estado) => activo.reemplazar(estado),
+  directorioSalas: () => activo.directorioSalas(),
 }

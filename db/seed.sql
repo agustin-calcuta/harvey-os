@@ -13,8 +13,8 @@
 begin;
 
 truncate table public.notificaciones, public.compromisos, public.temas,
-               public.reuniones, public.membresias, public.salas,
-               public.usuarios, public.config restart identity cascade;
+               public.reuniones, public.solicitudes, public.membresias,
+               public.salas, public.usuarios, public.config restart identity cascade;
 
 create temporary table t_fechas on commit drop as
 select
@@ -33,7 +33,10 @@ insert into public.usuarios (id, nombre, email, alcance, cargo, activo, "creadoE
   ('u_renata', 'Renata Sosa',   'renata@harveywillys.com',  'usuario','Diseño · Moldería',             true, now() - interval '90 days'),
   ('u_juli',   'Julieta Paz',   'julieta@harveywillys.com', 'usuario','Diseño · Estampas',             true, now() - interval '90 days'),
   ('u_pedro',  'Pedro Arana',   'pedro@harveywillys.com',   'usuario','Marketing · Contenido',         true, now() - interval '70 days'),
-  ('u_cami',   'Camila Ruiz',   'camila@harveywillys.com',  'usuario','Marketing · Community',         true, now() - interval '70 days');
+  ('u_cami',   'Camila Ruiz',   'camila@harveywillys.com',  'usuario','Marketing · Community',         true, now() - interval '70 days'),
+  -- Entró hace poco y todavía no está en ninguna sala: pidió sumarse
+  -- a la de socios y el pedido espera respuesta.
+  ('u_sofia',  'Sofía Ledesma', 'sofia@harveywillys.com',   'usuario','Gerencia · Operaciones',        true, now() - interval '9 days');
 
 /* ── Salas ────────────────────────────────────────────────── */
 
@@ -63,6 +66,13 @@ insert into public.membresias (id, "salaId", "usuarioId", rol, desde) values
   ('mb_m_lucas', 'sala_marketing','u_lucas', 'organizador', now() - interval '45 days'),
   ('mb_m_pedro', 'sala_marketing','u_pedro', 'miembro',     now() - interval '45 days'),
   ('mb_m_cami',  'sala_marketing','u_cami',  'miembro',     now() - interval '40 days');
+
+/* ── Pedidos de entrada ───────────────────────────────────── */
+
+insert into public.solicitudes (id, "salaId", "usuarioId", mensaje, estado, "creadaEn") values
+  ('sol_1', 'sala_gerencial', 'u_sofia',
+   'Arranqué en operaciones y me pidieron seguir los temas de la semanal.',
+   'pendiente', now() - interval '1 day');
 
 /* ── Reuniones ────────────────────────────────────────────── */
 

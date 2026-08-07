@@ -1,6 +1,6 @@
 import { neon } from '../lib/neon'
 import { ESTADO_INICIAL } from '../lib/seed'
-import type { Config, Estado } from '../types'
+import type { Config, Estado, SalaAjena } from '../types'
 import { COLECCIONES, type Coleccion, type Repo } from './tipos'
 
 /* ─────────────────────────────────────────────────────────────
@@ -20,6 +20,7 @@ const FECHAS: Record<Coleccion, string[]> = {
   usuarios: ['creadoEn'],
   salas: ['creadaEn'],
   membresias: ['desde'],
+  solicitudes: ['creadaEn', 'resueltaEn'],
   reuniones: [
     'fecha',
     'proximaReunionFecha',
@@ -143,5 +144,23 @@ export const repoNeon: Repo = {
       if (error) throw new Error(`No se pudo sembrar ${col}: ${error.message}`)
     }
     await this.guardarConfig(estado.config)
+  },
+
+  /*
+   * `directorio_salas` es una vista que corre con los permisos de su
+   * dueño, así que atraviesa el RLS de `salas`. Es la única manera de
+   * saber que un nombre ya está tomado por una sala a la que todavía
+   * no pertenecés. Sólo expone nombre, organizador y tamaño.
+   */
+  async directorioSalas() {
+    if (!neon) return []
+    const { data, error } = await neon
+      .from('directorio_salas')
+      .select('id,nombre,organizador,integrantes')
+    if (error) {
+      console.warn('[harvey] no se pudo leer el directorio de salas:', error.message)
+      return []
+    }
+    return (data ?? []) as SalaAjena[]
   },
 }

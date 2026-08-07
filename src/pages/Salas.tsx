@@ -1,17 +1,35 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, DoorOpen, Pencil, Plus, Trash2, UserPlus, Users } from 'lucide-react'
+import {
+  ArrowRight,
+  Check,
+  Clock,
+  DoorOpen,
+  LogOut,
+  Pencil,
+  Plus,
+  Trash2,
+  UserPlus,
+  Users,
+  X,
+} from 'lucide-react'
 import { useApp } from '../store/AppContext'
 import {
   bancoDe,
+  claveNombre,
+  dejariaSinOrganizador,
   fechaCorta,
   integrantes,
+  nombreDe,
   proximaReunion,
+  relativo,
   reunionesDe,
   rolEnSala,
+  salasParecidas,
+  solicitudesDe,
   uid,
 } from '../lib/utils'
-import { ROLES_SALA, type RolSala, type Sala, type Usuario } from '../types'
+import { ROLES_SALA, type RolSala, type Sala, type SalaAjena, type Usuario } from '../types'
 import {
   Avatares,
   Boton,
@@ -29,17 +47,54 @@ import {
    Las salas: un espacio por equipo, con su gente y sus reuniones.
    Quien crea una sala la organiza; a partir de ahí suma a los
    suyos y define qué puede hacer cada uno ahí adentro.
+
+   Si el nombre que se está por crear ya existe, se avisa antes y
+   se ofrece pedir entrada en vez de armar una segunda igual.
    ───────────────────────────────────────────────────────────── */
 
 export default function Salas() {
-  const { estado, yo, misSalas, elegirSala, esSuperadmin } = useApp()
+  const {
+    estado,
+    yo,
+    misSalas,
+    elegirSala,
+    esSuperadmin,
+    salirDeSala,
+    solicitudesPendientes,
+    misSolicitudes,
+    retirarSolicitud,
+    cargarDirectorio,
+  } = useApp()
   const navegar = useNavigate()
   const [creando, setCreando] = useState(false)
   const [gestionando, setGestionando] = useState<Sala | undefined>()
   const [editando, setEditando] = useState<Sala | undefined>()
+  const [porSalir, setPorSalir] = useState<Sala | undefined>()
+
+  const trabada = porSalir && yo ? dejariaSinOrganizador(estado, porSalir.id, yo.id) : false
+
+  /*
+   * De una sala a la que todavía no pertenezco no llega ni el nombre:
+   * las políticas la ocultan. Para poder decir qué estoy esperando, se
+   * lee del directorio.
+   */
+  const [nombresAjenos, setNombresAjenos] = useState<Record<string, string>>({})
+  useEffect(() => {
+    if (!misSolicitudes.length) return
+    let vivo = true
+    void cargarDirectorio().then((d) => {
+      if (vivo) setNombresAjenos(Object.fromEntries(d.map((s) => [s.id, s.nombre])))
+    })
+    return () => {
+      vivo = false
+    }
+  }, [misSolicitudes.length, cargarDirectorio])
 
   return (
     <div className="space-y-6">
+      {/* Lo primero: gente esperando que le abras la puerta. */}
+      {solicitudesPendientes.length > 0 && <Pedidos />}
+
       <Seccion
         kicker="Tus espacios"
         titulo="Salas"
@@ -57,7 +112,7 @@ export default function Salas() {
         {misSalas.length === 0 ? (
           <Vacio
             titulo="Todavía no estás en ninguna sala"
-            texto="Creá la de tu equipo y sumá a los tuyos, o esperá a que alguien te sume a la suya."
+            texto="Creá la de tu equipo y sumá a los tuyos, o pedí entrar a una que ya exista."
             icono={<DoorOpen size={32} />}
             accion={
               <Boton variante="solido" onClick={() => setCreando(true)}>
@@ -74,6 +129,7 @@ export default function Salas() {
               const total = reunionesDe(estado, s.id).length
               const miRol = esSuperadmin ? 'organizador' : rolEnSala(estado, s.id, yo?.id)
               const organizo = miRol === 'organizador'
+              const pidiendo = solicitudesDe(estado, s.id).length
 
               return (
                 <div key={s.id} className="card flex flex-col p-5">
@@ -83,6 +139,11 @@ export default function Salas() {
                         <Chip tono={organizo ? 'amber' : 'neutro'}>
                           {miRol ? ROLES_SALA[miRol].nombre : 'Sin rol'}
                         </Chip>
+                        {organizo && pidiendo > 0 && (
+                          <Chip tono="signal">
+                            {pidiendo} {pidiendo === 1 ? 'pide entrar' : 'piden entrar'}
+                          </Chip>
+                        )}
                         {s.cadencia && <span className="text-xs text-tenue">{s.cadencia}</span>}
                       </div>
                       <h3 className="display text-2xl">{s.nombre}</h3>
@@ -124,6 +185,18 @@ export default function Salas() {
                         </Boton>
                       </>
                     )}
+                    {/* El superadmin mira de afuera: no es parte de ningún equipo. */}
+                    {!esSuperadmin && (
+                      <Boton
+                        tam="sm"
+                        variante="fantasma"
+                        className="ml-auto"
+                        onClick={() => setPorSalir(s)}
+                        title="Salir de esta sala"
+                      >
+                        <LogOut size={11} /> Salir
+                      </Boton>
+                    )}
                   </div>
                 </div>
               )
@@ -132,6 +205,32 @@ export default function Salas() {
         )}
       </Seccion>
 
+      {/* Pedidos propios todavía sin respuesta. */}
+      {misSolicitudes.length > 0 && (
+        <Seccion kicker="Esperando" titulo="Pedidos que enviaste">
+          <ul className="card divide-y divide-borde">
+            {misSolicitudes.map((s) => (
+              <li key={s.id} className="flex flex-wrap items-center gap-3 p-3.5">
+                <Clock size={14} className="shrink-0 text-tenue" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm">
+                    {nombresAjenos[s.salaId] ??
+                      estado.salas.find((x) => x.id === s.salaId)?.nombre ??
+                      'Sala'}
+                  </div>
+                  <div className="text-xs text-tenue">
+                    Enviado {relativo(s.creadaEn)} · esperando al organizador
+                  </div>
+                </div>
+                <Boton tam="sm" variante="fantasma" onClick={() => retirarSolicitud(s.id)}>
+                  Retirar
+                </Boton>
+              </li>
+            ))}
+          </ul>
+        </Seccion>
+      )}
+
       <ModalSala abierto={creando} onCerrar={() => setCreando(false)} />
       <ModalSala abierto={!!editando} onCerrar={() => setEditando(undefined)} sala={editando} />
       <ModalEquipo
@@ -139,7 +238,75 @@ export default function Salas() {
         onCerrar={() => setGestionando(undefined)}
         sala={gestionando}
       />
+
+      <Confirmar
+        abierto={!!porSalir}
+        titulo={trabada ? 'No podés salir todavía' : 'Salir de la sala'}
+        texto={
+          trabada
+            ? `Sos el único organizador de «${porSalir?.nombre}». Pasale el rol a alguien del equipo y después salí.`
+            : `Dejás de ver «${porSalir?.nombre}», sus reuniones y su temario. Tus compromisos quedan registrados, y podés volver a pedir entrar cuando quieras.`
+        }
+        textoBoton={trabada ? 'Entendido' : 'Salir de la sala'}
+        peligro={!trabada}
+        onCancelar={() => setPorSalir(undefined)}
+        onConfirmar={() => {
+          if (porSalir && !trabada) void salirDeSala(porSalir.id)
+          setPorSalir(undefined)
+        }}
+      />
     </div>
+  )
+}
+
+/* ── Pedidos de entrada por resolver ──────────────────────── */
+
+function Pedidos() {
+  const { estado, solicitudesPendientes, resolverSolicitud } = useApp()
+
+  return (
+    <Seccion kicker="Piden entrar" titulo="Pedidos pendientes">
+      <ul className="grid gap-3 lg:grid-cols-2">
+        {solicitudesPendientes.map((s) => {
+          const quien = estado.usuarios.find((u) => u.id === s.usuarioId)
+          const sala = estado.salas.find((x) => x.id === s.salaId)
+          return (
+            <li key={s.id} className="card border-signal/40 p-4">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <Chip tono="signal">{sala?.nombre ?? 'Sala'}</Chip>
+                <span className="text-[10px] text-tenue">{relativo(s.creadaEn)}</span>
+              </div>
+              <div className="mb-0.5 text-sm">{quien?.nombre ?? 'Alguien'}</div>
+              <div className="mb-2 text-xs text-tenue">
+                {quien?.cargo ? `${quien.cargo} · ` : ''}
+                {quien?.email}
+              </div>
+              {s.mensaje && (
+                <p className="mb-3 border-l-2 border-borde2 pl-3 text-xs leading-relaxed text-suave">
+                  {s.mensaje}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2 border-t border-borde pt-3">
+                <Boton
+                  tam="sm"
+                  variante="solido"
+                  onClick={() => resolverSolicitud(s.id, 'aceptada')}
+                >
+                  <Check size={12} /> Aceptar
+                </Boton>
+                <Boton
+                  tam="sm"
+                  variante="fantasma"
+                  onClick={() => resolverSolicitud(s.id, 'rechazada')}
+                >
+                  <X size={12} /> Rechazar
+                </Boton>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </Seccion>
   )
 }
 
@@ -154,7 +321,15 @@ function ModalSala({
   onCerrar: () => void
   sala?: Sala
 }) {
-  const { crearSala, actualizarSala, archivarSala } = useApp()
+  const {
+    crearSala,
+    actualizarSala,
+    archivarSala,
+    cargarDirectorio,
+    pedirEntrar,
+    misSolicitudes,
+    misSalas,
+  } = useApp()
   const navegar = useNavigate()
 
   const [nombre, setNombre] = useState('')
@@ -166,6 +341,24 @@ function ModalSala({
   const [horasCierre, setHorasCierre] = useState(24)
   const [cierreManual, setCierreManual] = useState(false)
   const [porArchivar, setPorArchivar] = useState(false)
+  const [directorio, setDirectorio] = useState<SalaAjena[]>([])
+  const [insistir, setInsistir] = useState(false)
+
+  /*
+   * El directorio dice qué salas existen, incluidas las que no ves por
+   * no pertenecer: sin eso no habría manera de avisar que el nombre ya
+   * está tomado. Se pide una sola vez, al abrir.
+   */
+  useEffect(() => {
+    if (!abierto || sala) return
+    let vivo = true
+    void cargarDirectorio().then((d) => {
+      if (vivo) setDirectorio(d)
+    })
+    return () => {
+      vivo = false
+    }
+  }, [abierto, sala, cargarDirectorio])
 
   // Recarga los valores cada vez que se abre.
   const [ultimo, setUltimo] = useState<string | undefined>()
@@ -179,11 +372,31 @@ function ModalSala({
     setDuracionTema(sala?.duracionTemaDefaultMin ?? 15)
     setHorasCierre(sala?.horasCierreAgenda ?? 24)
     setCierreManual(sala?.cierreManual ?? false)
+    setInsistir(false)
   }
   if (!abierto && ultimo !== undefined) setUltimo(undefined)
 
+  /* Las salas donde ya estoy no son un choque de nombres: son las mías. */
+  const parecidas = useMemo(
+    () =>
+      sala
+        ? []
+        : salasParecidas(
+            directorio.filter((d) => !misSalas.some((m) => m.id === d.id)),
+            nombre,
+          ),
+    [directorio, nombre, sala, misSalas],
+  )
+  const identica = parecidas.some((s) => claveNombre(s.nombre) === claveNombre(nombre))
+
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault()
+    // Con una sala del mismo nombre delante, primero se muestra; recién
+    // si insiste se crea la segunda.
+    if (identica && !insistir) {
+      setInsistir(true)
+      return
+    }
     const datos = {
       nombre,
       descripcion: descripcion.trim() || undefined,
@@ -214,12 +427,65 @@ function ModalSala({
           <input
             className="w-full"
             value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
+            onChange={(e) => {
+              setNombre(e.target.value)
+              setInsistir(false)
+            }}
             placeholder="Ej.: Marketing"
             required
             autoFocus
           />
         </Campo>
+
+        {/* Ya existe una sala así: mejor entrar que duplicar. */}
+        {parecidas.length > 0 && (
+          <div className="border border-amber/50 bg-amber/10 p-3.5">
+            <Etiqueta className="mb-2 text-amber">
+              {identica ? 'Ese nombre ya está tomado' : 'Hay algo parecido'}
+            </Etiqueta>
+            <p className="mb-3 text-xs leading-relaxed text-suave">
+              {identica
+                ? 'Ya hay una sala con ese nombre. Si es la de tu equipo, pedí entrar en vez de crear una segunda.'
+                : 'Fijate si alguna de estas es la que buscabas.'}
+            </p>
+            <ul className="space-y-1.5">
+              {parecidas.map((s) => {
+                const pedido = misSolicitudes.some((x) => x.salaId === s.id)
+                return (
+                  <li
+                    key={s.id}
+                    className="flex flex-wrap items-center gap-2 border border-borde bg-panel p-2.5"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm">{s.nombre}</div>
+                      <div className="text-xs text-tenue">
+                        Organiza {s.organizador} · {s.integrantes}{' '}
+                        {s.integrantes === 1 ? 'persona' : 'personas'}
+                      </div>
+                    </div>
+                    {pedido ? (
+                      <Chip tono="cold">
+                        <Clock size={9} /> Pedido enviado
+                      </Chip>
+                    ) : (
+                      <Boton
+                        type="button"
+                        tam="sm"
+                        variante="solido"
+                        onClick={async () => {
+                          await pedirEntrar(s.id, descripcion.trim() || undefined)
+                          onCerrar()
+                        }}
+                      >
+                        Pedir unirme
+                      </Boton>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        )}
 
         <Campo etiqueta="De qué se trata">
           <textarea
@@ -323,8 +589,8 @@ function ModalSala({
           <Boton type="button" variante="fantasma" onClick={onCerrar}>
             Cancelar
           </Boton>
-          <Boton type="submit" variante="solido">
-            {sala ? 'Guardar' : 'Crear sala'}
+          <Boton type="submit" variante={insistir ? 'peligro' : 'solido'}>
+            {sala ? 'Guardar' : insistir ? 'Crear una segunda igual' : 'Crear sala'}
           </Boton>
         </div>
       </form>
@@ -357,24 +623,27 @@ function ModalEquipo({
   onCerrar: () => void
   sala?: Sala
 }) {
-  const { estado, yo, sumarAlaSala, cambiarRolEnSala, sacarDeLaSala, guardarUsuario } = useApp()
+  const {
+    estado,
+    yo,
+    sumarAlaSala,
+    cambiarRolEnSala,
+    sacarDeLaSala,
+    guardarUsuario,
+    resolverSolicitud,
+  } = useApp()
   const [invitando, setInvitando] = useState(false)
   const [porSacar, setPorSacar] = useState<Usuario | undefined>()
 
-  const gente = useMemo(
-    () => (sala ? integrantes(estado, sala.id) : []),
-    [estado, sala],
-  )
+  const gente = useMemo(() => (sala ? integrantes(estado, sala.id) : []), [estado, sala])
+  const pedidos = useMemo(() => (sala ? solicitudesDe(estado, sala.id) : []), [estado, sala])
 
   /* Gente que ya existe en el sistema y todavía no está en esta sala. */
   const disponibles = useMemo(
     () =>
       sala
         ? estado.usuarios.filter(
-            (u) =>
-              u.activo &&
-              u.alcance !== 'superadmin' &&
-              !gente.some((g) => g.id === u.id),
+            (u) => u.activo && u.alcance !== 'superadmin' && !gente.some((g) => g.id === u.id),
           )
         : [],
     [estado.usuarios, gente, sala],
@@ -385,6 +654,44 @@ function ModalEquipo({
   return (
     <Modal abierto={abierto} onCerrar={onCerrar} kicker={sala.nombre} titulo="Equipo de la sala">
       <div className="space-y-5">
+        {/* Quien pidió entrar aparece acá, donde se arma el equipo. */}
+        {pedidos.length > 0 && (
+          <div className="border border-signal/40 bg-signal/5 p-3.5">
+            <Etiqueta className="mb-2 text-signal">
+              {pedidos.length} {pedidos.length === 1 ? 'pide entrar' : 'piden entrar'}
+            </Etiqueta>
+            <ul className="space-y-1.5">
+              {pedidos.map((s) => (
+                <li
+                  key={s.id}
+                  className="flex flex-wrap items-center gap-2 border border-borde bg-panel p-2.5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm">{nombreDe(estado, s.usuarioId)}</div>
+                    {s.mensaje && (
+                      <div className="text-xs leading-relaxed text-tenue">{s.mensaje}</div>
+                    )}
+                  </div>
+                  <Boton
+                    tam="sm"
+                    variante="solido"
+                    onClick={() => resolverSolicitud(s.id, 'aceptada')}
+                  >
+                    <Check size={11} /> Aceptar
+                  </Boton>
+                  <Boton
+                    tam="sm"
+                    variante="fantasma"
+                    onClick={() => resolverSolicitud(s.id, 'rechazada')}
+                  >
+                    <X size={11} />
+                  </Boton>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Etiqueta>{gente.length} personas en la sala</Etiqueta>
           <Boton tam="sm" variante="solido" onClick={() => setInvitando(true)}>
