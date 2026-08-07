@@ -265,11 +265,11 @@ export default function Panel() {
       {arrastrados.length > 0 && (
         <Seccion
           kicker="Vienen de atrás"
-          titulo="Pendientes arrastrados"
+          titulo="Pendientes de otras reuniones"
           acciones={
-            <Link to="/pendientes">
+            <Link to="/compromisos">
               <Boton tam="sm">
-                Ver historial <ArrowRight size={12} />
+                Ver todos <ArrowRight size={12} />
               </Boton>
             </Link>
           }

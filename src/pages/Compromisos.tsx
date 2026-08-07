@@ -12,16 +12,9 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { AlertTriangle, GripVertical, Pencil, Plus } from 'lucide-react'
+import { AlertTriangle, GripVertical, LayoutGrid, List, Pencil, Plus } from 'lucide-react'
 import { useApp } from '../store/AppContext'
-import {
-  cx,
-  estaVencido,
-  fechaCorta,
-  nombreDe,
-  relativo,
-  venceProximo,
-} from '../lib/utils'
+import { cx, estaVencido, fechaCorta, nombreDe, relativo, venceProximo } from '../lib/utils'
 import {
   COLUMNAS_KANBAN,
   ESTADO_COMPROMISO,
@@ -30,19 +23,49 @@ import {
   type EstadoCompromiso,
   type Importancia,
 } from '../types'
-import { Avatar, Boton, Metrica, Seccion } from '../components/ui'
+import { Avatar, Boton, Chip, Etiqueta, Metrica, Seccion, Vacio } from '../components/ui'
 import ModalCompromiso from '../components/reunion/ModalCompromiso'
+
+/* ─────────────────────────────────────────────────────────────
+   Todo lo que hay por hacer, en un solo lugar.
+
+   Tablero y lista son dos maneras de mirar el mismo conjunto: el
+   tablero sirve para mover cosas de estado, la lista para repasar
+   por responsable, por reunión o por vencimiento. Tenerlas en
+   secciones separadas obligaba a adivinar en cuál buscar.
+   ───────────────────────────────────────────────────────────── */
+
+type Vista = 'tablero' | 'lista'
+type Agrupacion = 'responsable' | 'reunion' | 'vencimiento'
+
+const CLAVE_VISTA = 'harvey-os:vista-compromisos'
+
+const AGRUPACIONES: { valor: Agrupacion; texto: string }[] = [
+  { valor: 'responsable', texto: 'Responsable' },
+  { valor: 'reunion', texto: 'Reunión' },
+  { valor: 'vencimiento', texto: 'Vencimiento' },
+]
 
 export default function Compromisos() {
   const { estado, yo, moverCompromiso } = useApp()
 
+  const [vista, setVista] = useState<Vista>(
+    () => (localStorage.getItem(CLAVE_VISTA) as Vista) || 'tablero',
+  )
+  const [agrupar, setAgrupar] = useState<Agrupacion>('responsable')
   const [responsable, setResponsable] = useState<string>('todos')
   const [importancia, setImportancia] = useState<Importancia | 'todas'>('todas')
   const [soloVencidos, setSoloVencidos] = useState(false)
+  const [incluirHechos, setIncluirHechos] = useState(true)
   const [busqueda, setBusqueda] = useState('')
   const [creando, setCreando] = useState(false)
   const [editando, setEditando] = useState<Compromiso | undefined>()
   const [arrastrando, setArrastrando] = useState<Compromiso | undefined>()
+
+  const cambiarVista = (v: Vista) => {
+    setVista(v)
+    localStorage.setItem(CLAVE_VISTA, v)
+  }
 
   const filtrados = useMemo(
     () =>
@@ -50,10 +73,11 @@ export default function Compromisos() {
         if (responsable !== 'todos' && c.responsableId !== responsable) return false
         if (importancia !== 'todas' && c.importancia !== importancia) return false
         if (soloVencidos && !estaVencido(c)) return false
+        if (!incluirHechos && c.estado === 'hecho') return false
         if (busqueda && !c.accion.toLowerCase().includes(busqueda.toLowerCase())) return false
         return true
       }),
-    [estado.compromisos, responsable, importancia, soloVencidos, busqueda],
+    [estado.compromisos, responsable, importancia, soloVencidos, incluirHechos, busqueda],
   )
 
   const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
@@ -73,19 +97,49 @@ export default function Compromisos() {
   const vencidos = filtrados.filter((c) => estaVencido(c))
   const mios = filtrados.filter((c) => c.responsableId === yo?.id && c.estado !== 'hecho')
 
+  const botonFiltro = (activo: boolean) =>
+    activo
+      ? 'border border-tinta bg-tinta px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-fondo'
+      : 'border border-borde2 bg-panel px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
+
   return (
     <div className="space-y-6">
       <Seccion
-        kicker="Seguimiento"
+        kicker="Todo lo que hay por hacer"
         titulo="Compromisos"
         acciones={
-          <Boton variante="solido" onClick={() => setCreando(true)}>
-            <Plus size={13} /> Nuevo compromiso
-          </Boton>
+          <>
+            <div className="flex border border-borde2">
+              {(
+                [
+                  ['tablero', LayoutGrid, 'Tablero'],
+                  ['lista', List, 'Lista'],
+                ] as const
+              ).map(([v, Icono, texto]) => (
+                <button
+                  key={v}
+                  onClick={() => cambiarVista(v)}
+                  className={cx(
+                    'flex items-center gap-2 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors',
+                    vista === v ? 'bg-tinta text-fondo' : 'bg-panel text-suave hover:text-tinta',
+                  )}
+                >
+                  <Icono size={12} />
+                  {texto}
+                </button>
+              ))}
+            </div>
+            <Boton variante="solido" onClick={() => setCreando(true)}>
+              <Plus size={13} /> Nuevo compromiso
+            </Boton>
+          </>
         }
       >
         <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Metrica valor={filtrados.filter((c) => c.estado !== 'hecho').length} etiqueta="Abiertos" />
+          <Metrica
+            valor={filtrados.filter((c) => c.estado !== 'hecho').length}
+            etiqueta="Abiertos"
+          />
           <Metrica valor={mios.length} etiqueta="A tu nombre" />
           <Metrica
             valor={vencidos.length}
@@ -99,7 +153,7 @@ export default function Compromisos() {
           />
         </div>
 
-        {/* Filtros */}
+        {/* ── Filtros, comunes a las dos vistas ── */}
         <div className="mb-5 grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap">
           <input
             className="col-span-2 sm:w-48"
@@ -132,8 +186,8 @@ export default function Compromisos() {
             onClick={() => setSoloVencidos((v) => !v)}
             className={
               soloVencidos
-                ? 'border border-signal bg-signal px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-tinta'
-                : 'border border-borde2 px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-signal hover:text-signal'
+                ? 'border border-signal bg-signal px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white'
+                : 'border border-borde2 bg-panel px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:border-signal hover:text-signal'
             }
           >
             Sólo vencidos
@@ -141,47 +195,73 @@ export default function Compromisos() {
           {yo && (
             <button
               onClick={() => setResponsable(responsable === yo.id ? 'todos' : yo.id)}
-              className={
-                responsable === yo.id
-                  ? 'border border-tinta bg-tinta px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-fondo'
-                  : 'border border-borde2 px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
-              }
+              className={botonFiltro(responsable === yo.id)}
             >
               Sólo míos
             </button>
           )}
+          <label className="col-span-2 flex cursor-pointer items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave sm:col-auto">
+            <input
+              type="checkbox"
+              className="h-3.5 w-3.5 accent-[#C0392B]"
+              checked={incluirHechos}
+              onChange={(e) => setIncluirHechos(e.target.checked)}
+            />
+            Mostrar cerrados
+          </label>
+
+          {/* Sólo tiene sentido cuando hay grupos que armar */}
+          {vista === 'lista' && (
+            <>
+              <Etiqueta className="col-span-2 sm:ml-auto sm:col-auto">Agrupar por</Etiqueta>
+              {AGRUPACIONES.map(({ valor, texto }) => (
+                <button
+                  key={valor}
+                  onClick={() => setAgrupar(valor)}
+                  className={botonFiltro(agrupar === valor)}
+                >
+                  {texto}
+                </button>
+              ))}
+            </>
+          )}
         </div>
 
-        {/* Tablero */}
-        <DndContext sensors={sensores} onDragStart={alEmpezar} onDragEnd={alSoltar}>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {COLUMNAS_KANBAN.map((col) => (
-              <Columna
-                key={col}
-                estado={col}
-                compromisos={filtrados.filter((c) => c.estado === col)}
-                onEditar={setEditando}
-              />
-            ))}
-          </div>
-
-          <DragOverlay>
-            {arrastrando && (
-              <div className="rotate-2 opacity-90">
-                <Tarjeta compromiso={arrastrando} onEditar={() => {}} superpuesta />
+        {vista === 'tablero' ? (
+          <>
+            <DndContext sensors={sensores} onDragStart={alEmpezar} onDragEnd={alSoltar}>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {COLUMNAS_KANBAN.map((col) => (
+                  <Columna
+                    key={col}
+                    estado={col}
+                    compromisos={filtrados.filter((c) => c.estado === col)}
+                    onEditar={setEditando}
+                  />
+                ))}
               </div>
-            )}
-          </DragOverlay>
-        </DndContext>
 
-        <p className="mt-4 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
-          <span className="hidden xl:inline">
-            Arrastrá las tarjetas entre columnas para cambiar el estado
-          </span>
-          <span className="xl:hidden">
-            Tocá el estado en cada tarjeta para moverla, o arrastrala
-          </span>
-        </p>
+              <DragOverlay>
+                {arrastrando && (
+                  <div className="rotate-2 opacity-90">
+                    <Tarjeta compromiso={arrastrando} onEditar={() => {}} superpuesta />
+                  </div>
+                )}
+              </DragOverlay>
+            </DndContext>
+
+            <p className="mt-4 text-xs text-tenue">
+              <span className="hidden xl:inline">
+                Arrastrá las tarjetas entre columnas para cambiar el estado
+              </span>
+              <span className="xl:hidden">
+                Tocá el estado en cada tarjeta para moverla, o arrastrala
+              </span>
+            </p>
+          </>
+        ) : (
+          <VistaLista lista={filtrados} agrupar={agrupar} onEditar={setEditando} />
+        )}
       </Seccion>
 
       <ModalCompromiso
@@ -201,7 +281,141 @@ export default function Compromisos() {
   )
 }
 
-/* ── Columna ──────────────────────────────────────────────── */
+/* ── Vista de lista, agrupada ─────────────────────────────── */
+
+function VistaLista({
+  lista,
+  agrupar,
+  onEditar,
+}: {
+  lista: Compromiso[]
+  agrupar: Agrupacion
+  onEditar: (c: Compromiso) => void
+}) {
+  const { estado, moverCompromiso } = useApp()
+
+  const grupos = useMemo(() => {
+    const m = new Map<string, Compromiso[]>()
+    const ordenada = [...lista].sort((a, b) =>
+      (a.fechaLimite ?? '9999').localeCompare(b.fechaLimite ?? '9999'),
+    )
+    for (const c of ordenada) {
+      let clave: string
+      if (agrupar === 'responsable') clave = nombreDe(estado, c.responsableId)
+      else if (agrupar === 'reunion')
+        clave = estado.reuniones.find((r) => r.id === c.reunionId)?.titulo ?? 'Sin reunión'
+      else clave = etiquetaVencimiento(c)
+      m.set(clave, [...(m.get(clave) ?? []), c])
+    }
+    return [...m.entries()].sort((a, b) => b[1].length - a[1].length)
+  }, [lista, agrupar, estado])
+
+  if (!grupos.length) {
+    return <Vacio titulo="No hay nada acá" texto="Ningún compromiso coincide con los filtros." />
+  }
+
+  return (
+    <div className="space-y-6">
+      {grupos.map(([clave, items]) => (
+        <div key={clave}>
+          <div className="mb-2 flex items-center gap-3">
+            {agrupar === 'responsable' && <Avatar nombre={clave} tam="sm" />}
+            <h3 className="display text-lg">{clave}</h3>
+            <span className="text-xs text-tenue">{items.length}</span>
+            {items.some((c) => estaVencido(c)) && (
+              <Chip tono="signal">{items.filter((c) => estaVencido(c)).length} vencidos</Chip>
+            )}
+            <div className="h-px flex-1 bg-borde" />
+          </div>
+
+          <ul className="card divide-y divide-borde">
+            {items.map((c) => (
+              <li key={c.id} className="p-4">
+                <div className="flex flex-wrap items-start gap-3">
+                  <span
+                    className="mt-1 h-8 w-0.5 shrink-0"
+                    style={{ background: IMPORTANCIA[c.importancia].hex }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div
+                      className={cx(
+                        'text-sm leading-snug',
+                        c.estado === 'hecho' && 'text-suave line-through',
+                      )}
+                    >
+                      {c.accion}
+                    </div>
+                    {c.detalle && <p className="mt-1 text-xs text-suave">{c.detalle}</p>}
+                    {c.avance && (
+                      <p className="mt-1 border-l border-borde2 pl-2 text-xs text-tenue">
+                        {c.avance}
+                      </p>
+                    )}
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-tenue">
+                      {agrupar !== 'responsable' && (
+                        <span>{nombreDe(estado, c.responsableId)}</span>
+                      )}
+                      <span className={estaVencido(c) ? 'text-signal' : ''}>
+                        {estaVencido(c) && <AlertTriangle size={9} className="mr-1 inline" />}
+                        {estaVencido(c) ? 'Venció ' : 'Vence '}
+                        {fechaCorta(c.fechaLimite)}
+                      </span>
+                      <span>Abierto {relativo(c.creadoEn)}</span>
+                      {agrupar !== 'reunion' && (
+                        <Link
+                          to={`/reuniones/${c.reunionId}`}
+                          className="truncate transition-colors hover:text-tinta"
+                        >
+                          {estado.reuniones.find((r) => r.id === c.reunionId)?.titulo}
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid w-full shrink-0 grid-cols-4 gap-1 sm:flex sm:w-auto sm:flex-wrap">
+                    {COLUMNAS_KANBAN.map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => moverCompromiso(c.id, s)}
+                        title={ESTADO_COMPROMISO[s].nombre}
+                        className={
+                          c.estado === s
+                            ? 'truncate border border-tinta bg-tinta px-2 py-1.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-fondo'
+                            : 'truncate border border-borde2 bg-panel px-2 py-1.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-suave transition-colors hover:border-suave hover:text-tinta'
+                        }
+                      >
+                        {ESTADO_COMPROMISO[s].nombre}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => onEditar(c)}
+                      className="col-span-4 border border-borde2 bg-panel p-1.5 text-suave transition-colors hover:border-tinta hover:text-tinta sm:col-auto"
+                      aria-label="Editar"
+                    >
+                      <Pencil size={11} className="mx-auto" />
+                    </button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function etiquetaVencimiento(c: Compromiso): string {
+  if (c.estado === 'hecho') return 'Cerrados'
+  if (!c.fechaLimite) return 'Sin fecha'
+  const ms = new Date(c.fechaLimite).getTime() - Date.now()
+  if (ms < 0) return 'Vencidos'
+  if (ms < 7 * 86400000) return 'Esta semana'
+  if (ms < 30 * 86400000) return 'Este mes'
+  return 'Más adelante'
+}
+
+/* ── Columna del tablero ──────────────────────────────────── */
 
 function Columna({
   estado: col,
@@ -220,20 +434,22 @@ function Columna({
       ref={setNodeRef}
       className={cx(
         'flex flex-col border transition-colors xl:min-h-[240px]',
-        isOver ? 'border-signal bg-signal/5' : 'border-borde bg-panel',
+        isOver ? 'border-signal bg-signal/5' : 'border-borde bg-hueco',
       )}
     >
       <div className="flex items-center justify-between gap-2 border-b border-borde p-3">
         <div className="flex items-center gap-2">
           <span className={cx('h-2 w-2', meta.bg, 'border', meta.border)} />
-          <span className="font-semibold text-[10px] uppercase tracking-[0.14em]">{meta.nombre}</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.14em]">
+            {meta.nombre}
+          </span>
         </div>
-        <span className="font-semibold text-[10px] text-tenue">{compromisos.length}</span>
+        <span className="text-[10px] text-tenue">{compromisos.length}</span>
       </div>
 
       <div className="flex-1 space-y-2 p-2">
         {compromisos.length === 0 ? (
-          <div className="flex h-16 items-center justify-center text-center font-semibold text-[10px] uppercase tracking-[0.14em] text-borde2 xl:h-24">
+          <div className="flex h-16 items-center justify-center text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-borde2 xl:h-24">
             Vacío
           </div>
         ) : (
@@ -246,7 +462,7 @@ function Columna({
   )
 }
 
-/* ── Tarjeta ──────────────────────────────────────────────── */
+/* ── Tarjeta del tablero ──────────────────────────────────── */
 
 function Tarjeta({
   compromiso: c,
@@ -273,7 +489,7 @@ function Tarjeta({
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
       className={cx(
-        'group border bg-fondo p-3 transition-colors',
+        'group border bg-panel p-3 transition-colors',
         isDragging ? 'opacity-30' : 'hover:border-borde2',
         vencido ? 'border-signal/50' : 'border-borde',
       )}
@@ -311,7 +527,7 @@ function Tarjeta({
         {c.fechaLimite && (
           <span
             className={cx(
-              'ml-auto flex items-center gap-1 font-semibold text-[10px]',
+              'ml-auto flex items-center gap-1 text-[10px]',
               vencido ? 'text-signal' : proximo ? 'text-amber' : 'text-tenue',
             )}
             title={fechaCorta(c.fechaLimite)}
@@ -325,7 +541,7 @@ function Tarjeta({
       {reunion && (
         <Link
           to={`/reuniones/${reunion.id}`}
-          className="mt-2 block truncate pl-[26px] font-semibold text-[9px] uppercase tracking-[0.12em] text-borde2 transition-colors hover:text-suave"
+          className="mt-2 block truncate pl-[26px] text-[9px] font-semibold uppercase tracking-[0.12em] text-borde2 transition-colors hover:text-suave"
         >
           {reunion.titulo}
         </Link>
@@ -341,7 +557,7 @@ function Tarjeta({
             <button
               key={s}
               onClick={() => moverCompromiso(c.id, s)}
-              className="border border-borde2 px-2 py-1 font-semibold text-[9px] uppercase tracking-[0.1em] text-suave transition-colors hover:border-suave hover:text-tinta"
+              className="border border-borde2 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-suave transition-colors hover:border-suave hover:text-tinta"
             >
               → {ESTADO_COMPROMISO[s].nombre}
             </button>

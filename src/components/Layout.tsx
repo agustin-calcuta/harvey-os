@@ -3,7 +3,6 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   CalendarDays,
   CheckCircle2,
-  History,
   LayoutDashboard,
   ListChecks,
   LogOut,
@@ -22,7 +21,6 @@ const NAV = [
   { a: '/', icono: LayoutDashboard, texto: 'Panel', exacto: true },
   { a: '/reuniones', icono: CalendarDays, texto: 'Reuniones' },
   { a: '/compromisos', icono: ListChecks, texto: 'Compromisos' },
-  { a: '/pendientes', icono: History, texto: 'Pendientes' },
   { a: '/correos', icono: Mail, texto: 'Correos' },
 ]
 
@@ -96,16 +94,22 @@ export default function Layout() {
             >
               <n.icono size={15} className="shrink-0" />
               <span className="flex-1">{n.texto}</span>
-              {n.a === '/compromisos' && misPendientes.length > 0 && (
-                <span className="bg-white/15 px-1.5 py-0.5 text-[9px] text-white">
-                  {misPendientes.length}
-                </span>
-              )}
-              {n.a === '/pendientes' && vencidos.length > 0 && (
-                <span className="bg-signal px-1.5 py-0.5 text-[9px] text-white">
-                  {vencidos.length}
-                </span>
-              )}
+              {/* Lo vencido pesa más que lo propio: si hay, se muestra eso. */}
+              {n.a === '/compromisos' &&
+                (vencidos.length > 0 ? (
+                  <span
+                    className="bg-signal px-1.5 py-0.5 text-[9px] text-white"
+                    title={`${vencidos.length} vencidos`}
+                  >
+                    {vencidos.length}
+                  </span>
+                ) : (
+                  misPendientes.length > 0 && (
+                    <span className="bg-white/15 px-1.5 py-0.5 text-[9px] text-white">
+                      {misPendientes.length}
+                    </span>
+                  )
+                ))}
             </NavLink>
           ))}
         </nav>

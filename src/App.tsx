@@ -6,7 +6,6 @@ import Panel from './pages/Panel'
 import Reuniones from './pages/Reuniones'
 import ReunionDetalle from './pages/ReunionDetalle'
 import Compromisos from './pages/Compromisos'
-import Pendientes from './pages/Pendientes'
 import Correos from './pages/Correos'
 import Admin from './pages/Admin'
 
@@ -35,7 +34,8 @@ function Rutas() {
         <Route path="reuniones" element={<Reuniones />} />
         <Route path="reuniones/:id" element={<ReunionDetalle />} />
         <Route path="compromisos" element={<Compromisos />} />
-        <Route path="pendientes" element={<Pendientes />} />
+        {/* Los pendientes pasaron a ser una vista de Compromisos. */}
+        <Route path="pendientes" element={<Navigate to="/compromisos" replace />} />
         <Route path="correos" element={<Correos />} />
         <Route path="admin" element={<Admin />} />
         <Route path="*" element={<Navigate to="/" replace />} />
