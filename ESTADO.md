@@ -139,6 +139,9 @@ usar para mostrar la herramienta.
 
 ## Lo que queda pendiente
 
+> Para llevar a la reunión: **[PEDIDOS-A-HARVEY.md](PEDIDOS-A-HARVEY.md)** tiene
+> todo esto convertido en preguntas concretas, ordenadas por urgencia.
+
 ### 1. Conectar la casilla de correo
 
 **Es lo único que falta para que la plataforma esté completa.**
