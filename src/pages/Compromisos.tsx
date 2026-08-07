@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   DndContext,
   DragOverlay,
@@ -37,6 +37,8 @@ import ModalCompromiso from '../components/reunion/ModalCompromiso'
 
 type Vista = 'tablero' | 'lista'
 type Agrupacion = 'responsable' | 'reunion' | 'vencimiento'
+/** Recorte por plazo. Los tres son excluyentes entre sí. */
+type Plazo = 'todos' | 'vencidos' | 'semana'
 
 const CLAVE_VISTA = 'harvey-os:vista-compromisos'
 
@@ -49,14 +51,22 @@ const AGRUPACIONES: { valor: Agrupacion; texto: string }[] = [
 export default function Compromisos() {
   const { estado, yo, moverCompromiso } = useApp()
 
+  // Las métricas del panel entran acá con el filtro ya puesto.
+  const [params] = useSearchParams()
+  const filtroInicial = params.get('filtro')
+
   const [vista, setVista] = useState<Vista>(
     () => (localStorage.getItem(CLAVE_VISTA) as Vista) || 'tablero',
   )
   const [agrupar, setAgrupar] = useState<Agrupacion>('responsable')
-  const [responsable, setResponsable] = useState<string>('todos')
+  const [responsable, setResponsable] = useState<string>(
+    filtroInicial === 'mios' && yo ? yo.id : 'todos',
+  )
   const [importancia, setImportancia] = useState<Importancia | 'todas'>('todas')
-  const [soloVencidos, setSoloVencidos] = useState(false)
-  const [incluirHechos, setIncluirHechos] = useState(true)
+  const [plazo, setPlazo] = useState<Plazo>(
+    filtroInicial === 'vencidos' ? 'vencidos' : filtroInicial === 'semana' ? 'semana' : 'todos',
+  )
+  const [incluirHechos, setIncluirHechos] = useState(filtroInicial !== 'abiertos')
   const [busqueda, setBusqueda] = useState('')
   const [creando, setCreando] = useState(false)
   const [editando, setEditando] = useState<Compromiso | undefined>()
@@ -67,17 +77,30 @@ export default function Compromisos() {
     localStorage.setItem(CLAVE_VISTA, v)
   }
 
+  /*
+   * El estado inicial sólo corre al montar. Si ya estás en la pantalla y
+   * llega otro `?filtro=`, hay que reaplicarlo a mano.
+   */
+  useEffect(() => {
+    setPlazo(
+      filtroInicial === 'vencidos' ? 'vencidos' : filtroInicial === 'semana' ? 'semana' : 'todos',
+    )
+    setIncluirHechos(filtroInicial !== 'abiertos')
+    if (filtroInicial === 'mios' && yo) setResponsable(yo.id)
+  }, [filtroInicial, yo])
+
   const filtrados = useMemo(
     () =>
       estado.compromisos.filter((c) => {
         if (responsable !== 'todos' && c.responsableId !== responsable) return false
         if (importancia !== 'todas' && c.importancia !== importancia) return false
-        if (soloVencidos && !estaVencido(c)) return false
+        if (plazo === 'vencidos' && !estaVencido(c)) return false
+        if (plazo === 'semana' && !venceProximo(c)) return false
         if (!incluirHechos && c.estado === 'hecho') return false
         if (busqueda && !c.accion.toLowerCase().includes(busqueda.toLowerCase())) return false
         return true
       }),
-    [estado.compromisos, responsable, importancia, soloVencidos, incluirHechos, busqueda],
+    [estado.compromisos, responsable, importancia, plazo, incluirHechos, busqueda],
   )
 
   const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
@@ -135,21 +158,25 @@ export default function Compromisos() {
           </>
         }
       >
+        {/* Las cifras son de todo el equipo y sirven de atajo al filtro. */}
         <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
           <Metrica
-            valor={filtrados.filter((c) => c.estado !== 'hecho').length}
-            etiqueta="Abiertos"
+            valor={estado.compromisos.filter((c) => c.estado !== 'hecho').length}
+            etiqueta="Abiertos del equipo"
+            a="?filtro=abiertos"
           />
-          <Metrica valor={mios.length} etiqueta="A tu nombre" />
+          <Metrica valor={mios.length} etiqueta="A tu nombre" a="?filtro=mios" />
           <Metrica
-            valor={vencidos.length}
-            etiqueta="Vencidos"
+            valor={estado.compromisos.filter((c) => estaVencido(c)).length}
+            etiqueta="Vencidos del equipo"
             tono={vencidos.length ? 'signal' : undefined}
+            a="?filtro=vencidos"
           />
           <Metrica
-            valor={filtrados.filter((c) => c.estado === 'hecho').length}
-            etiqueta="Cerrados"
-            tono="acid"
+            valor={estado.compromisos.filter((c) => venceProximo(c)).length}
+            etiqueta="Vencen esta semana"
+            tono="amber"
+            a="?filtro=semana"
           />
         </div>
 
@@ -183,14 +210,24 @@ export default function Compromisos() {
             ))}
           </select>
           <button
-            onClick={() => setSoloVencidos((v) => !v)}
+            onClick={() => setPlazo((p) => (p === 'vencidos' ? 'todos' : 'vencidos'))}
             className={
-              soloVencidos
+              plazo === 'vencidos'
                 ? 'border border-signal bg-signal px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white'
                 : 'border border-borde2 bg-panel px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:border-signal hover:text-signal'
             }
           >
-            Sólo vencidos
+            Vencidos
+          </button>
+          <button
+            onClick={() => setPlazo((p) => (p === 'semana' ? 'todos' : 'semana'))}
+            className={
+              plazo === 'semana'
+                ? 'border border-amber bg-amber px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white'
+                : 'border border-borde2 bg-panel px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:border-amber hover:text-amber'
+            }
+          >
+            Vencen esta semana
           </button>
           {yo && (
             <button

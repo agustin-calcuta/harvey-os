@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CalendarPlus, Plus } from 'lucide-react'
 import { useApp } from '../store/AppContext'
 import {
@@ -35,7 +35,12 @@ const FILTROS: { valor: EstadoReunion | 'todas'; texto: string }[] = [
 
 export default function Reuniones() {
   const { estado, puedeOrganizar } = useApp()
-  const [filtro, setFiltro] = useState<EstadoReunion | 'todas'>('todas')
+  // Las métricas del panel entran acá con el estado ya filtrado.
+  const [params] = useSearchParams()
+  const [filtro, setFiltro] = useState<EstadoReunion | 'todas'>(() => {
+    const e = params.get('estado')
+    return e && e in ESTADO_REUNION ? (e as EstadoReunion) : 'todas'
+  })
   const [creando, setCreando] = useState(false)
 
   const lista = ordenarReuniones(

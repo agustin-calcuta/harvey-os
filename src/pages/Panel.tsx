@@ -41,6 +41,25 @@ export default function Panel() {
   const abiertos = estado.compromisos.filter((c) => c.estado !== 'hecho')
   const cerradas = estado.reuniones.filter((r) => r.estado === 'cerrada')
 
+  /*
+   * El saludo habla de lo propio; las métricas de abajo, de todo el
+   * equipo. Decir "todo al día" sin aclarar el alcance se contradecía
+   * con las cifras que venían justo debajo.
+   */
+  const misVencidos = vencidos.filter((c) => c.responsableId === yo?.id)
+  const plural = (n: number, sing: string, plur: string) => (n === 1 ? sing : plur)
+
+  const saludo =
+    misAbiertos.length === 0
+      ? vencidos.length > 0
+        ? `No tenés nada abierto a tu nombre. El equipo tiene ${vencidos.length} ${plural(vencidos.length, 'compromiso vencido', 'compromisos vencidos')}.`
+        : 'No tenés compromisos abiertos. Todo al día.'
+      : `Tenés ${misAbiertos.length} ${plural(misAbiertos.length, 'compromiso abierto', 'compromisos abiertos')}${
+          misVencidos.length
+            ? `, ${misVencidos.length} de ellos ${plural(misVencidos.length, 'vencido', 'vencidos')}`
+            : ''
+        }.`
+
   const arrastrados = proxima ? compromisosArrastrados(estado, proxima.id) : []
   const agenda = proxima ? agendaDe(estado, proxima.id) : []
   const propuestos = proxima
@@ -61,31 +80,36 @@ export default function Panel() {
         <h1 className="display text-4xl sm:text-5xl">
           Hola, {yo?.nombre.split(' ')[0]}
         </h1>
-        <p className="mt-2 max-w-xl text-sm text-suave">
-          {misAbiertos.length === 0
-            ? 'No tenés compromisos abiertos. Todo al día.'
-            : `Tenés ${misAbiertos.length} compromiso${misAbiertos.length > 1 ? 's' : ''} abierto${misAbiertos.length > 1 ? 's' : ''}${
-                vencidos.filter((c) => c.responsableId === yo?.id).length
-                  ? ` y ${vencidos.filter((c) => c.responsableId === yo?.id).length} vencido${vencidos.filter((c) => c.responsableId === yo?.id).length > 1 ? 's' : ''}`
-                  : ''
-              }.`}
-        </p>
+        <p className="mt-2 max-w-xl text-sm text-suave">{saludo}</p>
       </div>
 
-      {/* ── Métricas ── */}
+      {/*
+        Estas cifras son de todo el equipo, no sólo de quien mira: por eso
+        las etiquetas lo dicen. Cada una lleva al listado ya filtrado.
+      */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Metrica valor={abiertos.length} etiqueta="Compromisos abiertos" />
+        <Metrica
+          valor={abiertos.length}
+          etiqueta="Abiertos del equipo"
+          a="/compromisos?filtro=abiertos"
+        />
         <Metrica
           valor={vencidos.length}
-          etiqueta="Vencidos"
+          etiqueta="Vencidos del equipo"
           tono={vencidos.length ? 'signal' : undefined}
+          a="/compromisos?filtro=vencidos"
         />
         <Metrica
           valor={porVencer.length}
           etiqueta="Vencen esta semana"
           tono={porVencer.length ? 'amber' : undefined}
+          a="/compromisos?filtro=semana"
         />
-        <Metrica valor={cerradas.length} etiqueta="Reuniones cerradas" />
+        <Metrica
+          valor={cerradas.length}
+          etiqueta="Reuniones cerradas"
+          a="/reuniones?estado=cerrada"
+        />
       </div>
 
       {/* ── Próxima reunión ── */}

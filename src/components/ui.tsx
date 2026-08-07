@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { X } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArrowUpRight, X } from 'lucide-react'
 import { cx, iniciales } from '../lib/utils'
 import { IMPORTANCIA, OBJETIVOS, type Importancia, type Objetivo } from '../types'
 
@@ -364,16 +365,22 @@ export function Vacio({
   )
 }
 
+/**
+ * Cifra con su etiqueta. Con `a` se vuelve un enlace: la métrica lleva
+ * al listado ya filtrado por eso mismo que muestra.
+ */
 export function Metrica({
   valor,
   etiqueta,
   tono,
   sufijo,
+  a,
 }: {
   valor: string | number
   etiqueta: string
   tono?: 'signal' | 'amber' | 'acid' | 'cold'
   sufijo?: string
+  a?: string
 }) {
   const colores = {
     signal: 'text-signal',
@@ -381,14 +388,30 @@ export function Metrica({
     acid: 'text-acid',
     cold: 'text-cold',
   }
-  return (
-    <div className="card p-4">
-      <div className="label mb-2">{etiqueta}</div>
+  const cuerpo = (
+    <>
+      <div className="label mb-2 flex items-center gap-1.5">
+        {etiqueta}
+        {a && (
+          <ArrowUpRight
+            size={11}
+            className="text-borde2 transition-colors group-hover:text-signal"
+          />
+        )}
+      </div>
       <div className={cx('display text-4xl leading-none', tono && colores[tono])}>
         {valor}
         {sufijo && <span className="ml-1 text-lg text-suave">{sufijo}</span>}
       </div>
-    </div>
+    </>
+  )
+
+  if (!a) return <div className="card p-4">{cuerpo}</div>
+
+  return (
+    <Link to={a} className="card group p-4 transition-colors hover:border-signal">
+      {cuerpo}
+    </Link>
   )
 }
 
