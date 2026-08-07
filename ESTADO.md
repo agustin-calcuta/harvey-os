@@ -185,7 +185,8 @@ ofrece: es una cuenta nuestra, no algo que el equipo vaya a usar.
 ## Lo que queda pendiente
 
 > Para llevar a la reunión: **[PEDIDOS-A-HARVEY.md](PEDIDOS-A-HARVEY.md)** tiene
-> esto convertido en preguntas concretas.
+> esto convertido en preguntas concretas, y en `docs/` está la **guía de uso en
+> PDF** para mostrarle al equipo (se regenera desde `docs/guia-de-uso.html`).
 
 ### 1. Conectar la casilla de correo
 
@@ -219,7 +220,20 @@ herramienta les sirve.
 ### 4. Invitación por correo
 
 Hoy se da de alta a alguien y hay que avisarle por otro medio que ya puede
-entrar. Cuando esté la casilla conectada, ese aviso puede salir solo.
+entrar. Cuando esté la casilla conectada, ese aviso puede salir solo. Lo mismo
+con los pedidos de entrada: hoy el organizador los ve al abrir Salas, y podría
+además llegarle un correo.
+
+### 5. Decisiones que dependen de la reunión del lunes
+
+No son trabajo pendiente nuestro, son datos que faltan:
+
+- **Los correos de Google** de quienes organizan cada sala. Sin eso no entran.
+- **Qué salas arrancan** y quién organiza cada una.
+- Si el temario cierra por plazo o a mano en cada equipo.
+- Si además de diferir usan rechazar.
+- Si cargamos los compromisos que hoy tienen abiertos, para arrancar con su
+  realidad y no con datos de ejemplo.
 
 ---
 

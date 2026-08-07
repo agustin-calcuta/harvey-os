@@ -1,7 +1,8 @@
 # Qué pedirle a Harvey para dejar el tablero andando
 
-Guía para la reunión. Está ordenado por urgencia: el bloque 1 es lo que hace
-falta sí o sí para que entren y lo usen; el resto se puede ir cerrando después.
+Guía para la reunión del lunes. Está ordenado por urgencia: el bloque 1 es lo que
+hace falta sí o sí para que entren y lo usen; el resto se puede ir cerrando
+después.
 
 Donde dice **asumido** es un valor que ya pusimos por defecto: sólo hay que
 confirmarlo o corregirlo, no queda bloqueado esperando respuesta.
@@ -10,41 +11,53 @@ confirmarlo o corregirlo, no queda bloqueado esperando respuesta.
 
 ## 1. Sin esto no pueden entrar
 
-### 1.1 Los correos de los cuatro socios
+### 1.1 Los correos de Google
 
-Con qué cuenta de Google entra cada uno. Tiene que ser la cuenta con la que
-inician sesión en Google, no cualquier dirección.
+Con qué cuenta entra cada uno. **Tiene que ser la cuenta con la que inician
+sesión en Google**, no cualquier dirección: es la llave con la que el sistema los
+reconoce.
 
-| Socio | Correo | Rol |
-| --- | --- | --- |
-| Matías | | Organizador *(asumido)* |
-| Tomás | | Miembro |
-| Nicolás | | Admin *(asumido)* |
-| Lucas | | Miembro |
+| Quién | Correo de Google |
+| --- | --- |
+| Matías | |
+| Tomás | |
+| Nicolás | |
+| Lucas | |
 
 > Hoy están cargados como `matias@harveywillys.com` y así el resto, que los
 > inventamos nosotros. Si no son esos, no van a poder entrar.
 
-### 1.2 Confirmar quién organiza
+No hace falta el correo de todo el mundo ahora: alcanza con los de quienes
+organizan cada sala. Ellos después dan de alta a su gente solos, con nombre y
+correo, sin pedirnos nada.
 
-Fran dijo que Matías sería el que carga y aprueba los temas. **Confirmar.**
+### 1.2 Qué salas arrancan y quién organiza cada una
 
-El organizador es el único que aprueba temas, asigna tiempos, cierra el temario
-y modera. Si son dos personas, se puede.
+Esta es **la decisión importante** y reemplaza a la vieja pregunta de "quién es
+el admin". Ya no hay un rol único para toda la herramienta: el rol vive dentro de
+cada sala, y la misma persona puede organizar la suya y ser un miembro más en
+otra.
 
-### 1.3 Confirmar quién administra
+| Sala | Quién la organiza | Quiénes participan |
+| --- | --- | --- |
+| Socios *(asumida)* | Los cuatro, a la par | Matías, Tomás, Nicolás, Lucas |
+| | | |
+| | | |
 
-Alguien del equipo tiene que poder dar de alta gente, cambiar roles y tocar la
-configuración. Pusimos a **Nicolás** *(asumido)*, pero es una decisión de ellos.
+Lo que hablamos con Ariel y Fran fue que cada socio abra la de su equipo
+—Marketing, Diseño, Producción, lo que corresponda—. Conviene salir del lunes
+con al menos dos o tres definidas y creadas en el momento.
 
-Puede ser la misma persona que organiza.
+**Recordar:** el organizador de una sala aprueba temas, asigna tiempos, cierra el
+temario, modera y decide quién entra. El miembro propone temas, participa y sigue
+sus propios compromisos.
 
 ---
 
 ## 2. Para que salgan los correos automáticos
 
 Son dos: uno cuando se cierra el temario y otro con la minuta al terminar. Hoy se
-componen enteros y quedan guardados, pero hay que mandarlos a mano.
+componen enteros y quedan guardados, pero **hay que mandarlos a mano**.
 
 ### 2.1 Desde qué dirección salen
 
@@ -87,22 +100,25 @@ van a imprimir o mandar, así que conviene cerrarlo con ellos mirando.
 
 ## 4. Cómo son sus reuniones
 
-Todo esto ya tiene un valor puesto y se cambia desde Administración en un
-segundo. Es para confirmar, no para trabar nada.
+Todo esto ya tiene un valor puesto y se cambia desde la sala en un segundo. Es
+para confirmar, no para trabar nada.
 
 | Qué | Asumido | Confirmar |
 | --- | --- | --- |
 | Día y hora fijos | Lunes 10:00 | |
 | Cuánto duran | 60 minutos | |
-| Cuánto antes cierra el temario | 24 horas | |
+| Cuánto dura cada tema | 15 minutos | |
+| Cuándo cierra el temario | 24 h antes | |
 | Dónde se hacen | Showroom Palermo | |
 
 Sobre el cierre del temario: Fran propuso 24 h para que todos lleguen habiendo
-leído. Vale preguntar si en la práctica les sirve o si necesitan más o menos.
+leído. Ahora también se puede **cerrar a mano**, sin plazo, y cada sala lo elige
+por separado. Vale preguntar qué prefieren para cada equipo — la de socios con
+plazo y las de equipo a mano suele funcionar mejor.
 
 ---
 
-## 5. Dos decisiones que quedaron abiertas en la charla con Fran
+## 5. Dos decisiones que quedaron abiertas con Fran
 
 ### 5.1 ¿Todos proponen temas?
 
@@ -163,9 +179,9 @@ momento si quedan así o pasan a nombre de ellos.
 
 **Lo mínimo indispensable, todo lo demás puede esperar:**
 
-1. Los cuatro correos de Google.
-2. Quién organiza y quién administra.
-3. Desde qué casilla salen los correos.
-4. El logo en SVG o PNG.
+1. **Los correos de Google** de quienes organizan cada sala.
+2. **Qué salas arrancan** y quién organiza cada una.
+3. **Desde qué casilla** salen los correos automáticos.
+4. **El logo** en SVG o PNG.
 
 Con esas cuatro cosas el tablero queda andando en el día.

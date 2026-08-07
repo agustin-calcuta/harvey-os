@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Harvey · Guía de uso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Almarai:wght@400;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --tinta: #14120f;
+    --suave: #6b665d;
+    --tenue: #9a948a;
+    --borde: #e3ded4;
+    --borde2: #cdc6b8;
+    --hueco: #f7f5f1;
+    --signal: #c0392b;
+    --amber: #b26b18;
+    --acid: #5f7d1c;
+    --cold: #2e6285;
+    --noche: #14120f;
+  }
+
+  @page { size: A4; margin: 16mm 15mm 14mm; }
+  @page :first { margin: 0; }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 9.6pt;
+    line-height: 1.55;
+    color: var(--tinta);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, .display { font-family: 'Almarai', 'Inter', sans-serif; font-weight: 800; }
+
+  .label {
+    font-size: 6.6pt; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .16em; color: var(--tenue);
+  }
+
+  /* ── Portada ── */
+  .portada {
+    background: var(--noche); color: #fff;
+    height: 297mm; padding: 26mm 22mm;
+    display: flex; flex-direction: column; justify-content: space-between;
+    page-break-after: always;
+  }
+  .portada .marca { font-size: 8pt; font-weight: 700; letter-spacing: .3em;
+    text-transform: uppercase; color: rgba(255,255,255,.5); }
+  .portada h1 { font-size: 62pt; line-height: .92; letter-spacing: -.02em; }
+  .portada h1 span { color: var(--signal); }
+  .portada .bajada {
+    font-size: 12pt; line-height: 1.5; color: rgba(255,255,255,.8);
+    max-width: 118mm; margin-top: 9mm; font-weight: 300;
+  }
+  .portada .fases { display: flex; gap: 0; margin-top: 14mm; }
+  .portada .fase {
+    flex: 1; border-top: 2px solid var(--signal); padding-top: 4mm; padding-right: 6mm;
+  }
+  .portada .fase b { display: block; font-family: 'Almarai', sans-serif;
+    font-size: 13pt; margin-bottom: 1.5mm; }
+  .portada .fase i { font-style: normal; font-size: 8.2pt; color: rgba(255,255,255,.6);
+    line-height: 1.45; display: block; }
+  .portada .pie { display: flex; justify-content: space-between; align-items: flex-end;
+    font-size: 7.6pt; color: rgba(255,255,255,.45); letter-spacing: .1em;
+    text-transform: uppercase; font-weight: 600; }
+
+  /* ── Estructura ── */
+  section { margin-bottom: 6.5mm; }
+  section:last-of-type { margin-bottom: 0; }
+  .caja, .tarjeta, .semaforo, .paso, tr { page-break-inside: avoid; }
+  .seccion-titulo, h3 { page-break-after: avoid; }
+  .seccion-titulo {
+    display: flex; align-items: baseline; gap: 4mm;
+    border-bottom: 1.5px solid var(--tinta); padding-bottom: 2mm; margin-bottom: 4.5mm;
+  }
+  .seccion-titulo .num {
+    font-family: 'Almarai', sans-serif; font-size: 20pt; color: var(--signal);
+    line-height: 1;
+  }
+  .seccion-titulo h2 { font-size: 16pt; letter-spacing: -.01em; }
+
+  h3 { font-size: 10.5pt; margin: 3.4mm 0 1.2mm; }
+  p { margin-bottom: 2.1mm; }
+  p.intro { color: var(--suave); font-size: 10pt; margin-bottom: 3.2mm; }
+  strong { font-weight: 700; }
+  em { font-style: normal; color: var(--suave); }
+
+  ul { margin: 0 0 3mm 4.5mm; }
+  li { margin-bottom: 1.4mm; }
+  li::marker { color: var(--borde2); }
+
+  /* ── Tablas ── */
+  table { width: 100%; border-collapse: collapse; margin: 3mm 0 4mm; font-size: 8.8pt; }
+  th {
+    text-align: left; font-size: 6.6pt; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .14em; color: var(--tenue); padding: 0 3mm 1.8mm 0;
+    border-bottom: 1px solid var(--tinta);
+  }
+  td { padding: 2.2mm 3mm 2.2mm 0; border-bottom: 1px solid var(--borde);
+    vertical-align: top; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  table.roles td:first-child { width: 30mm; }
+
+  /* ── Bloques ── */
+  .caja {
+    background: var(--hueco); border-left: 2.5px solid var(--borde2);
+    padding: 3.5mm 4mm; margin: 3mm 0 4mm; font-size: 8.8pt;
+  }
+  .caja.ojo { border-left-color: var(--signal); }
+  .caja .label { margin-bottom: 1.5mm; }
+  .caja p:last-child { margin-bottom: 0; }
+
+  .pasos { counter-reset: paso; margin: 3mm 0 4mm; }
+  .paso {
+    display: flex; gap: 4mm; padding: 2.8mm 0;
+    border-bottom: 1px solid var(--borde);
+  }
+  .paso:last-child { border-bottom: 0; }
+  .paso::before {
+    counter-increment: paso; content: counter(paso, decimal-leading-zero);
+    font-family: 'Almarai', sans-serif; font-size: 10pt; color: var(--signal);
+    flex-shrink: 0; width: 8mm; padding-top: .3mm;
+  }
+  .paso b { display: block; font-size: 9.6pt; margin-bottom: .8mm; }
+  .paso span { color: var(--suave); font-size: 8.8pt; line-height: 1.5; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm 7mm; margin: 3mm 0 4mm; }
+  .tarjeta { border: 1px solid var(--borde); padding: 3.5mm 4mm; }
+  .tarjeta b { display: block; font-family: 'Almarai', sans-serif; font-size: 10pt;
+    margin-bottom: 1.2mm; }
+  .tarjeta span { font-size: 8.6pt; color: var(--suave); line-height: 1.5; }
+
+  .chip {
+    display: inline-block; border: 1px solid var(--borde2); padding: .4mm 1.8mm;
+    font-size: 6.6pt; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .1em; vertical-align: .4mm;
+  }
+  .chip.rojo { border-color: var(--signal); color: var(--signal); }
+  .chip.ambar { border-color: var(--amber); color: var(--amber); }
+  .chip.verde { border-color: var(--acid); color: var(--acid); }
+  .chip.azul { border-color: var(--cold); color: var(--cold); }
+
+  .semaforo { display: flex; gap: 5mm; margin: 3mm 0 4mm; }
+  .semaforo div { flex: 1; border-top: 2.5px solid; padding-top: 2mm; }
+  .semaforo b { display: block; font-size: 9.5pt; font-family: 'Almarai', sans-serif; }
+  .semaforo span { font-size: 8.2pt; color: var(--suave); }
+
+  .pie-pagina {
+    margin-top: 4mm; padding-top: 3mm; border-top: 1px solid var(--borde);
+    display: flex; justify-content: space-between;
+    font-size: 6.8pt; text-transform: uppercase; letter-spacing: .14em;
+    color: var(--tenue); font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════ PORTADA ══════════ -->
+<div class="portada">
+  <div class="marca">Calcuta para Harvey</div>
+  <div>
+    <h1>Guía<br />de <span>uso</span></h1>
+    <p class="bajada">
+      Cómo funciona la plataforma de reuniones: qué hace cada sección, quién
+      puede hacer qué, y cómo se recorre una reunión de principio a fin.
+    </p>
+    <div class="fases">
+      <div class="fase">
+        <b>Pre-reunión</b>
+        <i>Los temas se cargan antes, con tiempo para leerlos.</i>
+      </div>
+      <div class="fase">
+        <b>Reunión</b>
+        <i>Se sigue la agenda, se cronometra y se anota en el momento.</i>
+      </div>
+      <div class="fase">
+        <b>Post-reunión</b>
+        <i>La minuta sale sola y cada uno queda con lo suyo.</i>
+      </div>
+    </div>
+  </div>
+  <div class="pie">
+    <span>Agosto de 2026</span>
+    <span>Versión 2</span>
+  </div>
+</div>
+
+<!-- ══════════ 1. QUÉ ES ══════════ -->
+<section>
+  <div class="seccion-titulo"><span class="num">01</span><h2>De qué se trata</h2></div>
+
+  <p class="intro">
+    La plataforma ordena las reuniones en tres momentos. La idea de fondo es
+    simple: <strong>si los temas se cargan antes, la reunión rinde</strong>. Se
+    llega sabiendo de qué se va a hablar, cuánto dura cada cosa y qué hay que
+    resolver.
+  </p>
+
+  <div class="pasos">
+    <div class="paso">
+      <div>
+        <b>Antes — se arma el temario</b>
+        <span>Cualquiera del equipo propone temas. Cada tema lleva su
+        importancia, para qué se trata y cuánto tiempo necesita. El organizador
+        decide cuáles entran y en qué orden. Al cerrar el temario, sale un correo
+        con la agenda definitiva.</span>
+      </div>
+    </div>
+    <div class="paso">
+      <div>
+        <b>Durante — se sigue la agenda</b>
+        <span>Los temas aparecen uno por uno con su cronómetro. Se anota lo que
+        se resuelve y se cargan los compromisos en el momento, con responsable y
+        fecha. No hace falta que alguien tome nota aparte.</span>
+      </div>
+    </div>
+    <div class="paso">
+      <div>
+        <b>Después — queda registrado</b>
+        <span>La minuta se arma sola con lo anotado y se puede bajar en PDF. Cada
+        compromiso queda con nombre y fecha, y se sigue desde el tablero hasta
+        que esté hecho.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="caja">
+    <div class="label">Lo que se gana</div>
+    <p>Nadie llega a preguntar de qué se habla. Lo que se decidió queda escrito y
+    con fecha. Y lo que quedó pendiente no se pierde entre una reunión y la
+    siguiente: aparece solo en la próxima.</p>
+  </div>
+</section>
+
+<!-- ══════════ 2. SALAS ══════════ -->
+<section>
+  <div class="seccion-titulo"><span class="num">02</span><h2>Salas: cada equipo, su espacio</h2></div>
+
+  <p class="intro">
+    Una <strong>sala</strong> es un equipo con sus reuniones, sus temas y sus
+    compromisos. Los socios tienen la suya; marketing, la suya; diseño, la suya.
+    Lo que pasa en una no se ve desde otra.
+  </p>
+
+  <p>
+    Cada persona <strong>ve únicamente las salas de las que forma parte</strong>.
+    Eso no es una cuestión de pantalla: está garantizado en la base de datos, así
+    que no hay manera de asomarse a la sala de al lado.
+  </p>
+
+  <p>
+    Se cambia de sala desde el desplegable de arriba a la izquierda, y desde
+    <strong>Salas</strong> en el menú se ven todas juntas.
+  </p>
+
+  <h3>Los dos roles</h3>
+  <p>
+    El rol <strong>no es global, vive en cada sala</strong>. La misma persona
+    puede organizar la de su equipo y ser un miembro más en la de socios.
+  </p>
+
+  <table class="roles">
+    <tr><th>Rol</th><th>Qué puede hacer en esa sala</th></tr>
+    <tr>
+      <td><span class="chip ambar">Organizador</span></td>
+      <td>Crea reuniones, aprueba los temas propuestos, asigna los tiempos,
+      ordena la agenda, modera la reunión, cierra el temario y la minuta.
+      Decide quién entra a la sala y con qué rol.
+      <strong>Ve los compromisos de todo el equipo.</strong></td>
+    </tr>
+    <tr>
+      <td><span class="chip">Miembro</span></td>
+      <td>Propone temas —para una reunión o para el banco—, participa de la
+      reunión y actualiza el avance de lo suyo.
+      <strong>Ve solamente sus propios compromisos.</strong></td>
+    </tr>
+  </table>
+
+  <div class="caja">
+    <div class="label">En la práctica</div>
+    <p>En la sala de socios los cuatro pueden estar como organizadores, todos a
+    la par: todos proponen y todos aprueban. En la sala de un equipo, el socio
+    organiza y su gente propone.</p>
+  </div>
+</section>
+
+<!-- ══════════ 3. ENTRAR ══════════ -->
+<section>
+  <div class="seccion-titulo"><span class="num">03</span><h2>Entrar y sumar gente</h2></div>
+
+  <h3>Cómo se entra</h3>
+  <p>
+    Con el botón <strong>Continuar con Google</strong>. No hay usuario ni
+    contraseña que recordar: se entra con la cuenta de Google de siempre, y esa
+    cuenta es la que identifica a cada uno.
+  </p>
+
+  <h3>Sumar a alguien del equipo</h3>
+  <p>
+    El organizador entra a <strong>Salas → Equipo → Sumar a alguien</strong>, y
+    lo da de alta con nombre, cargo y correo. No hace falta código ni enlace de
+    invitación: <strong>cuando esa persona entra con Google con ese correo, el
+    sistema la reconoce sola</strong> y ya ve la sala con su rol.
+  </p>
+  <div class="caja ojo">
+    <div class="label">Importante</div>
+    <p>El correo tiene que ser <strong>el de la cuenta con la que inicia sesión
+    en Google</strong>. Si se carga otro, esa persona no va a poder entrar.</p>
+  </div>
+
+  <h3>Si la sala ya existe</h3>
+  <p>
+    Al crear una sala, si el nombre ya está tomado el sistema avisa —aunque sea
+    de un equipo del que no formás parte— y muestra quién la organiza y cuánta
+    gente tiene. Ahí se puede <strong>pedir unirse</strong> en vez de armar una
+    segunda igual. El organizador ve el pedido al entrar a Salas y lo acepta o lo
+    rechaza.
+  </p>
+
+  <h3>Salir de una sala</h3>
+  <p>
+    Desde <strong>Salas → Salir</strong>. Lo único que no se permite es que se
+    vaya el último organizador y la sala quede sin nadie que arme la agenda: en
+    ese caso hay que pasarle el rol a alguien primero.
+  </p>
+</section>
+
+<!-- ══════════ 4. SECCIONES ══════════ -->
+<section>
+  <div class="seccion-titulo"><span class="num">04</span><h2>Las secciones</h2></div>
+
+  <p class="intro">
+    Todo lo que se ve pertenece a la sala activa, la que figura arriba a la
+    izquierda.
+  </p>
+
+  <div class="grid2">
+    <div class="tarjeta">
+      <b>Panel</b>
+      <span>El resumen del día: cuántos compromisos tenés abiertos, cuáles están
+      vencidos, la próxima reunión y las últimas cerradas. Las cifras son
+      clickeables y llevan al listado ya filtrado.</span>
+    </div>
+    <div class="tarjeta">
+      <b>Reuniones</b>
+      <span>Todas las de la sala, con su estado. Desde acá se crea una nueva y se
+      entra a la que esté en curso. Cada reunión tiene adentro sus tres fases.</span>
+    </div>
+    <div class="tarjeta">
+      <b>Temario</b>
+      <span>El banco de temas de la sala: cosas para tratar en algún momento,
+      todavía sin fecha. Se anotan acá apenas aparecen, sin esperar a que haya
+      una reunión armada.</span>
+    </div>
+    <div class="tarjeta">
+      <b>Compromisos</b>
+      <span>Todo lo que quedó a cargo de alguien. Dos vistas: tablero, para
+      arrastrar entre estados, y lista, agrupable por responsable, reunión o
+      vencimiento.</span>
+    </div>
+    <div class="tarjeta">
+      <b>Correos</b>
+      <span>El registro de los avisos que salieron: el del temario cerrado y el
+      de la minuta. Se puede ver cómo quedó cada uno y volver a mandarlo.</span>
+    </div>
+    <div class="tarjeta">
+      <b>Salas</b>
+      <span>Todas las salas de las que formás parte. Desde acá se crea una nueva,
+      se gestiona el equipo de cada una, se resuelven los pedidos de entrada y se
+      sale de una sala.</span>
+    </div>
+  </div>
+
+  <h3>El temario, con más detalle</h3>
+  <p>
+    Es lo que en la charla llamamos <em>«el banco de suplentes»</em>. Sirve para
+    lo que aparece en cualquier momento y no hay dónde anotarlo: se carga ahí,
+    queda sin fecha, y cuando se arma la próxima reunión el organizador elige
+    cuáles bajar a la agenda con <strong>Llevar a una reunión</strong>.
+  </p>
+</section>
+
+<!-- ══════════ 5. UNA REUNIÓN ══════════ -->
+<section>
+  <div class="seccion-titulo"><span class="num">05</span><h2>Una reunión, de punta a punta</h2></div>
+
+  <h3>Pre-reunión — armar el temario</h3>
+  <p>
+    El organizador crea la reunión con fecha, duración y lugar. Queda con la
+    <span class="chip verde">Agenda abierta</span> y el equipo empieza a proponer
+    temas. Cada tema lleva tres cosas:
+  </p>
+
+  <div class="semaforo">
+    <div style="border-color:#c0392b"><b>Alta</b><span>Caliente. Urge.</span></div>
+    <div style="border-color:#b26b18"><b>Media</b><span>Tibio. Importa.</span></div>
+    <div style="border-color:#2e6285"><b>Baja</b><span>Frío. Puede esperar.</span></div>
+  </div>
+
+  <table>
+    <tr><th>Objetivo</th><th>Cuándo se usa</th></tr>
+    <tr><td>Decisión</td><td>Hay que definir algo y salir con una resolución tomada.</td></tr>
+    <tr><td>Exploratoria</td><td>Se abre el tema para pensarlo en conjunto, sin cerrarlo todavía.</td></tr>
+    <tr><td>Comunicativa</td><td>Se comunica algo que impacta al resto y admite devolución.</td></tr>
+    <tr><td>Informativa</td><td>Se informa un estado o un avance. No requiere discusión.</td></tr>
+  </table>
+
+  <p>
+    Además, <strong>quién lo propone</strong> y cuántos minutos necesita. El
+    organizador aprueba los que entran, ordena la agenda arrastrando y ajusta los
+    tiempos: si la suma se pasa de lo previsto, avisa.
+  </p>
+
+  <p>
+    El temario cierra <strong>por plazo</strong> —24 horas antes, o lo que se
+    configure— <strong>o a mano</strong>, cuando el organizador quiera. Al
+    cerrarlo sale el correo con los temas definitivos y la reunión pasa a
+    <span class="chip ambar">Agenda cerrada</span>.
+  </p>
+
+  <h3>Reunión — el momento</h3>
+  <p>
+    Se aprieta <strong>Iniciar</strong> y la pantalla se concentra en un tema por
+    vez, con su cronómetro. Las pestañas de arriba muestran el título de cada
+    tema y se puede saltar al que se quiera: no hay obligación de seguir el
+    orden.
+  </p>
+  <ul>
+    <li><strong>Modo foco:</strong> deja en pantalla sólo el tema, el reloj y las
+    notas.</li>
+    <li><strong>Lo que se pide anotar cambia según el objetivo:</strong> si el
+    tema era de Decisión pregunta qué se decidió; si era Informativa, qué se
+    informó.</li>
+    <li><strong>Compromisos en el momento:</strong> se cargan con responsable y
+    fecha sin salir de la pantalla.</li>
+    <li><strong>Pendientes anteriores</strong> a un click, para repasar lo que
+    venía de antes.</li>
+  </ul>
+
+  <h3>Post-reunión — la minuta</h3>
+  <p>
+    Al cerrar la reunión se arma la minuta con todo lo anotado, editable antes de
+    emitirla, y sale el correo con las conclusiones y los compromisos. El
+    <strong>PDF de la minuta</strong> respeta el formato que el equipo ya usaba, y
+    permite <strong>elegir uno por uno</strong> qué pendiente viejo se suma, para
+    que no se llene de cosas que no vienen al caso.
+  </p>
+</section>
+
+<!-- ══════════ 6. COMPROMISOS ══════════ -->
+<section>
+  <div class="seccion-titulo"><span class="num">06</span><h2>Compromisos</h2></div>
+
+  <p class="intro">
+    Cada compromiso tiene <strong>responsable, fecha y estado</strong>. Es lo que
+    evita que algo se decida y después no pase nada.
+  </p>
+
+  <table>
+    <tr><th>Estado</th><th>Qué significa</th></tr>
+    <tr><td><span class="chip">Pendiente</span></td><td>Está anotado, todavía no arrancó.</td></tr>
+    <tr><td><span class="chip ambar">En curso</span></td><td>Alguien lo está haciendo. Se puede anotar el avance.</td></tr>
+    <tr><td><span class="chip rojo">Bloqueado</span></td><td>No puede avanzar por algo. Conviene que se vea.</td></tr>
+    <tr><td><span class="chip verde">Hecho</span></td><td>Terminado, con la fecha en que se cerró.</td></tr>
+  </table>
+
+  <p>
+    Se mueven arrastrando en la vista de tablero. Lo vencido aparece marcado en
+    rojo, también en el menú lateral, para que no haya que ir a buscarlo.
+  </p>
+
+  <p>
+    Se pueden cargar compromisos <strong>sueltos</strong>, sin que vengan de una
+    reunión. Y hay un <strong>PDF con los pendientes de una persona</strong>, con
+    casillas para tildar, pensado para mandarle a cada uno lo suyo por donde lo
+    lea.
+  </p>
+</section>
+
+<!-- ══════════ 7. PREGUNTAS ══════════ -->
+<section>
+  <div class="seccion-titulo"><span class="num">07</span><h2>Preguntas que suelen aparecer</h2></div>
+
+  <h3>¿Puedo proponer un tema aunque no haya reunión armada?</h3>
+  <p>Sí, es justamente para eso el <strong>Temario</strong>. Queda ahí hasta que
+  se arme la próxima.</p>
+
+  <h3>¿Los demás ven mis compromisos?</h3>
+  <p>El organizador de la sala ve los de todo el equipo. Un miembro ve
+  únicamente los suyos.</p>
+
+  <h3>¿Puedo estar en más de una sala?</h3>
+  <p>Sí, y con roles distintos en cada una. Se cambia desde el desplegable de
+  arriba a la izquierda.</p>
+
+  <h3>Si me equivoqué al cerrar la reunión, ¿se puede volver atrás?</h3>
+  <p>Sí. El organizador puede reabrirla, corregir y volver a cerrarla.</p>
+
+  <h3>¿Qué pasa con los temas que no llegamos a tratar?</h3>
+  <p>Se pueden <strong>diferir</strong> —quedan para la próxima— o devolver al
+  banco de la sala.</p>
+
+  <h3>¿Hace falta instalar algo?</h3>
+  <p>No. Se abre en el navegador, en la computadora o en el celular.</p>
+
+  <div class="caja ojo">
+    <div class="label">Dos cosas para saber</div>
+    <p>Al entrar con Google, la pantalla dice <em>«Ir a neon.tech»</em> en lugar
+    de Harvey. Funciona perfecto, es sólo estético, y se cambia cuando quieran.</p>
+    <p style="margin-top:2mm">Los correos automáticos ya se arman solos, pero
+    todavía <strong>hay que conectar la casilla desde la que salen</strong>. Es
+    una decisión pendiente: qué dirección usan.</p>
+  </div>
+
+</section>
+
+</body>
+</html>
