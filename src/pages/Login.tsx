@@ -10,7 +10,7 @@ const CINTA =
 
 /** Un recorrido por cada rol, con lo que distingue a ese permiso. */
 const VISTAS = [
-  { id: 'u_fran', que: 'Ve todo y además gestiona usuarios, roles y configuración.' },
+  { id: 'u_nico', que: 'Ve todo y además gestiona usuarios, roles y configuración.' },
   { id: 'u_matias', que: 'Aprueba temas, asigna tiempos, cierra el temario y modera.' },
   { id: 'u_tomas', que: 'Propone temas y sigue sus compromisos. No aprueba ni modera.' },
 ]

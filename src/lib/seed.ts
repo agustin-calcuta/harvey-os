@@ -58,7 +58,8 @@ export const USUARIOS: Usuario[] = [
     id: 'u_nico',
     nombre: 'Nicolás Harvey',
     email: 'nicolas@harveywillys.com',
-    rol: 'miembro',
+    // Alguien del equipo administra usuarios y configuración.
+    rol: 'admin',
     cargo: 'Socio · Comercial y retail',
     activo: true,
     creadoEn: en(-120),
@@ -72,28 +73,9 @@ export const USUARIOS: Usuario[] = [
     activo: true,
     creadoEn: en(-120),
   },
-  {
-    id: 'u_fran',
-    nombre: 'Francisco Lebermann',
-    email: 'francisco@calcuta.com',
-    rol: 'admin',
-    cargo: 'Calcuta · Consultoría',
-    activo: true,
-    creadoEn: en(-140),
-  },
-  {
-    id: 'u_agustin',
-    nombre: 'Agustín Ducculi',
-    email: 'agustin@calcuta.com',
-    rol: 'admin',
-    cargo: 'Calcuta · Tecnología',
-    activo: true,
-    creadoEn: en(-140),
-  },
 ]
 
-const TODOS = USUARIOS.map((u) => u.id)
-const SOCIOS = ['u_matias', 'u_tomas', 'u_nico', 'u_lucas']
+const SOCIOS = USUARIOS.map((u) => u.id)
 
 /* ── Reuniones ────────────────────────────────────────────── */
 
@@ -111,7 +93,7 @@ export const REUNIONES: Reunion[] = [
     duracionPrevistaMin: 60,
     lugar: 'Showroom Palermo',
     moderadorId: 'u_matias',
-    participantesIds: [...SOCIOS, 'u_fran'],
+    participantesIds: SOCIOS,
     estado: 'cerrada',
     horasCierreAgenda: 24,
     conclusionesGenerales:
@@ -132,13 +114,13 @@ export const REUNIONES: Reunion[] = [
     duracionPrevistaMin: 60,
     lugar: 'Showroom Palermo',
     moderadorId: 'u_matias',
-    participantesIds: [...SOCIOS, 'u_fran'],
+    participantesIds: SOCIOS,
     estado: 'cerrada',
     horasCierreAgenda: 24,
     conclusionesGenerales:
       'Se cerró la lista de precios de primavera/verano con un ajuste promedio del 18%. Nicolás presentó los números del local de Córdoba: el punto de equilibrio se alcanza recién en el cuarto mes, se decide seguir adelante igual. El equipo acordó que las reuniones pasen a tener temario cargado con 24 h de anticipación.',
     observaciones:
-      'Se acordó probar la plataforma de gestión de reuniones que está armando Calcuta a partir de la semana próxima.',
+      'Se empieza a usar la plataforma de gestión de reuniones a partir de la semana próxima.',
     proximaReunionFecha: en(0, 10, 0),
     agendaCerradaEn: en(-8),
     iniciadaEn: lunesPasado(1),
@@ -153,7 +135,7 @@ export const REUNIONES: Reunion[] = [
     duracionPrevistaMin: 60,
     lugar: 'Showroom Palermo',
     moderadorId: 'u_matias',
-    participantesIds: [...SOCIOS, 'u_fran', 'u_agustin'],
+    participantesIds: SOCIOS,
     estado: 'agenda_cerrada',
     horasCierreAgenda: 24,
     proximaReunionFecha: proximoLunes(),
@@ -168,7 +150,7 @@ export const REUNIONES: Reunion[] = [
     duracionPrevistaMin: 60,
     lugar: 'Showroom Palermo',
     moderadorId: 'u_matias',
-    participantesIds: [...SOCIOS, 'u_fran'],
+    participantesIds: SOCIOS,
     estado: 'agenda_abierta',
     horasCierreAgenda: 24,
     proximaReunionFecha: proximoLunes(1),
@@ -277,16 +259,16 @@ export const TEMAS: Tema[] = [
     id: 't_6',
     reunionId: R_PASADA,
     titulo: 'Cómo ordenamos estas reuniones',
-    detalle: 'Propuesta de Calcuta: pre-reunión, reunión y post-reunión.',
+    detalle: 'Dividir cada reunión en tres fases: pre-reunión, reunión y post-reunión.',
     importancia: 'media',
     objetivo: 'comunicativa',
-    propuestoPor: 'u_fran',
+    propuestoPor: 'u_matias',
     duracionMin: 15,
     duracionRealSeg: 1140,
     estado: 'tratado',
     orden: 2,
     conclusiones:
-      'Se adopta el esquema de tres fases. El temario se carga con 24 h de anticipación y Matías aprueba qué entra. Calcuta arma la plataforma.',
+      'Se adopta el esquema de tres fases. El temario se carga con 24 h de anticipación y Matías aprueba qué entra.',
     creadoEn: en(-13),
   },
 
@@ -525,12 +507,13 @@ export const COMPROMISOS: Compromiso[] = [
     id: 'c_8',
     reunionId: R_PASADA,
     temaId: 't_6',
-    accion: 'Presentar la plataforma de gestión de reuniones',
-    responsableId: 'u_agustin',
+    accion: 'Cargar los temas de la próxima con 24 h de anticipación',
+    detalle: 'Estrenar el esquema acordado en la reunión que viene.',
+    responsableId: 'u_matias',
     fechaLimite: en(1),
     importancia: 'alta',
     estado: 'en_curso',
-    avance: 'Primera versión funcionando. Se presenta en la próxima reunión.',
+    avance: 'Temario de la #14 ya cargado y cerrado.',
     creadoEn: en(-12),
   },
   {
@@ -565,7 +548,7 @@ export const NOTIFICACIONES: Notificacion[] = [
     tipo: 'agenda_cerrada',
     reunionId: R_HOY,
     asunto: 'Temario cerrado · Reunión semanal de socios · #14',
-    destinatarios: USUARIOS.filter((u) => TODOS.includes(u.id)).map((u) => u.email),
+    destinatarios: USUARIOS.map((u) => u.email),
     cuerpoHtml: '',
     cuerpoTexto:
       'Se cerró el temario de la reunión #14. Cuatro temas aprobados, 50 minutos asignados.',
