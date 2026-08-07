@@ -106,6 +106,12 @@ de la base, no la interfaz.
 - **PDF de la minuta**, eligiendo uno por uno qué pendiente viejo se suma.
 - Correo con conclusiones y compromisos.
 
+### Las seis secciones
+
+**Panel** (el resumen del día) · **Reuniones** · **Temario** (el banco de la
+sala) · **Compromisos** · **Correos** (registro de lo emitido) · **Salas**.
+Todo lo que se ve pertenece a la sala activa.
+
 ### Seguimiento
 
 - **Compromisos** en una sola sección con dos vistas: tablero (arrastrar entre
@@ -151,9 +157,11 @@ escritorio.
 
 ### Soporte técnico
 
-`superadmin` es una cuenta nuestra: ve todo, puede intervenir en cualquier sala y
-es el único que puede dar de baja a un administrador. **No pertenece a ningún
-equipo y queda fuera de toda lista donde se elige gente.**
+`superadmin` es una cuenta nuestra: ve todo y puede intervenir en cualquier sala.
+Es lo único que se decide por fuera de las salas, y **nadie se lo puede dar a sí
+mismo**: un disparador congela el alcance salvo que quien escribe ya sea
+superadmin. **No pertenece a ningún equipo y queda fuera de toda lista donde se
+elige gente.**
 
 - agustin@calcutaconsulting.com
 - aguducculi@gmail.com
@@ -184,9 +192,19 @@ ofrece: es una cuenta nuestra, no algo que el equipo vaya a usar.
 
 ## Lo que queda pendiente
 
+**Nada de esto bloquea la demostración del lunes: la plataforma funciona
+entera.** Son las cuatro cosas que faltan para que el equipo la use como
+herramienta propia, y las tres primeras dependen de que ellos definan algo.
+
 > Para llevar a la reunión: **[PEDIDOS-A-HARVEY.md](PEDIDOS-A-HARVEY.md)** tiene
 > esto convertido en preguntas concretas, y en `docs/` está la **guía de uso en
-> PDF** para mostrarle al equipo (se regenera desde `docs/guia-de-uso.html`).
+> PDF** para mostrarle al equipo.
+
+**El orden después del lunes:** conectar la casilla de correo (1) es lo que más
+cambia la experiencia, porque los dos avisos empiezan a salir solos y con eso se
+puede resolver la invitación (4). El logo (2) es media hora en cuanto lo manden.
+La pantalla de Google (3) conviene dejarla para cuando confirmen que la
+herramienta les sirve.
 
 ### 1. Conectar la casilla de correo
 
@@ -248,6 +266,31 @@ No son trabajo pendiente nuestro, son datos que faltan:
 - **GitHub Pages cachea el HTML 10 minutos.** Si después de publicar no ves los
   cambios, es eso.
 - **No hay pruebas automatizadas.** Todo se verificó a mano contra la base real.
+- **`psql` no está en el PATH.** Vive en
+  `/opt/homebrew/Cellar/libpq/18.4/bin/psql`.
+- **No se puede simular una sesión con `set local request.jwt.claims`.** El
+  `auth.user_id()` de Neon no opera dentro de una función security definer en ese
+  contexto y devuelve NULL, así que todo da vacío y parece que el permiso está
+  mal cuando no lo está. Para probar permisos por rol hay que entrar de verdad
+  con dos cuentas distintas, o evaluar las expresiones de las políticas con los
+  ids puestos a mano.
+- **`directorio_salas` tiene que quedar en sólo lectura.** Es una vista que
+  atraviesa RLS y Postgres la considera actualizable: si se vuelve a correr un
+  `grant ... on all tables` sin el `revoke` que está en `rls.sql`, se podría
+  escribir sobre `salas` a través de ella.
+
+---
+
+## Los documentos del proyecto
+
+| Archivo | Para qué |
+| --- | --- |
+| `ESTADO.md` | Este. El estado completo y lo que queda pendiente. |
+| `PEDIDOS-A-HARVEY.md` | Lo que hay que preguntarle al cliente, ordenado por urgencia. Para llevar a la reunión. |
+| `docs/Harvey - Guia de uso.pdf` | Manual de cinco páginas para mostrarle al equipo. |
+| `docs/guia-de-uso.html` | La fuente de ese PDF. Se regenera con Chrome: `--headless --no-pdf-header-footer --print-to-pdf`. |
+| `docs/mensaje-para-fran.md` | Resumen de los cambios y lo que falta definir, listo para pegar en WhatsApp. |
+| `db/` | Esquema, políticas y datos de ejemplo. Se pueden volver a aplicar en cualquier momento. |
 
 ---
 
