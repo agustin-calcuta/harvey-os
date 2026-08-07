@@ -24,12 +24,13 @@ select
 /* ── Equipo ───────────────────────────────────────────────── */
 
 insert into public.usuarios (id, nombre, email, rol, cargo, activo, "creadoEn") values
-  ('u_matias',  'Matías Harvey',        'matias@harveywillys.com',   'organizador', 'Socio · Operaciones',        true, now() - interval '120 days'),
-  ('u_tomas',   'Tomás Harvey',         'tomas@harveywillys.com',    'miembro',     'Socio · Producto y diseño',  true, now() - interval '120 days'),
-  ('u_nico',    'Nicolás Harvey',       'nicolas@harveywillys.com',  'miembro',     'Socio · Comercial y retail', true, now() - interval '120 days'),
-  ('u_lucas',   'Lucas Harvey',         'lucas@harveywillys.com',    'miembro',     'Socio · Marketing y comunidad', true, now() - interval '120 days'),
-  ('u_fran',    'Francisco Lebermann',  'francisco@calcuta.com',     'admin',       'Calcuta · Consultoría',      true, now() - interval '140 days'),
-  ('u_agustin', 'Agustín Ducculi',      'aguducculi@gmail.com',      'admin',       'Calcuta · Tecnología',       true, now() - interval '140 days');
+  ('u_matias',  'Matías Harvey',        'matias@harveywillys.com',        'organizador', 'Socio · Operaciones',           true, now() - interval '120 days'),
+  ('u_tomas',   'Tomás Harvey',         'tomas@harveywillys.com',         'miembro',     'Socio · Producto y diseño',     true, now() - interval '120 days'),
+  ('u_nico',    'Nicolás Harvey',       'nicolas@harveywillys.com',       'miembro',     'Socio · Comercial y retail',    true, now() - interval '120 days'),
+  ('u_lucas',   'Lucas Harvey',         'lucas@harveywillys.com',         'miembro',     'Socio · Marketing y comunidad', true, now() - interval '120 days'),
+  ('u_fran',    'Francisco Lebermann',  'francisco@calcutaconsulting.com','admin',       'Calcuta · Consultoría',         true, now() - interval '140 days'),
+  ('u_ariel',   'Ariel',                'ariel@calcutaconsulting.com',    'admin',       'Calcuta · Consultoría',         true, now() - interval '140 days'),
+  ('u_agustin', 'Agustín Ducculi',      'agustin@calcutaconsulting.com',  'admin',       'Calcuta · Tecnología',          true, now() - interval '140 days');
 
 /* ── Reuniones ────────────────────────────────────────────── */
 
@@ -40,7 +41,7 @@ insert into public.reuniones
 select * from (
   select
     'r_s12', 'Reunión semanal de socios · #12', f.lunes_menos2 - interval '1 week', 60, 'Showroom Palermo',
-    'u_matias', array['u_matias','u_tomas','u_nico','u_lucas','u_fran'],
+    'u_matias', array['u_matias','u_tomas','u_nico','u_lucas','u_fran','u_ariel'],
     'cerrada', 24,
     'Se aprobó el presupuesto de la campaña de invierno y se definió adelantar el drop cápsula a la primera semana de agosto. Queda pendiente cerrar el proveedor de denim: el taller actual viene con dos semanas de atraso sostenido.',
     'Riesgo abierto: si el taller de denim no confirma entrega antes de fin de mes, hay que activar el proveedor alternativo aunque el costo suba ~12%.',
@@ -50,7 +51,7 @@ select * from (
   union all
   select
     'r_s13', 'Reunión semanal de socios · #13', f.lunes_esta, 60, 'Showroom Palermo',
-    'u_matias', array['u_matias','u_tomas','u_nico','u_lucas','u_fran'],
+    'u_matias', array['u_matias','u_tomas','u_nico','u_lucas','u_fran','u_ariel'],
     'cerrada', 24,
     'Se cerró la lista de precios de primavera/verano con un ajuste promedio del 18%. Nicolás presentó los números del local de Córdoba: el punto de equilibrio se alcanza recién en el cuarto mes, se decide seguir adelante igual. El equipo acordó que las reuniones pasen a tener temario cargado con 24 h de anticipación.',
     'Se acordó probar la plataforma de gestión de reuniones que está armando Calcuta a partir de la semana próxima.',
@@ -62,7 +63,7 @@ select * from (
   select
     'r_s14', 'Reunión semanal de socios · #14',
     date_trunc('day', now()) + interval '16 hours 30 minutes', 60, 'Showroom Palermo',
-    'u_matias', array['u_matias','u_tomas','u_nico','u_lucas','u_fran','u_agustin'],
+    'u_matias', array['u_matias','u_tomas','u_nico','u_lucas','u_fran','u_ariel','u_agustin'],
     'agenda_cerrada', 24, null, null,
     f.lunes_prox, now() - interval '1 day', null, null,
     'u_matias', now() - interval '6 days'
@@ -70,7 +71,7 @@ select * from (
   union all
   select
     'r_s15', 'Reunión semanal de socios · #15', f.lunes_prox, 60, 'Showroom Palermo',
-    'u_matias', array['u_matias','u_tomas','u_nico','u_lucas','u_fran'],
+    'u_matias', array['u_matias','u_tomas','u_nico','u_lucas','u_fran','u_ariel'],
     'agenda_abierta', 24, null, null,
     f.lunes_prox2, null, null, null,
     'u_matias', now() - interval '2 days'

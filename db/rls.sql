@@ -35,16 +35,29 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 /*
- * Nadie se auto-asciende. Al crear o modificar la propia fila, el rol
- * queda congelado salvo que quien escribe sea admin. La excepción es
- * la primera persona que entra: si la tabla está vacía, arranca admin.
+ * Nadie se auto-asciende. Al crear o modificar la propia fila desde la
+ * aplicación, el rol queda congelado salvo que quien escribe sea admin.
+ * La excepción es la primera persona que entra: si la tabla está vacía,
+ * arranca admin.
+ *
+ * El trigger sólo actúa sobre escrituras con JWT, es decir las que llegan
+ * por la Data API. Una carga administrativa por SQL directo (el seed, una
+ * migración) no trae token y pasa sin tocar: si no, sembrar el equipo con
+ * sus roles sería imposible.
  */
 create or replace function public.proteger_rol() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare
   hay_usuarios boolean;
+  quien text;
 begin
-  if public.soy_admin() then
+  begin
+    quien := auth.user_id();
+  exception when others then
+    quien := null;
+  end;
+
+  if quien is null or public.soy_admin() then
     return new;
   end if;
 

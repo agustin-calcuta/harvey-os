@@ -34,13 +34,20 @@ import type {
   Tema,
   Usuario,
 } from '../types'
-import { repo, type Coleccion } from './repo'
+import {
+  hayBaseRemota,
+  repo,
+  usarBasePrincipal,
+  usarDatosDeDemostracion,
+  type Coleccion,
+} from './repo'
 
 /* ─────────────────────────────────────────────────────────────
    Estado global de la aplicación: sesión, datos y acciones.
    ───────────────────────────────────────────────────────────── */
 
 const CLAVE_SESION = 'harvey-os:sesion:v1'
+const CLAVE_VISTA_PREVIA = 'harvey-os:vista-previa:v1'
 
 export type Aviso = { id: string; texto: string; tono: 'ok' | 'error' | 'info' }
 
@@ -49,6 +56,8 @@ interface Ctx {
   yo: Usuario | null
   cargando: boolean
   modo: 'demo' | 'firebase' | 'neon'
+  /** Recorrido por rol sin sesión: nada de lo que se toque sale del navegador. */
+  vistaPrevia: boolean
   entrarComoDemo(usuarioId: string): void
   entrarConGoogle(): Promise<void>
   salir(): Promise<void>
@@ -106,6 +115,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [estado, setEstado] = useState<Estado>(ESTADO_INICIAL)
   const [yo, setYo] = useState<Usuario | null>(null)
   const [cargando, setCargando] = useState(true)
+  // Recorrido por rol sin sesión: los cambios no salen del navegador.
+  const [vistaPrevia, setVistaPrevia] = useState(
+    () => localStorage.getItem(CLAVE_VISTA_PREVIA) === '1',
+  )
   const [avisos, setAvisos] = useState<Aviso[]>([])
   const ref = useRef(estado)
   ref.current = estado
@@ -133,9 +146,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let vivo = true
 
     ;(async () => {
-      // Con Neon la lectura exige token, así que la primera carga
-      // la dispara el efecto de sesión. En demo se carga y listo.
-      if (repo.modo === 'demo') {
+      // Recorrido por rol: se retoma con los datos locales.
+      if (vistaPrevia) {
+        usarDatosDeDemostracion()
+        const local = await repo.cargar()
+        const guardado = localStorage.getItem(CLAVE_SESION)
+        const u = local.usuarios.find((x) => x.id === guardado)
+        if (!vivo) return
+        setEstado(local)
+        if (u) setYo(u)
+        setCargando(false)
+        return
+      }
+
+      // Con base remota la lectura exige token: la primera carga la
+      // dispara el efecto de sesión. En demo se carga y listo.
+      if (!hayBaseRemota) {
         const inicial = await repo.cargar()
         if (vivo) setEstado(inicial)
       }
@@ -145,13 +171,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       vivo = false
     }
-  }, [])
+  }, [vistaPrevia])
 
-  /* Refresco periódico: sólo con sesión abierta y base remota. */
+  /* Refresco periódico: sólo con sesión real sobre base remota. */
   useEffect(() => {
-    if (repo.modo === 'demo' || !yo) return
+    if (!hayBaseRemota || vistaPrevia || !yo) return
     return repo.suscribir(setEstado)
-  }, [yo])
+  }, [yo, vistaPrevia])
 
   /* ── Sesión ─────────────────────────────────────────────── */
 
@@ -161,7 +187,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * equipo puede estar precargado con sus roles antes de que entren.
    */
   useEffect(() => {
-    if (!neonConfigurado) return
+    if (!neonConfigurado || vistaPrevia) return
     let vivo = true
     ;(async () => {
       const s = await sesionActual()
@@ -220,10 +246,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       vivo = false
     }
-  }, [])
+  }, [vistaPrevia])
 
   useEffect(() => {
-    if (neonConfigurado) return
+    if (neonConfigurado || vistaPrevia) return
     if (!firebaseConfigurado) {
       const guardado = localStorage.getItem(CLAVE_SESION)
       if (guardado) {
@@ -580,15 +606,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   /* ── Sesión: acciones ───────────────────────────────────── */
 
-  const entrarComoDemo = useCallback(
-    (usuarioId: string) => {
-      const u = ref.current.usuarios.find((x) => x.id === usuarioId)
-      if (!u) return
-      localStorage.setItem(CLAVE_SESION, usuarioId)
-      setYo(u)
-    },
-    [],
-  )
+  /**
+   * Entra a recorrer la plataforma con un rol determinado, sin sesión.
+   * Trabaja siempre sobre los datos locales: sirve para mostrar las
+   * vistas y los permisos sin tocar la base del equipo.
+   */
+  const entrarComoDemo = useCallback((usuarioId: string) => {
+    usarDatosDeDemostracion()
+    const local = structuredClone(ESTADO_INICIAL)
+    const u = local.usuarios.find((x) => x.id === usuarioId)
+    if (!u) return
+    localStorage.setItem(CLAVE_SESION, usuarioId)
+    localStorage.setItem(CLAVE_VISTA_PREVIA, '1')
+    setEstado(local)
+    setVistaPrevia(true)
+    setYo(u)
+  }, [])
 
   const entrarConGoogle = useCallback(async () => {
     try {
@@ -608,7 +641,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const salir = useCallback(async () => {
     localStorage.removeItem(CLAVE_SESION)
+    localStorage.removeItem(CLAVE_VISTA_PREVIA)
+    usarBasePrincipal()
+    setVistaPrevia(false)
     setYo(null)
+    setEstado(ESTADO_INICIAL)
     if (neonConfigurado) await salirDeNeon()
     if (firebaseConfigurado) await cerrarSesionFirebase()
   }, [])
@@ -634,6 +671,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       yo,
       cargando,
       modo: repo.modo,
+      vistaPrevia,
       entrarComoDemo,
       entrarConGoogle,
       salir,
@@ -667,7 +705,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       descartarAviso,
     }),
     [
-      yo, cargando, estado, esAdmin, puedeOrganizar, puedeModerar, avisos,
+      yo, cargando, estado, esAdmin, puedeOrganizar, puedeModerar, avisos, vistaPrevia,
       entrarComoDemo, entrarConGoogle, salir, crearReunion, actualizarReunion,
       borrarReunion, abrirAgenda, cerrarAgenda, iniciarReunion, cerrarReunion,
       reabrirReunion, proponerTema, actualizarTema, borrarTema, reordenarTemas,

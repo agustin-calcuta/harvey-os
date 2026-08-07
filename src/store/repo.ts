@@ -165,8 +165,46 @@ function limpiar<T extends Record<string, unknown>>(o: T): T {
  * Se elige por lo que haya configurado, en este orden:
  * Neon (Data API + Neon Auth) → Firebase → demo con localStorage.
  */
-export const repo: Repo = neonConfigurado
+const principal: Repo = neonConfigurado
   ? repoNeon
   : firebaseConfigurado && db
     ? repoFirebase
     : repoDemo
+
+/** ¿Hay base compartida detrás, o esto corre sólo en el navegador? */
+export const hayBaseRemota = principal !== repoDemo
+
+let activo: Repo = principal
+
+/**
+ * Cambia a los datos locales.
+ *
+ * Sirve para las vistas por rol de la pantalla de acceso: recorrer la
+ * plataforma como organizador o como miembro sin iniciar sesión y sin
+ * tocar la base del equipo.
+ */
+export function usarDatosDeDemostracion() {
+  activo = repoDemo
+}
+
+/** Vuelve a la base configurada. Se llama al iniciar sesión de verdad. */
+export function usarBasePrincipal() {
+  activo = principal
+}
+
+/*
+ * `repo` delega en el adaptador activo en cada llamada, en vez de quedar
+ * atado al que había al importar el módulo. Así alternar entre la vista
+ * previa y la base real no obliga a recargar la página.
+ */
+export const repo: Repo = {
+  get modo() {
+    return activo.modo
+  },
+  cargar: () => activo.cargar(),
+  suscribir: (cb) => activo.suscribir(cb),
+  guardarDoc: (col, item) => activo.guardarDoc(col, item),
+  borrarDoc: (col, id) => activo.borrarDoc(col, id),
+  guardarConfig: (config) => activo.guardarConfig(config),
+  reemplazar: (estado) => activo.reemplazar(estado),
+}

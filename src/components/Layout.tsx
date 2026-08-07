@@ -13,6 +13,7 @@ import {
   X,
   AlertTriangle,
   Info,
+  Eye,
 } from 'lucide-react'
 import { useApp, ROL_LABEL } from '../store/AppContext'
 import { cx, estaVencido, proximaReunion, cuentaRegresiva, deadlineAgenda } from '../lib/utils'
@@ -27,7 +28,7 @@ const NAV = [
 ]
 
 export default function Layout() {
-  const { yo, estado, salir, esAdmin } = useApp()
+  const { yo, estado, salir, esAdmin, vistaPrevia } = useApp()
   const [abierto, setAbierto] = useState(false)
   const navegar = useNavigate()
   const ruta = useLocation()
@@ -176,6 +177,22 @@ export default function Layout() {
               ?.texto ?? ''}
           </span>
         </header>
+
+        {vistaPrevia && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber/40 bg-amber/10 px-4 py-2.5 sm:px-6">
+            <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-amber">
+              <Eye size={12} />
+              Vista previa como {yo ? ROL_LABEL[yo.rol] : ''} · datos de ejemplo, sólo en este
+              navegador
+            </span>
+            <button
+              onClick={salir}
+              className="font-mono text-[10px] uppercase tracking-[0.14em] text-amber underline underline-offset-2 hover:text-bone"
+            >
+              Salir y entrar con Google
+            </button>
+          </div>
+        )}
 
         <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
           <Outlet />
