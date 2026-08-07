@@ -30,16 +30,20 @@ import {
 } from '../components/ui'
 
 export default function Panel() {
-  const { estado, yo, puedeOrganizar } = useApp()
-  const proxima = proximaReunion(estado)
+  const { estado, yo, puedeOrganizar, salaActiva, compromisosVisibles } = useApp()
+  const proxima = proximaReunion(estado, salaActiva?.id)
 
-  const misAbiertos = estado.compromisos.filter(
+  /* `compromisosVisibles` ya viene recortado: el organizador ve los de
+     todo el equipo, el miembro sólo los suyos. */
+  const misAbiertos = compromisosVisibles.filter(
     (c) => c.responsableId === yo?.id && c.estado !== 'hecho',
   )
-  const vencidos = estado.compromisos.filter((c) => estaVencido(c))
-  const porVencer = estado.compromisos.filter((c) => venceProximo(c))
-  const abiertos = estado.compromisos.filter((c) => c.estado !== 'hecho')
-  const cerradas = estado.reuniones.filter((r) => r.estado === 'cerrada')
+  const vencidos = compromisosVisibles.filter((c) => estaVencido(c))
+  const porVencer = compromisosVisibles.filter((c) => venceProximo(c))
+  const abiertos = compromisosVisibles.filter((c) => c.estado !== 'hecho')
+  const cerradas = estado.reuniones.filter(
+    (r) => r.salaId === salaActiva?.id && r.estado === 'cerrada',
+  )
 
   /*
    * El saludo habla de lo propio; las métricas de abajo, de todo el
@@ -70,7 +74,7 @@ export default function Panel() {
     <div className="space-y-10">
       {/* ── Encabezado ── */}
       <div>
-        <div className="label bracket mb-2">
+        <div className="label bracket mb-2">{salaActiva?.nombre ?? ''} · 
           {new Date().toLocaleDateString('es-AR', {
             weekday: 'long',
             day: 'numeric',
@@ -90,12 +94,12 @@ export default function Panel() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Metrica
           valor={abiertos.length}
-          etiqueta="Abiertos del equipo"
+          etiqueta={puedeOrganizar ? "Abiertos del equipo" : "Tus abiertos"}
           a="/compromisos?filtro=abiertos"
         />
         <Metrica
           valor={vencidos.length}
-          etiqueta="Vencidos del equipo"
+          etiqueta={puedeOrganizar ? "Vencidos del equipo" : "Tus vencidos"}
           tono={vencidos.length ? 'signal' : undefined}
           a="/compromisos?filtro=vencidos"
         />

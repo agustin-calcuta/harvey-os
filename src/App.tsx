@@ -3,6 +3,7 @@ import { AppProvider, useApp } from './store/AppContext'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Panel from './pages/Panel'
+import Salas from './pages/Salas'
 import Reuniones from './pages/Reuniones'
 import ReunionDetalle from './pages/ReunionDetalle'
 import Compromisos from './pages/Compromisos'
@@ -22,7 +23,7 @@ export default function App() {
 }
 
 function Rutas() {
-  const { yo, cargando } = useApp()
+  const { yo, cargando, misSalas } = useApp()
 
   if (cargando) return <Cargando />
   if (!yo) return <Login />
@@ -30,14 +31,16 @@ function Rutas() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<Panel />} />
+        {/* Sin ninguna sala no hay nada que mostrar en el panel. */}
+        <Route index element={misSalas.length ? <Panel /> : <Navigate to="/salas" replace />} />
+        <Route path="salas" element={<Salas />} />
         <Route path="reuniones" element={<Reuniones />} />
         <Route path="reuniones/:id" element={<ReunionDetalle />} />
         <Route path="compromisos" element={<Compromisos />} />
-        {/* Los pendientes pasaron a ser una vista de Compromisos. */}
-        <Route path="pendientes" element={<Navigate to="/compromisos" replace />} />
         <Route path="correos" element={<Correos />} />
         <Route path="admin" element={<Admin />} />
+        {/* La sección de pendientes pasó a ser una vista de Compromisos. */}
+        <Route path="pendientes" element={<Navigate to="/compromisos" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

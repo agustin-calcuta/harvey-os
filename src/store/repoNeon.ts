@@ -10,11 +10,16 @@ import { COLECCIONES, type Coleccion, type Repo } from './tipos'
    devuelve PostgREST ya tienen la forma de los tipos de la app y
    no hace falta traducir nombres. Sólo se normalizan las fechas,
    que Postgres devuelve como timestamptz.
+
+   Lo que llega está recortado por las políticas RLS: cada quien
+   recibe únicamente lo de las salas a las que pertenece.
    ───────────────────────────────────────────────────────────── */
 
 /** Columnas de fecha por colección, para normalizarlas a ISO. */
-const FECHAS: Record<Coleccion | 'config', string[]> = {
+const FECHAS: Record<Coleccion, string[]> = {
   usuarios: ['creadoEn'],
+  salas: ['creadaEn'],
+  membresias: ['desde'],
   reuniones: [
     'fecha',
     'proximaReunionFecha',
@@ -26,7 +31,6 @@ const FECHAS: Record<Coleccion | 'config', string[]> = {
   temas: ['creadoEn'],
   compromisos: ['fechaLimite', 'completadoEn', 'creadoEn'],
   notificaciones: ['creadoEn'],
-  config: [],
 }
 
 type Fila = Record<string, unknown>
@@ -55,33 +59,27 @@ export const repoNeon: Repo = {
   modo: 'neon',
 
   async cargar(): Promise<Estado> {
-    if (!neon) throw new Error('Neon no está configurado.')
+    const cliente = neon
+    if (!cliente) throw new Error('Neon no está configurado.')
 
-    const [usuarios, reuniones, temas, compromisos, notificaciones, config] =
-      await Promise.all([
-        neon.from('usuarios').select('*'),
-        neon.from('reuniones').select('*'),
-        neon.from('temas').select('*'),
-        neon.from('compromisos').select('*'),
-        neon.from('notificaciones').select('*'),
-        neon.from('config').select('*').eq('id', 'global'),
-      ])
+    const resultados = await Promise.all([
+      ...COLECCIONES.map((c) => cliente.from(c).select('*')),
+      cliente.from('config').select('*').eq('id', 'global'),
+    ])
 
-    const primerError = [usuarios, reuniones, temas, compromisos, notificaciones, config].find(
-      (r) => r.error,
-    )?.error
+    const primerError = resultados.find((r) => r.error)?.error
     if (primerError) throw new Error(primerError.message)
 
-    const cfgFila = (config.data ?? [])[0] as Partial<Config> | undefined
+    const porColeccion = Object.fromEntries(
+      COLECCIONES.map((c, i) => [
+        c,
+        ((resultados[i].data ?? []) as Fila[]).map((f) => normalizar(c, f)),
+      ]),
+    )
+    const cfgFila = ((resultados[COLECCIONES.length].data ?? []) as Partial<Config>[])[0]
 
     return {
-      usuarios: ((usuarios.data ?? []) as Fila[]).map((f) => normalizar('usuarios', f)),
-      reuniones: ((reuniones.data ?? []) as Fila[]).map((f) => normalizar('reuniones', f)),
-      temas: ((temas.data ?? []) as Fila[]).map((f) => normalizar('temas', f)),
-      compromisos: ((compromisos.data ?? []) as Fila[]).map((f) => normalizar('compromisos', f)),
-      notificaciones: ((notificaciones.data ?? []) as Fila[]).map((f) =>
-        normalizar('notificaciones', f),
-      ),
+      ...porColeccion,
       config: { ...ESTADO_INICIAL.config, ...(cfgFila ?? {}) },
     } as unknown as Estado
   },
@@ -93,18 +91,14 @@ export const repoNeon: Repo = {
    */
   suscribir(cb) {
     if (!neon) return () => {}
-    const id = window.setInterval(() => {
+    const refrescar = () =>
       void this.cargar()
         .then(cb)
         .catch((e) => console.warn('[harvey] fallo al refrescar:', e))
-    }, 12000)
 
+    const id = window.setInterval(refrescar, 12000)
     const alVolver = () => {
-      if (document.visibilityState === 'visible') {
-        void this.cargar()
-          .then(cb)
-          .catch((e) => console.warn('[harvey] fallo al refrescar:', e))
-      }
+      if (document.visibilityState === 'visible') refrescar()
     }
     document.addEventListener('visibilitychange', alVolver)
 
@@ -136,9 +130,8 @@ export const repoNeon: Repo = {
 
   async reemplazar(estado) {
     if (!neon) return
-    // Se respeta el orden de las claves foráneas: primero lo que
-    // cuelga de reuniones, después las reuniones.
-    for (const col of ['notificaciones', 'compromisos', 'temas', 'reuniones'] as Coleccion[]) {
+    // Borra en orden inverso al de las claves foráneas.
+    for (const col of [...COLECCIONES].reverse()) {
       await neon.from(col).delete().neq('id', '')
     }
     for (const col of COLECCIONES) {

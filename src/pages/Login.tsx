@@ -1,25 +1,35 @@
 import { ArrowRight } from 'lucide-react'
-import { useApp, ROL_LABEL } from '../store/AppContext'
-import { Avatar } from '../components/ui'
+import { useApp } from '../store/AppContext'
 import { firebaseConfigurado } from '../lib/firebase'
 import { neonConfigurado } from '../lib/neon'
-import { ESTADO_INICIAL } from '../lib/seed'
+import { ESTADO_INICIAL, S_GERENCIAL, S_MARKETING } from '../lib/seed'
+import { ROLES_SALA } from '../types'
 
 const CINTA =
   'PRE-REUNIÓN · TEMARIO 24 H ANTES · REUNIÓN · MINUTA EN VIVO · POST-REUNIÓN · COMPROMISOS CON RESPONSABLE Y FECHA · '
 
-/** Un recorrido por cada rol, con lo que distingue a ese permiso. */
+/*
+ * Dos recorridos, uno por rol. El de soporte no se ofrece: es una
+ * cuenta nuestra, no algo que el equipo vaya a usar.
+ */
 const VISTAS = [
-  { id: 'u_nico', que: 'Ve todo y además gestiona usuarios, roles y configuración.' },
-  { id: 'u_matias', que: 'Aprueba temas, asigna tiempos, cierra el temario y modera.' },
-  { id: 'u_tomas', que: 'Propone temas y sigue sus compromisos. No aprueba ni modera.' },
+  {
+    id: 'u_matias',
+    sala: S_GERENCIAL,
+    rol: 'organizador' as const,
+    que: 'Arma la agenda, aprueba temas, asigna tiempos y modera. Ve los compromisos de todo el equipo.',
+  },
+  {
+    id: 'u_pedro',
+    sala: S_MARKETING,
+    rol: 'miembro' as const,
+    que: 'Propone temas y sigue sus propios compromisos. Ve sólo la sala de su equipo.',
+  },
 ]
 
 export default function Login() {
   const { entrarComoDemo, entrarConGoogle } = useApp()
   const accesoReal = neonConfigurado || firebaseConfigurado
-  // Las vistas por rol siempre salen del conjunto local: sin sesión
-  // la base remota no devuelve nada.
   const usuarios = ESTADO_INICIAL.usuarios
 
   return (
@@ -47,20 +57,17 @@ export default function Login() {
           </div>
 
           <div className="relative py-12">
-            <h1 className="display text-[clamp(3.5rem,11vw,7.5rem)]">
-              Harvey
-              <br />
-              <span className="text-signal">OS</span>
-            </h1>
+            <h1 className="display text-[clamp(3.5rem,11vw,7.5rem)]">Harvey</h1>
             <p className="mt-6 max-w-md text-sm leading-relaxed text-suave">
-              Las reuniones dejan de perderse. Temario cargado con anticipación, tiempos
-              asignados, minuta que se arma sola y compromisos con nombre y fecha.
+              Las reuniones dejan de perderse. Cada equipo tiene su sala, con el temario cargado
+              con anticipación, tiempos asignados, minuta que se arma sola y compromisos con
+              nombre y fecha.
             </p>
             <div className="mt-8 flex flex-wrap gap-2">
               {['Pre-reunión', 'Reunión', 'Post-reunión'].map((f, i) => (
                 <div
                   key={f}
-                  className="flex items-center gap-2 border border-borde2 px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.14em]"
+                  className="flex items-center gap-2 border border-borde2 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em]"
                 >
                   <span className="text-signal">{String(i + 1).padStart(2, '0')}</span>
                   {f}
@@ -69,7 +76,7 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="relative font-semibold text-[10px] uppercase tracking-[0.16em] text-tenue">
+          <div className="relative text-[10px] font-semibold uppercase tracking-[0.16em] text-tenue">
             Vista previa · {new Date().getFullYear()}
           </div>
         </div>
@@ -82,7 +89,7 @@ export default function Login() {
 
             <button
               onClick={entrarConGoogle}
-              className="group mb-3 flex w-full items-center justify-center gap-3 border border-borde2 bg-tinta px-5 py-4 font-semibold text-[11px] uppercase tracking-[0.14em] text-fondo transition-all hover:bg-white"
+              className="mb-3 flex w-full items-center justify-center gap-3 border border-tinta bg-tinta px-5 py-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-fondo transition-all hover:bg-black"
             >
               <GoogleIcono />
               Continuar con Google
@@ -90,7 +97,7 @@ export default function Login() {
 
             <p className="text-xs leading-relaxed text-tenue">
               {accesoReal
-                ? 'Si tu correo ya está cargado, entrás con tu rol asignado; si no, quedás como miembro hasta que un administrador lo cambie.'
+                ? 'Entrás a las salas de las que formás parte, con el rol que tengas en cada una.'
                 : 'El acceso con Google se activa al cargar las credenciales.'}
             </p>
 
@@ -101,8 +108,8 @@ export default function Login() {
             </div>
 
             <p className="mb-4 text-xs leading-relaxed text-tenue">
-              Entrás sin iniciar sesión, con datos de ejemplo. Sirve para ver de un vistazo qué
-              puede hacer cada uno. Nada de lo que toques sale de este navegador.
+              Entrás sin iniciar sesión, con datos de ejemplo. Nada de lo que toques sale de este
+              navegador.
             </p>
 
             <div className="space-y-1.5">
@@ -112,18 +119,15 @@ export default function Login() {
                 return (
                   <button
                     key={u.id}
-                    onClick={() => entrarComoDemo(u.id)}
+                    onClick={() => entrarComoDemo(u.id, v.sala)}
                     className="group flex w-full items-center gap-3 border border-borde bg-panel p-3 text-left transition-all hover:border-signal"
                   >
-                    <Avatar nombre={u.nombre} url={u.avatarUrl} tam="sm" />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm text-tinta">
-                        {ROL_LABEL[u.rol]}
+                      <div className="truncate text-sm">
+                        {ROLES_SALA[v.rol].nombre}
                         <span className="ml-2 text-[11px] text-tenue">{u.nombre}</span>
                       </div>
-                      <div className="truncate text-[11px] leading-snug text-tenue">
-                        {v.que}
-                      </div>
+                      <div className="truncate text-[11px] leading-snug text-tenue">{v.que}</div>
                     </div>
                     <ArrowRight
                       size={14}

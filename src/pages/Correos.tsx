@@ -15,10 +15,12 @@ const TIPO: Record<TipoNotificacion, { nombre: string; fase: string }> = {
 }
 
 export default function Correos() {
-  const { estado, avisar, reenviarNotificacion } = useApp()
+  const { estado, avisar, reenviarNotificacion, salaActiva } = useApp()
   const [viendo, setViendo] = useState<Notificacion | undefined>()
 
-  const lista = [...estado.notificaciones].sort((a, b) => b.creadoEn.localeCompare(a.creadoEn))
+  const lista = estado.notificaciones
+    .filter((n) => n.salaId === salaActiva?.id)
+    .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn))
   const hayProveedor = correoConfigurado
 
   return (

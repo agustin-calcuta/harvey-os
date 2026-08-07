@@ -1,4 +1,13 @@
-import type { Compromiso, Estado, Reunion, Tema, Usuario } from '../types'
+import type {
+  Compromiso,
+  Estado,
+  Membresia,
+  Reunion,
+  RolSala,
+  Sala,
+  Tema,
+  Usuario,
+} from '../types'
 
 export const cx = (...c: (string | false | null | undefined)[]) =>
   c.filter(Boolean).join(' ')
@@ -47,7 +56,7 @@ export const paraInputDateTime = (iso?: string) => {
 
 export const paraInputDate = (iso?: string) => (iso ? paraInputDateTime(iso).slice(0, 10) : '')
 
-/** "en 3 días" / "hace 2 horas" / "vence hoy" */
+/** "en 3 días" / "hace 2 horas" */
 export function relativo(iso?: string): string {
   if (!iso) return '—'
   const ms = new Date(iso).getTime() - Date.now()
@@ -80,20 +89,50 @@ export const mmss = (seg: number) => {
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 }
 
-export const esMismoDia = (a: string, b: string) =>
-  new Date(a).toDateString() === new Date(b).toDateString()
+/* ── Salas y membresías ───────────────────────────────────── */
+
+export const sala = (e: Estado, id?: string): Sala | undefined =>
+  e.salas.find((s) => s.id === id)
+
+export const membresia = (e: Estado, salaId?: string, usuarioId?: string): Membresia | undefined =>
+  e.membresias.find((m) => m.salaId === salaId && m.usuarioId === usuarioId)
+
+/** Rol de alguien dentro de una sala. `undefined` si no pertenece. */
+export const rolEnSala = (e: Estado, salaId?: string, usuarioId?: string): RolSala | undefined =>
+  membresia(e, salaId, usuarioId)?.rol
+
+export const integrantes = (e: Estado, salaId: string): Usuario[] =>
+  e.membresias
+    .filter((m) => m.salaId === salaId)
+    .map((m) => e.usuarios.find((u) => u.id === m.usuarioId))
+    .filter((u): u is Usuario => Boolean(u) && u!.activo)
+
+/** Salas de las que alguien forma parte. El superadmin las ve todas. */
+export function salasDe(e: Estado, usuario?: Usuario | null): Sala[] {
+  if (!usuario) return []
+  const visibles =
+    usuario.alcance === 'superadmin'
+      ? e.salas
+      : e.salas.filter((s) => e.membresias.some((m) => m.salaId === s.id && m.usuarioId === usuario.id))
+  return visibles.filter((s) => !s.archivada).sort((a, b) => a.nombre.localeCompare(b.nombre))
+}
 
 /* ── Reglas de negocio ────────────────────────────────────── */
 
 /**
  * Momento en que se cierra la carga de temas.
- * Regla acordada con Fran: 24 h antes del inicio (configurable por reunión).
+ * Con cierre manual no hay plazo: sólo cierra cuando el organizador
+ * aprieta el botón.
  */
-export const deadlineAgenda = (r: Reunion): string =>
-  new Date(new Date(r.fecha).getTime() - r.horasCierreAgenda * 3600000).toISOString()
+export const deadlineAgenda = (r: Reunion): string | undefined =>
+  r.cierreManual
+    ? undefined
+    : new Date(new Date(r.fecha).getTime() - r.horasCierreAgenda * 3600000).toISOString()
 
-export const agendaVencida = (r: Reunion): boolean =>
-  Date.now() > new Date(deadlineAgenda(r)).getTime()
+export function agendaVencida(r: Reunion): boolean {
+  const d = deadlineAgenda(r)
+  return d ? Date.now() > new Date(d).getTime() : false
+}
 
 /** ¿Se pueden seguir proponiendo temas? */
 export const puedeProponerTemas = (r: Reunion): boolean =>
@@ -132,28 +171,47 @@ export const iniciales = (nombre: string): string =>
 export const temasDe = (e: Estado, reunionId: string): Tema[] =>
   e.temas.filter((t) => t.reunionId === reunionId).sort((a, b) => a.orden - b.orden)
 
+/** El banco de la sala: temas anotados sin reunión asignada todavía. */
+export const bancoDe = (e: Estado, salaId: string): Tema[] =>
+  e.temas
+    .filter((t) => t.salaId === salaId && t.estado === 'banco' && !t.reunionId)
+    .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn))
+
 export const agendaDe = (e: Estado, reunionId: string): Tema[] =>
   temasDe(e, reunionId).filter((t) => t.estado === 'aprobado' || t.estado === 'tratado')
 
 export const compromisosDe = (e: Estado, reunionId: string): Compromiso[] =>
   e.compromisos.filter((c) => c.reunionId === reunionId)
 
-/** Compromisos abiertos que vienen de reuniones anteriores a la dada. */
+export const reunionesDe = (e: Estado, salaId?: string): Reunion[] =>
+  e.reuniones.filter((r) => !salaId || r.salaId === salaId)
+
+export const compromisosDeSala = (e: Estado, salaId?: string): Compromiso[] =>
+  e.compromisos.filter((c) => !salaId || c.salaId === salaId)
+
+/** Compromisos abiertos que vienen de antes de la reunión dada, en su misma sala. */
 export function compromisosArrastrados(e: Estado, reunionId: string): Compromiso[] {
   const r = e.reuniones.find((x) => x.id === reunionId)
   if (!r) return []
   const previas = new Set(
     e.reuniones
-      .filter((x) => new Date(x.fecha).getTime() < new Date(r.fecha).getTime())
+      .filter((x) => x.salaId === r.salaId && new Date(x.fecha).getTime() < new Date(r.fecha).getTime())
       .map((x) => x.id),
   )
   return e.compromisos
-    .filter((c) => previas.has(c.reunionId) && c.estado !== 'hecho')
+    .filter(
+      (c) =>
+        c.salaId === r.salaId &&
+        c.estado !== 'hecho' &&
+        // Los sueltos de la sala también arrastran.
+        (c.reunionId ? previas.has(c.reunionId) : true) &&
+        c.reunionId !== reunionId,
+    )
     .sort((a, b) => (a.fechaLimite ?? '9999').localeCompare(b.fechaLimite ?? '9999'))
 }
 
-export const proximaReunion = (e: Estado): Reunion | undefined =>
-  e.reuniones
+export const proximaReunion = (e: Estado, salaId?: string): Reunion | undefined =>
+  reunionesDe(e, salaId)
     .filter((r) => r.estado !== 'cerrada')
     .sort((a, b) => a.fecha.localeCompare(b.fecha))[0]
 

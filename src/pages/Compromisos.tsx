@@ -12,9 +12,25 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { AlertTriangle, GripVertical, LayoutGrid, List, Pencil, Plus } from 'lucide-react'
+import {
+  AlertTriangle,
+  Download,
+  GripVertical,
+  LayoutGrid,
+  List,
+  Pencil,
+  Plus,
+} from 'lucide-react'
 import { useApp } from '../store/AppContext'
-import { cx, estaVencido, fechaCorta, nombreDe, relativo, venceProximo } from '../lib/utils'
+import {
+  cx,
+  estaVencido,
+  fechaCorta,
+  integrantes,
+  nombreDe,
+  relativo,
+  venceProximo,
+} from '../lib/utils'
 import {
   COLUMNAS_KANBAN,
   ESTADO_COMPROMISO,
@@ -24,6 +40,7 @@ import {
   type Importancia,
 } from '../types'
 import { Avatar, Boton, Chip, Etiqueta, Metrica, Seccion, Vacio } from '../components/ui'
+import { generarPendientesPDF } from '../lib/pdf'
 import ModalCompromiso from '../components/reunion/ModalCompromiso'
 
 /* ─────────────────────────────────────────────────────────────
@@ -49,7 +66,8 @@ const AGRUPACIONES: { valor: Agrupacion; texto: string }[] = [
 ]
 
 export default function Compromisos() {
-  const { estado, yo, moverCompromiso } = useApp()
+  const { estado, yo, moverCompromiso, compromisosVisibles, puedeOrganizar, salaActiva } = useApp()
+  const gente = salaActiva ? integrantes(estado, salaActiva.id) : []
 
   // Las métricas del panel entran acá con el filtro ya puesto.
   const [params] = useSearchParams()
@@ -91,7 +109,7 @@ export default function Compromisos() {
 
   const filtrados = useMemo(
     () =>
-      estado.compromisos.filter((c) => {
+      compromisosVisibles.filter((c) => {
         if (responsable !== 'todos' && c.responsableId !== responsable) return false
         if (importancia !== 'todas' && c.importancia !== importancia) return false
         if (plazo === 'vencidos' && !estaVencido(c)) return false
@@ -100,7 +118,7 @@ export default function Compromisos() {
         if (busqueda && !c.accion.toLowerCase().includes(busqueda.toLowerCase())) return false
         return true
       }),
-    [estado.compromisos, responsable, importancia, plazo, incluirHechos, busqueda],
+    [compromisosVisibles, responsable, importancia, plazo, incluirHechos, busqueda],
   )
 
   const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
@@ -128,7 +146,7 @@ export default function Compromisos() {
   return (
     <div className="space-y-6">
       <Seccion
-        kicker="Todo lo que hay por hacer"
+        kicker={puedeOrganizar ? "Todo lo que hay por hacer" : "Lo que tenés que hacer"}
         titulo="Compromisos"
         acciones={
           <>
@@ -161,19 +179,19 @@ export default function Compromisos() {
         {/* Las cifras son de todo el equipo y sirven de atajo al filtro. */}
         <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
           <Metrica
-            valor={estado.compromisos.filter((c) => c.estado !== 'hecho').length}
+            valor={compromisosVisibles.filter((c) => c.estado !== 'hecho').length}
             etiqueta="Abiertos del equipo"
             a="?filtro=abiertos"
           />
           <Metrica valor={mios.length} etiqueta="A tu nombre" a="?filtro=mios" />
           <Metrica
-            valor={estado.compromisos.filter((c) => estaVencido(c)).length}
+            valor={compromisosVisibles.filter((c) => estaVencido(c)).length}
             etiqueta="Vencidos del equipo"
             tono={vencidos.length ? 'signal' : undefined}
             a="?filtro=vencidos"
           />
           <Metrica
-            valor={estado.compromisos.filter((c) => venceProximo(c)).length}
+            valor={compromisosVisibles.filter((c) => venceProximo(c)).length}
             etiqueta="Vencen esta semana"
             tono="amber"
             a="?filtro=semana"
@@ -190,13 +208,11 @@ export default function Compromisos() {
           />
           <select value={responsable} onChange={(e) => setResponsable(e.target.value)}>
             <option value="todos">Todos los responsables</option>
-            {estado.usuarios
-              .filter((u) => u.activo)
-              .map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre}
-                </option>
-              ))}
+            {gente.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.nombre}
+              </option>
+            ))}
           </select>
           <select
             value={importancia}
@@ -305,7 +321,8 @@ export default function Compromisos() {
         abierto={creando}
         onCerrar={() => setCreando(false)}
         reunionId={
-          estado.reuniones.find((r) => r.estado !== 'cerrada')?.id ?? estado.reuniones[0]?.id ?? ''
+          estado.reuniones.find((r) => r.salaId === salaActiva?.id && r.estado !== 'cerrada')?.id ??
+          undefined
         }
       />
       <ModalCompromiso
@@ -329,7 +346,7 @@ function VistaLista({
   agrupar: Agrupacion
   onEditar: (c: Compromiso) => void
 }) {
-  const { estado, moverCompromiso } = useApp()
+  const { estado, moverCompromiso, salaActiva, puedeOrganizar } = useApp()
 
   const grupos = useMemo(() => {
     const m = new Map<string, Compromiso[]>()
@@ -363,6 +380,19 @@ function VistaLista({
               <Chip tono="signal">{items.filter((c) => estaVencido(c)).length} vencidos</Chip>
             )}
             <div className="h-px flex-1 bg-borde" />
+            {/* Listado suelto para mandarle a cada uno lo suyo: hay
+                gente que no abre el correo y sí el WhatsApp. */}
+            {agrupar === 'responsable' && puedeOrganizar && (
+              <button
+                onClick={() =>
+                  generarPendientesPDF(estado, items[0].responsableId, lista, salaActiva?.nombre)
+                }
+                title={`Descargar los pendientes de ${clave}`}
+                className="flex shrink-0 items-center gap-1.5 border border-borde2 bg-panel px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-suave transition-colors hover:border-signal hover:text-signal"
+              >
+                <Download size={11} /> PDF
+              </button>
+            )}
           </div>
 
           <ul className="card divide-y divide-borde">

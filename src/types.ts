@@ -1,41 +1,82 @@
 /* ─────────────────────────────────────────────────────────────
-   Modelo de dominio — HARVEY OS
-   Derivado de la minuta de Francisco Lebermann y de la reunión
-   del 05/08/2026: pre-reunión → reunión → post-reunión.
+   Modelo de dominio — HARVEY
+
+   Derivado de la minuta de Francisco Lebermann y de las reuniones
+   del 05/08 y 07/08 de 2026.
+
+   La unidad de trabajo es la **sala**: un espacio con su propio
+   equipo, sus reuniones y su propio banco de temas. Cada persona
+   ve sólo las salas de las que forma parte, y su rol se define
+   dentro de cada una: la misma persona puede organizar la suya y
+   ser miembro en la de al lado.
    ───────────────────────────────────────────────────────────── */
 
-export type Rol = 'admin' | 'organizador' | 'miembro' | 'invitado'
+/* ── Roles ────────────────────────────────────────────────── */
 
-export const ROLES: Record<Rol, { nombre: string; desc: string }> = {
-  admin: {
-    nombre: 'Administrador',
-    desc: 'Control total: usuarios, roles, configuración y todas las reuniones.',
-  },
+/**
+ * Rol dentro de una sala. No es global: vive en la membresía.
+ */
+export type RolSala = 'organizador' | 'miembro'
+
+export const ROLES_SALA: Record<RolSala, { nombre: string; desc: string }> = {
   organizador: {
     nombre: 'Organizador',
-    desc: 'Arma la agenda, aprueba temas, asigna tiempos y modera la reunión.',
+    desc: 'Arma la agenda, aprueba temas, asigna tiempos, modera y gestiona quién entra a la sala.',
   },
   miembro: {
     nombre: 'Miembro',
-    desc: 'Propone temas, participa y gestiona sus compromisos.',
-  },
-  invitado: {
-    nombre: 'Invitado',
-    desc: 'Sólo lectura de agendas y minutas.',
+    desc: 'Propone temas, participa y sigue sus propios compromisos.',
   },
 }
 
+/**
+ * Alcance de la cuenta, por encima de las salas.
+ *
+ * `superadmin` es soporte técnico, no forma parte de ningún equipo:
+ * ve todo, puede intervenir en cualquier sala y es el único que
+ * puede dar de baja a un administrador. Queda fuera de toda lista
+ * donde se elige gente.
+ */
+export type Alcance = 'superadmin' | 'usuario'
+
 export interface Usuario {
   id: string
-  /** `sub` del JWT del proveedor de identidad. Se vincula por email al primer ingreso. */
+  /** `sub` del JWT del proveedor de identidad. Se vincula por correo al primer ingreso. */
   authUserId?: string
   nombre: string
   email: string
-  rol: Rol
+  alcance: Alcance
   avatarUrl?: string
   cargo?: string
   activo: boolean
   creadoEn: string
+}
+
+/* ── Salas ────────────────────────────────────────────────── */
+
+export interface Sala {
+  id: string
+  nombre: string
+  descripcion?: string
+  /** Cadencia habitual, ej. "Lunes 10:00". Sugerida al crear una reunión. */
+  cadencia?: string
+  horasCierreAgenda: number
+  /** Sin cierre automático: el temario queda abierto hasta que el organizador lo cierre. */
+  cierreManual: boolean
+  duracionReunionDefaultMin: number
+  duracionTemaDefaultMin: number
+  lugarHabitual?: string
+  creadaPor: string
+  creadaEn: string
+  archivada: boolean
+}
+
+export interface Membresia {
+  id: string
+  salaId: string
+  usuarioId: string
+  rol: RolSala
+  desde: string
 }
 
 /* ── Temas ────────────────────────────────────────────────── */
@@ -59,46 +100,74 @@ export const IMPORTANCIA: Record<
     alias: 'Tibio',
     color: 'text-amber',
     bg: 'bg-amber',
-    hex: '#DC8F38',
+    hex: '#B26B18',
   },
   baja: {
     nombre: 'Baja',
     alias: 'Frío',
     color: 'text-cold',
     bg: 'bg-cold',
-    hex: '#4A7FA5',
+    hex: '#2E6285',
   },
 }
 
 /** Los cuatro objetivos del formato de minuta de Fran. */
 export type Objetivo = 'decision' | 'exploratoria' | 'comunicativa' | 'informativa'
 
-export const OBJETIVOS: Record<Objetivo, { nombre: string; desc: string; sigla: string }> = {
+export const OBJETIVOS: Record<
+  Objetivo,
+  {
+    nombre: string
+    desc: string
+    sigla: string
+    /** Qué se le pide anotar al cerrar el tema. Cambia según para qué se trató. */
+    pideConclusion: string
+    ejemploConclusion: string
+  }
+> = {
   decision: {
     nombre: 'Decisión',
     sigla: 'DEC',
     desc: 'Se necesita definir algo y salir con una resolución tomada.',
+    pideConclusion: 'Qué se decidió',
+    ejemploConclusion:
+      'Qué se resolvió, con qué alcance y desde cuándo. Si quedó alguien a cargo, registralo abajo como compromiso.',
   },
   exploratoria: {
     nombre: 'Exploratoria',
     sigla: 'EXP',
     desc: 'Se abre el tema para pensarlo en conjunto, sin cerrar todavía.',
+    pideConclusion: 'Hasta dónde se llegó',
+    ejemploConclusion:
+      'Qué caminos aparecieron, qué quedó descartado y qué falta averiguar para poder decidir.',
   },
   comunicativa: {
     nombre: 'Comunicativa',
     sigla: 'COM',
     desc: 'Se comunica algo que impacta al resto y admite devolución.',
+    pideConclusion: 'Qué se comunicó y qué devolución hubo',
+    ejemploConclusion: 'Qué se transmitió, cómo lo tomó el equipo y qué objeciones aparecieron.',
   },
   informativa: {
     nombre: 'Informativa',
     sigla: 'INF',
     desc: 'Se informa un estado o avance. No requiere discusión.',
+    pideConclusion: 'Qué se informó',
+    ejemploConclusion: 'El estado o los números que se pasaron, para que queden registrados.',
   },
 }
 
-export type EstadoTema = 'propuesto' | 'aprobado' | 'rechazado' | 'diferido' | 'tratado'
+export type EstadoTema =
+  /** En el banco de la sala, todavía sin reunión asignada. */
+  | 'banco'
+  | 'propuesto'
+  | 'aprobado'
+  | 'rechazado'
+  | 'diferido'
+  | 'tratado'
 
 export const ESTADO_TEMA: Record<EstadoTema, { nombre: string; color: string }> = {
+  banco: { nombre: 'En el banco', color: 'text-cold' },
   propuesto: { nombre: 'Propuesto', color: 'text-suave' },
   aprobado: { nombre: 'En agenda', color: 'text-acid' },
   rechazado: { nombre: 'Rechazado', color: 'text-signal' },
@@ -108,14 +177,20 @@ export const ESTADO_TEMA: Record<EstadoTema, { nombre: string; color: string }> 
 
 export interface Tema {
   id: string
-  reunionId: string
+  salaId: string
+  /**
+   * Sin reunión asignada mientras vive en el banco: es el "banco de
+   * suplentes" que pidió Fran, para anotar un tema antes de que
+   * exista una fecha y no perderlo.
+   */
+  reunionId?: string
   titulo: string
   detalle?: string
   importancia: Importancia
   objetivo: Objetivo
-  propuestoPor: string // Usuario.id
-  duracionMin: number // asignada por el organizador
-  duracionRealSeg?: number // cronometrada en vivo
+  propuestoPor: string
+  duracionMin: number
+  duracionRealSeg?: number
   estado: EstadoTema
   orden: number
   /** Notas tomadas durante la reunión sobre este tema. */
@@ -140,7 +215,7 @@ export const ESTADO_REUNION: Record<
   borrador: {
     nombre: 'Borrador',
     color: 'text-suave',
-    bg: 'bg-tenue/20',
+    bg: 'bg-hueco',
     desc: 'Todavía no se abrió la carga de temas.',
   },
   agenda_abierta: {
@@ -171,6 +246,7 @@ export const ESTADO_REUNION: Record<
 
 export interface Reunion {
   id: string
+  salaId: string
   titulo: string
   /** ISO datetime del inicio. */
   fecha: string
@@ -179,12 +255,13 @@ export interface Reunion {
   moderadorId: string
   participantesIds: string[]
   estado: EstadoReunion
-  /** Horas antes del inicio en que se cierra la carga de temas (default 24). */
+  /** Horas antes del inicio en que se cierra la carga de temas. */
   horasCierreAgenda: number
+  /** Sin cierre automático: sólo cierra cuando el organizador aprieta el botón. */
+  cierreManual: boolean
   conclusionesGenerales?: string
   observaciones?: string
   proximaReunionFecha?: string
-  /** Sellos de tiempo del ciclo de vida. */
   agendaCerradaEn?: string
   iniciadaEn?: string
   cerradaEn?: string
@@ -203,8 +280,8 @@ export const ESTADO_COMPROMISO: Record<
   pendiente: {
     nombre: 'Pendiente',
     color: 'text-suave',
-    bg: 'bg-tenue/15',
-    border: 'border-tenue',
+    bg: 'bg-hueco',
+    border: 'border-borde2',
   },
   en_curso: {
     nombre: 'En curso',
@@ -235,9 +312,9 @@ export const COLUMNAS_KANBAN: EstadoCompromiso[] = [
 
 export interface Compromiso {
   id: string
-  /** Reunión donde se originó. */
-  reunionId: string
-  /** Tema que lo disparó, si aplica. */
+  salaId: string
+  /** Puede no venir de una reunión: se cargan sueltos también. */
+  reunionId?: string
   temaId?: string
   accion: string
   detalle?: string
@@ -245,7 +322,6 @@ export interface Compromiso {
   fechaLimite?: string
   importancia: Importancia
   estado: EstadoCompromiso
-  /** Notas de avance cargadas después de la reunión. */
   avance?: string
   completadoEn?: string
   creadoEn: string
@@ -257,27 +333,22 @@ export type TipoNotificacion = 'agenda_cerrada' | 'minuta' | 'recordatorio' | 't
 
 export interface Notificacion {
   id: string
+  salaId: string
   tipo: TipoNotificacion
   reunionId: string
   asunto: string
-  destinatarios: string[] // emails
+  destinatarios: string[]
   cuerpoHtml: string
   cuerpoTexto: string
-  /** 'simulado' = generado y visible en la plataforma, sin proveedor SMTP conectado. */
   estado: 'simulado' | 'enviado' | 'error'
   error?: string
   creadoEn: string
 }
 
-/* ── Configuración de la organización ─────────────────────── */
+/* ── Configuración global ─────────────────────────────────── */
 
 export interface Config {
   organizacion: string
-  horasCierreAgendaDefault: number
-  duracionReunionDefaultMin: number
-  duracionTemaDefaultMin: number
-  /** Cadencia sugerida al crear una reunión, ej. "Lunes 10:00". */
-  cadencia: string
   emailsActivos: boolean
 }
 
@@ -285,6 +356,8 @@ export interface Config {
 
 export interface Estado {
   usuarios: Usuario[]
+  salas: Sala[]
+  membresias: Membresia[]
   reuniones: Reunion[]
   temas: Tema[]
   compromisos: Compromiso[]

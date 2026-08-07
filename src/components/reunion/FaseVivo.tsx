@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  Check,
   ChevronLeft,
   ChevronRight,
   History,
@@ -128,24 +129,32 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
         </div>
       </div>
 
-      {/* ── Recorrido de temas ── */}
+      {/* ── Recorrido de temas ──
+          Con el título a la vista: un número suelto no dice a cuál se
+          está saltando, y los temas se tocan en el orden que salga. */}
       <div className="flex gap-1 overflow-x-auto no-scrollbar">
         {agenda.map((t, i) => (
           <button
             key={t.id}
             onClick={() => guardarYSaltar(i)}
+            title={t.titulo}
             className={
               i === indice
-                ? 'flex shrink-0 items-center gap-2 border border-tinta bg-tinta px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-fondo'
-                : 'flex shrink-0 items-center gap-2 border border-borde px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
+                ? 'flex max-w-[220px] shrink-0 items-center gap-2 border border-tinta bg-tinta px-3 py-2 text-[11px] text-fondo'
+                : 'flex max-w-[220px] shrink-0 items-center gap-2 border border-borde bg-panel px-3 py-2 text-[11px] text-suave transition-colors hover:border-suave hover:text-tinta'
             }
           >
             <span
-              className="h-1.5 w-1.5 rounded-full"
+              className="h-1.5 w-1.5 shrink-0 rounded-full"
               style={{ background: IMPORTANCIA[t.importancia].hex }}
             />
-            {String(i + 1).padStart(2, '0')}
-            {t.conclusiones && <span className="text-acid">·</span>}
+            <span className={i === indice ? 'text-fondo/60' : 'text-tenue'}>
+              {String(i + 1).padStart(2, '0')}
+            </span>
+            <span className="truncate">{t.titulo}</span>
+            {t.conclusiones && (
+              <Check size={11} className={i === indice ? 'shrink-0' : 'shrink-0 text-acid'} />
+            )}
           </button>
         ))}
       </div>
@@ -233,13 +242,13 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
 
           {/* Notas */}
           <div className="card p-5">
+            {/* Lo que se pide anotar cambia según para qué se trató el
+                tema: no es lo mismo cerrar una decisión que informar. */}
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <Etiqueta>Conclusiones del tema</Etiqueta>
+              <Etiqueta>{OBJETIVOS[tema.objetivo].pideConclusion}</Etiqueta>
               <Boton tam="sm" onClick={() => setNuevoCompromiso(true)}>
                 <Plus size={11} /> Compromiso
-                {delTema.length > 0 && (
-                  <span className="ml-1 text-tenue">{delTema.length}</span>
-                )}
+                {delTema.length > 0 && <span className="ml-1 text-tenue">{delTema.length}</span>}
               </Boton>
             </div>
             <textarea
@@ -247,7 +256,7 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
               rows={7}
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
-              placeholder="Qué se dijo, qué se definió, qué quedó abierto…"
+              placeholder={OBJETIVOS[tema.objetivo].ejemploConclusion}
             />
             <div className="mt-2 text-xs text-tenue">Se guarda solo mientras escribís</div>
 

@@ -25,7 +25,9 @@ export type { Coleccion, Repo }
 
 /* ── Demo ─────────────────────────────────────────────────── */
 
-const CLAVE = 'harvey-os:estado:v1'
+/* v2: el modelo pasó a organizarse por salas. Subir la versión
+   descarta los snapshots viejos en vez de mezclarlos mal. */
+const CLAVE = 'harvey-os:estado:v2'
 
 function leerLocal(): Estado {
   try {
@@ -92,6 +94,8 @@ export const repoFirebase: Repo = {
     // La carga real llega por suscribir(); devolvemos el molde vacío.
     return {
       usuarios: [],
+      salas: [],
+      membresias: [],
       reuniones: [],
       temas: [],
       compromisos: [],
@@ -104,6 +108,8 @@ export const repoFirebase: Repo = {
     if (!db) return () => {}
     const acc: Estado = {
       usuarios: [],
+      salas: [],
+      membresias: [],
       reuniones: [],
       temas: [],
       compromisos: [],

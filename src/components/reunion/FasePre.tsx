@@ -17,6 +17,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
+  Archive,
   Check,
   Clock,
   GripVertical,
@@ -25,17 +26,20 @@ import {
   Plus,
   Send,
   Trash2,
+  Undo2,
   X,
 } from 'lucide-react'
 import { useApp } from '../../store/AppContext'
 import {
   agendaVencida,
+  bancoDe,
   cuentaRegresiva,
   deadlineAgenda,
   fechaHora,
   minutosAgenda,
   nombreDe,
   puedeProponerTemas,
+  relativo,
   temasDe,
 } from '../../lib/utils'
 import { IMPORTANCIA, type Reunion, type Tema } from '../../types'
@@ -43,8 +47,16 @@ import { Boton, Chip, ChipImportancia, ChipObjetivo, Confirmar, Etiqueta, Vacio 
 import ModalTema from './ModalTema'
 
 export default function FasePre({ reunion }: { reunion: Reunion }) {
-  const { estado, puedeOrganizar, actualizarTema, borrarTema, reordenarTemas, cerrarAgenda } =
-    useApp()
+  const {
+    estado,
+    puedeOrganizar,
+    actualizarTema,
+    borrarTema,
+    reordenarTemas,
+    cerrarAgenda,
+    bajarDelBanco,
+    devolverAlBanco,
+  } = useApp()
 
   const [creando, setCreando] = useState(false)
   const [editando, setEditando] = useState<Tema | undefined>()
@@ -55,10 +67,12 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
   const agenda = todos.filter((t) => t.estado === 'aprobado')
   const propuestos = todos.filter((t) => t.estado === 'propuesto')
   const fuera = todos.filter((t) => t.estado === 'rechazado' || t.estado === 'diferido')
+  const banco = bancoDe(estado, reunion.salaId)
 
   const total = minutosAgenda(agenda)
   const excedido = total > reunion.duracionPrevistaMin
-  const cd = cuentaRegresiva(deadlineAgenda(reunion))
+  const plazo = deadlineAgenda(reunion)
+  const cd = cuentaRegresiva(plazo)
   const abierta = puedeProponerTemas(reunion)
   const vencida = agendaVencida(reunion)
 
@@ -79,12 +93,8 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
 
   return (
     <div className="space-y-8">
-      {/*
-        Una sola cifra: el tiempo asignado es el único número que obliga
-        a decidir algo. El plazo va en una línea de texto al lado, sin
-        repetir la fecha, las horas de antelación y la cuenta regresiva
-        en tres cajas distintas.
-      */}
+      {/* Una sola cifra: el tiempo asignado es el único número que
+          obliga a decidir algo. El plazo va en una línea al lado. */}
       <div className="card">
         <div className="flex flex-wrap items-center justify-between gap-4 p-5">
           <div>
@@ -98,15 +108,25 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
           </div>
 
           <div className="text-right">
-            <Etiqueta className="mb-1.5">{vencida ? 'La carga cerró' : 'La carga cierra'}</Etiqueta>
+            <Etiqueta className="mb-1.5">
+              {reunion.cierreManual ? 'Cierre del temario' : vencida ? 'La carga cerró' : 'La carga cierra'}
+            </Etiqueta>
             <div className="flex items-center justify-end gap-2 text-sm">
               {abierta ? (
                 <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-acid" />
               ) : (
                 <Lock size={12} className="text-suave" />
               )}
-              <span>{fechaHora(deadlineAgenda(reunion))}</span>
-              {abierta && <span className="text-amber">· quedan {cd.texto}</span>}
+              {reunion.cierreManual ? (
+                <span className="text-suave">
+                  {abierta ? 'Abierto hasta que lo cierres' : 'Cerrado'}
+                </span>
+              ) : (
+                <>
+                  <span>{fechaHora(plazo)}</span>
+                  {abierta && <span className="text-amber">· quedan {cd.texto}</span>}
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -137,11 +157,56 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
         )}
 
         {!abierta && !puedeOrganizar && (
-          <span className="font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
-            La carga cerró {reunion.horasCierreAgenda} h antes de la reunión
+          <span className="text-xs text-tenue">
+            La carga de temas ya está cerrada para esta reunión
           </span>
         )}
       </div>
+
+      {/* ── Banco de la sala ──
+          Los temas que se fueron anotando sin fecha. El organizador
+          elige cuáles baja a esta reunión. */}
+      {puedeOrganizar && banco.length > 0 && (
+        <section>
+          <h3 className="display mb-1 text-xl">
+            En el banco de {estado.salas.find((s) => s.id === reunion.salaId)?.nombre}{' '}
+            <span className="text-suave">{banco.length}</span>
+          </h3>
+          <p className="mb-3 text-xs text-suave">
+            Temas que el equipo dejó anotados sin fecha. Bajá los que quieras tratar ahora; el
+            resto sigue esperando para la próxima.
+          </p>
+
+          <ul className="space-y-2">
+            {banco.map((t) => (
+              <li key={t.id} className="card border-cold/30 p-4">
+                <div className="flex flex-wrap items-start gap-3">
+                  <span
+                    className="mt-1 h-10 w-0.5 shrink-0"
+                    style={{ background: IMPORTANCIA[t.importancia].hex }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm leading-snug">{t.titulo}</div>
+                    {t.detalle && (
+                      <p className="mt-1 text-xs leading-relaxed text-suave">{t.detalle}</p>
+                    )}
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <ChipImportancia valor={t.importancia} />
+                      <ChipObjetivo valor={t.objetivo} />
+                      <span className="ml-1 text-xs text-tenue">
+                        {nombreDe(estado, t.propuestoPor)} · anotado {relativo(t.creadoEn)}
+                      </span>
+                    </div>
+                  </div>
+                  <Boton tam="sm" variante="solido" onClick={() => bajarDelBanco(t.id, reunion.id)}>
+                    <Check size={12} /> Traer
+                  </Boton>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* ── Por aprobar ── */}
       {propuestos.length > 0 && (
@@ -170,6 +235,9 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
                     </Boton>
                     <Boton tam="sm" onClick={() => actualizarTema(t.id, { estado: 'diferido' })}>
                       <Clock size={12} /> Diferir
+                    </Boton>
+                    <Boton tam="sm" onClick={() => devolverAlBanco(t.id)}>
+                      <Archive size={12} /> Al banco
                     </Boton>
                     <Boton
                       tam="sm"
@@ -209,10 +277,7 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
           />
         ) : (
           <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={alSoltar}>
-            <SortableContext
-              items={agenda.map((t) => t.id)}
-              strategy={verticalListSortingStrategy}
-            >
+            <SortableContext items={agenda.map((t) => t.id)} strategy={verticalListSortingStrategy}>
               <ul className="space-y-2">
                 {agenda.map((t, i) => (
                   <TemaOrdenable
@@ -220,11 +285,12 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
                     tema={t}
                     indice={i}
                     arrastrable={puedeOrganizar}
+                    puedeOrganizar={puedeOrganizar}
                     onEditar={() => setEditando(t)}
                     onBorrar={() => setPorBorrar(t)}
                     onDiferir={() => actualizarTema(t.id, { estado: 'diferido' })}
+                    onAlBanco={() => devolverAlBanco(t.id)}
                     onTiempo={(min) => actualizarTema(t.id, { duracionMin: min })}
-                    puedeOrganizar={puedeOrganizar}
                   />
                 ))}
               </ul>
@@ -243,7 +309,7 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
             {fuera.map((t) => (
               <li
                 key={t.id}
-                className="card flex flex-wrap items-center gap-3 p-3 opacity-60 transition-opacity hover:opacity-100"
+                className="card flex flex-wrap items-center gap-3 p-3 opacity-70 transition-opacity hover:opacity-100"
               >
                 <Chip tono={t.estado === 'diferido' ? 'amber' : 'signal'}>
                   {t.estado === 'diferido' ? 'Diferido' : 'Rechazado'}
@@ -251,9 +317,14 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
                 <span className="min-w-0 flex-1 truncate text-sm">{t.titulo}</span>
                 <span className="text-xs text-tenue">{nombreDe(estado, t.propuestoPor)}</span>
                 {puedeOrganizar && (
-                  <Boton tam="sm" onClick={() => actualizarTema(t.id, { estado: 'aprobado' })}>
-                    Recuperar
-                  </Boton>
+                  <div className="flex gap-1">
+                    <Boton tam="sm" onClick={() => actualizarTema(t.id, { estado: 'aprobado' })}>
+                      Recuperar
+                    </Boton>
+                    <Boton tam="sm" variante="fantasma" onClick={() => devolverAlBanco(t.id)}>
+                      <Undo2 size={11} /> Al banco
+                    </Boton>
+                  </div>
                 )}
               </li>
             ))}
@@ -265,19 +336,21 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
       <ModalTema
         abierto={creando}
         onCerrar={() => setCreando(false)}
+        salaId={reunion.salaId}
         reunionId={reunion.id}
         entraDirecto={puedeOrganizar}
       />
       <ModalTema
         abierto={!!editando}
         onCerrar={() => setEditando(undefined)}
+        salaId={reunion.salaId}
         reunionId={reunion.id}
         tema={editando}
       />
       <Confirmar
         abierto={!!porBorrar}
         titulo="Eliminar tema"
-        texto={`Se elimina “${porBorrar?.titulo}” de forma definitiva.`}
+        texto={`Se elimina «${porBorrar?.titulo}» de forma definitiva. Si querés guardarlo para más adelante, mandalo al banco en vez de borrarlo.`}
         textoBoton="Eliminar"
         peligro
         onCancelar={() => setPorBorrar(undefined)}
@@ -323,13 +396,11 @@ function FilaTema({
       />
       <div className="min-w-0 flex-1">
         <div className="text-sm leading-snug">{tema.titulo}</div>
-        {tema.detalle && (
-          <p className="mt-1 text-xs leading-relaxed text-suave">{tema.detalle}</p>
-        )}
+        {tema.detalle && <p className="mt-1 text-xs leading-relaxed text-suave">{tema.detalle}</p>}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <ChipImportancia valor={tema.importancia} />
           <ChipObjetivo valor={tema.objetivo} />
-          <span className="ml-1 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
+          <span className="ml-1 text-xs text-tenue">
             {nombreDe(estado, tema.propuestoPor)} · {tema.duracionMin} min
           </span>
         </div>
@@ -338,14 +409,14 @@ function FilaTema({
         <div className="flex shrink-0 gap-1">
           <button
             onClick={onEditar}
-            className="border border-borde2 p-1.5 text-suave transition-colors hover:border-tinta hover:text-tinta"
+            className="border border-borde2 bg-panel p-1.5 text-suave transition-colors hover:border-tinta hover:text-tinta"
             title="Editar"
           >
             <Pencil size={12} />
           </button>
           <button
             onClick={onBorrar}
-            className="border border-borde2 p-1.5 text-suave transition-colors hover:border-signal hover:text-signal"
+            className="border border-borde2 bg-panel p-1.5 text-suave transition-colors hover:border-signal hover:text-signal"
             title="Eliminar"
           >
             <Trash2 size={12} />
@@ -366,6 +437,7 @@ function TemaOrdenable({
   onEditar,
   onBorrar,
   onDiferir,
+  onAlBanco,
   onTiempo,
 }: {
   tema: Tema
@@ -375,6 +447,7 @@ function TemaOrdenable({
   onEditar: () => void
   onBorrar: () => void
   onDiferir: () => void
+  onAlBanco: () => void
   onTiempo: (min: number) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -403,7 +476,7 @@ function TemaOrdenable({
             <GripVertical size={16} />
           </button>
         )}
-        <span className="mt-0.5 w-6 shrink-0 font-semibold text-xs text-tenue">
+        <span className="mt-0.5 w-6 shrink-0 text-xs text-tenue">
           {String(indice + 1).padStart(2, '0')}
         </span>
         <div className="min-w-0 flex-1">
@@ -418,8 +491,8 @@ function TemaOrdenable({
                   onClick={() => onTiempo(m)}
                   className={
                     tema.duracionMin === m
-                      ? 'border border-tinta bg-tinta px-2.5 py-1.5 font-semibold text-[10px] text-fondo'
-                      : 'border border-borde2 px-2.5 py-1.5 font-semibold text-[10px] text-suave transition-colors hover:border-suave hover:text-tinta'
+                      ? 'border border-tinta bg-tinta px-2.5 py-1.5 text-[10px] text-fondo'
+                      : 'border border-borde2 bg-panel px-2.5 py-1.5 text-[10px] text-suave transition-colors hover:border-suave hover:text-tinta'
                   }
                 >
                   {m}′
@@ -427,15 +500,20 @@ function TemaOrdenable({
               ))}
               <button
                 onClick={onDiferir}
-                className="ml-auto py-1.5 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:text-amber"
+                className="ml-auto py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:text-amber"
               >
                 Diferir
+              </button>
+              <button
+                onClick={onAlBanco}
+                className="py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:text-cold"
+              >
+                Al banco
               </button>
             </div>
           )}
         </div>
       </div>
-
     </li>
   )
 }

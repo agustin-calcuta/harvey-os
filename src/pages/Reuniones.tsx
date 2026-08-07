@@ -4,6 +4,7 @@ import { CalendarPlus, Plus } from 'lucide-react'
 import { useApp } from '../store/AppContext'
 import {
   agendaDe,
+  integrantes,
   cuentaRegresiva,
   deadlineAgenda,
   fechaCorta,
@@ -34,7 +35,7 @@ const FILTROS: { valor: EstadoReunion | 'todas'; texto: string }[] = [
 ]
 
 export default function Reuniones() {
-  const { estado, puedeOrganizar } = useApp()
+  const { estado, puedeOrganizar, salaActiva } = useApp()
   // Las métricas del panel entran acá con el estado ya filtrado.
   const [params] = useSearchParams()
   const [filtro, setFiltro] = useState<EstadoReunion | 'todas'>(() => {
@@ -43,14 +44,15 @@ export default function Reuniones() {
   })
   const [creando, setCreando] = useState(false)
 
+  const deLaSala = estado.reuniones.filter((r) => r.salaId === salaActiva?.id)
   const lista = ordenarReuniones(
-    filtro === 'todas' ? estado.reuniones : estado.reuniones.filter((r) => r.estado === filtro),
+    filtro === 'todas' ? deLaSala : deLaSala.filter((r) => r.estado === filtro),
   )
 
   return (
     <div className="space-y-6">
       <Seccion
-        kicker="Agenda del equipo"
+        kicker={salaActiva?.nombre ?? "Agenda del equipo"}
         titulo="Reuniones"
         acciones={
           puedeOrganizar && (
@@ -119,7 +121,7 @@ export default function Reuniones() {
                           )}
                           {ESTADO_REUNION[r.estado].nombre}
                         </Chip>
-                        {r.estado === 'agenda_abierta' && (
+                        {r.estado === 'agenda_abierta' && !r.cierreManual && (
                           <span
                             className={
                               cd.vencido
@@ -179,8 +181,11 @@ export default function Reuniones() {
 /* ── Alta de reunión ──────────────────────────────────────── */
 
 function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {
-  const { estado, crearReunion } = useApp()
+  const { estado, crearReunion, salaActiva, yo } = useApp()
   const navegar = useNavigate()
+
+  /* La sala define los valores por defecto de sus reuniones. */
+  const gente = salaActiva ? integrantes(estado, salaActiva.id) : []
 
   const proximoLunes = () => {
     const d = new Date()
@@ -189,18 +194,16 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
     return paraInputDateTime(d.toISOString())
   }
 
-  const siguiente = estado.reuniones.length + 1
-  const [titulo, setTitulo] = useState(`Reunión semanal de socios · #${siguiente}`)
+  const siguiente =
+    estado.reuniones.filter((r) => r.salaId === salaActiva?.id).length + 1
+  const [titulo, setTitulo] = useState(`${salaActiva?.nombre ?? 'Reunión'} · #${siguiente}`)
   const [fecha, setFecha] = useState(proximoLunes())
-  const [duracion, setDuracion] = useState(estado.config.duracionReunionDefaultMin)
-  const [lugar, setLugar] = useState('Showroom Palermo')
-  const [moderadorId, setModeradorId] = useState(
-    estado.usuarios.find((u) => u.rol === 'organizador')?.id ?? estado.usuarios[0]?.id ?? '',
-  )
-  const [horasCierre, setHorasCierre] = useState(estado.config.horasCierreAgendaDefault)
-  const [participantes, setParticipantes] = useState<string[]>(
-    estado.usuarios.filter((u) => u.activo).map((u) => u.id),
-  )
+  const [duracion, setDuracion] = useState(salaActiva?.duracionReunionDefaultMin ?? 60)
+  const [lugar, setLugar] = useState(salaActiva?.lugarHabitual ?? '')
+  const [moderadorId, setModeradorId] = useState(yo?.id ?? gente[0]?.id ?? '')
+  const [horasCierre, setHorasCierre] = useState(salaActiva?.horasCierreAgenda ?? 24)
+  const [cierreManual, setCierreManual] = useState(salaActiva?.cierreManual ?? false)
+  const [participantes, setParticipantes] = useState<string[]>(gente.map((u) => u.id))
 
   const alternar = (id: string) =>
     setParticipantes((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
@@ -214,11 +217,12 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
       lugar: lugar || undefined,
       moderadorId,
       horasCierreAgenda: horasCierre,
+      cierreManual,
       participantesIds: participantes,
       estado: 'agenda_abierta',
     })
     onCerrar()
-    navegar(`/reuniones/${r.id}`)
+    if (r) navegar(`/reuniones/${r.id}`)
   }
 
   return (
@@ -265,7 +269,7 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
               value={moderadorId}
               onChange={(e) => setModeradorId(e.target.value)}
             >
-              {estado.usuarios.filter((u) => u.activo).map((u) => (
+              {gente.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.nombre}
                 </option>
@@ -276,16 +280,30 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
 
         <Campo
           etiqueta="El temario cierra"
-          ayuda="Horas antes del inicio en que deja de aceptarse la carga de temas."
+          ayuda="Con cierre a mano no hay plazo: se aceptan temas hasta que lo cierres."
         >
-          <div className="flex gap-1.5">
-            {[12, 24, 48, 72].map((h) => (
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => setCierreManual(true)}
+              className={
+                cierreManual
+                  ? 'border border-tinta bg-tinta px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-fondo'
+                  : 'border border-borde2 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
+              }
+            >
+              A mano
+            </button>
+            {[12, 24, 48].map((h) => (
               <button
                 key={h}
                 type="button"
-                onClick={() => setHorasCierre(h)}
+                onClick={() => {
+                  setCierreManual(false)
+                  setHorasCierre(h)
+                }}
                 className={
-                  horasCierre === h
+                  !cierreManual && horasCierre === h
                     ? 'border border-tinta bg-tinta px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-fondo'
                     : 'border border-borde2 px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
                 }
@@ -298,9 +316,7 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
 
         <Campo etiqueta={`Participantes (${participantes.length})`}>
           <div className="grid gap-1.5 sm:grid-cols-2">
-            {estado.usuarios
-              .filter((u) => u.activo)
-              .map((u) => (
+            {gente.map((u) => (
                 <button
                   key={u.id}
                   type="button"

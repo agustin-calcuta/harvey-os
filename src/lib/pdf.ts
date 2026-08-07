@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import type { Estado, Reunion } from '../types'
+import type { Compromiso, Estado, Reunion } from '../types'
 import { IMPORTANCIA, OBJETIVOS, ESTADO_COMPROMISO } from '../types'
 import {
   agendaDe,
@@ -27,17 +27,24 @@ const LINEA: [number, number, number] = [215, 213, 209]
 
 const M = 42 // margen lateral
 
-/** Arma el documento sin descargarlo. Separado para poder inspeccionarlo. */
+/**
+ * Arma el documento sin descargarlo. Separado para poder inspeccionarlo.
+ *
+ * `pendientesIncluidos` son los ids que el organizador tildó uno por
+ * uno: el criterio de qué viejo entra en la minuta es suyo, no
+ * automático.
+ */
 export function construirMinuta(
   estado: Estado,
   r: Reunion,
-  opciones?: { incluirArrastrados?: boolean },
+  opciones?: { pendientesIncluidos?: string[] },
 ): jsPDF {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' })
   const ancho = doc.internal.pageSize.getWidth()
   const temas = agendaDe(estado, r.id)
   const compromisos = compromisosDe(estado, r.id)
-  const arrastrados = opciones?.incluirArrastrados ? compromisosArrastrados(estado, r.id) : []
+  const elegidos = new Set(opciones?.pendientesIncluidos ?? [])
+  const arrastrados = compromisosArrastrados(estado, r.id).filter((c) => elegidos.has(c.id))
 
   /* ── Cabecera ── */
   doc.setFillColor(...NEGRO)
@@ -282,7 +289,7 @@ export function construirMinuta(
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7)
     doc.setTextColor(...GRIS)
-    doc.text('HARVEY OS  ·  MINUTA GENERADA AUTOMÁTICAMENTE', M, alto - 28)
+    doc.text('HARVEY  ·  MINUTA GENERADA AUTOMÁTICAMENTE', M, alto - 28)
     doc.text(`${i} / ${paginas}`, ancho - M, alto - 28, { align: 'right' })
   }
 
@@ -292,10 +299,164 @@ export function construirMinuta(
 export function generarMinutaPDF(
   estado: Estado,
   r: Reunion,
-  opciones?: { incluirArrastrados?: boolean },
+  opciones?: { pendientesIncluidos?: string[] },
 ) {
   const doc = construirMinuta(estado, r, opciones)
   doc.save(`minuta-${slug(r.titulo)}-${fechaCorta(r.fecha).replace(/\//g, '-')}.pdf`)
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Pendientes de una persona.
+
+   Fran lo pidió mirando la pantalla: "quiero que cada uno de mi
+   equipo tenga un listadito de sus pendientes para que lo tengan a
+   mano", porque hay gente que no abre el correo y sí el WhatsApp.
+   ───────────────────────────────────────────────────────────── */
+
+export function construirPendientes(
+  estado: Estado,
+  usuarioId: string,
+  compromisos: Compromiso[],
+  contexto?: string,
+): jsPDF {
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' })
+  const ancho = doc.internal.pageSize.getWidth()
+  const abiertos = compromisos
+    .filter((c) => c.responsableId === usuarioId && c.estado !== 'hecho')
+    .sort((a, b) => (a.fechaLimite ?? '9999').localeCompare(b.fechaLimite ?? '9999'))
+
+  /* ── Cabecera ── */
+  doc.setFillColor(...NEGRO)
+  doc.rect(0, 0, ancho, 104, 'F')
+
+  doc.setTextColor(255, 255, 255)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(30)
+  doc.text('HARVEY', M, 50)
+
+  doc.setFillColor(...ROJO)
+  doc.rect(M, 60, 30, 3, 'F')
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  doc.setTextColor(170, 170, 170)
+  doc.text('TUS PENDIENTES', M, 80)
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(13)
+  doc.setTextColor(255, 255, 255)
+  doc.text(nombreDe(estado, usuarioId).toUpperCase(), M, 96)
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  doc.setTextColor(150, 150, 150)
+  doc.text(`AL ${fechaCorta(new Date().toISOString())}`, ancho - M, 50, { align: 'right' })
+  if (contexto) doc.text(contexto.toUpperCase(), ancho - M, 64, { align: 'right' })
+
+  let y = 132
+
+  if (!abiertos.length) {
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(11)
+    doc.setTextColor(...GRIS)
+    doc.text('No tenés compromisos abiertos. Todo al día.', M, y)
+    return doc
+  }
+
+  const vencidos = abiertos.filter(
+    (c) => c.fechaLimite && new Date(c.fechaLimite).getTime() < Date.now(),
+  )
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9.5)
+  doc.setTextColor(40, 40, 40)
+  doc.text(
+    vencidos.length
+      ? `${abiertos.length} compromisos abiertos, ${vencidos.length} de ellos vencidos.`
+      : `${abiertos.length} compromisos abiertos.`,
+    M,
+    y,
+  )
+  y += 22
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: M, right: M },
+    theme: 'grid',
+    headStyles: {
+      fillColor: NEGRO,
+      textColor: [255, 255, 255],
+      fontSize: 7.5,
+      fontStyle: 'bold',
+      cellPadding: 6,
+    },
+    styles: { fontSize: 9, cellPadding: 8, lineColor: LINEA, lineWidth: 0.5, textColor: NEGRO },
+    columnStyles: {
+      0: { cellWidth: 22, halign: 'center' },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 78, halign: 'center' },
+      3: { cellWidth: 64, halign: 'center' },
+    },
+    head: [['', 'QUÉ TENÉS QUE HACER', 'PARA CUÁNDO', 'ESTADO']],
+    body: abiertos.map((c) => [
+      '',
+      c.detalle ? `${c.accion}\n${c.detalle}` : c.accion,
+      c.fechaLimite ? fechaCorta(c.fechaLimite) : 'A definir',
+      ESTADO_COMPROMISO[c.estado].nombre,
+    ]),
+    didParseCell: (data) => {
+      if (data.section !== 'body') return
+      const c = abiertos[data.row.index]
+      if (!c) return
+      const vencido = c.fechaLimite && new Date(c.fechaLimite).getTime() < Date.now()
+      if (data.column.index === 2 && vencido) {
+        data.cell.styles.textColor = ROJO
+        data.cell.styles.fontStyle = 'bold'
+      }
+      if (data.column.index === 3) data.cell.styles.textColor = GRIS
+    },
+    // Casilla para tildar a mano y barra de importancia al costado.
+    didDrawCell: (data) => {
+      if (data.section !== 'body') return
+      const c = abiertos[data.row.index]
+      if (!c) return
+      if (data.column.index === 0) {
+        doc.setDrawColor(...GRIS)
+        doc.setLineWidth(0.7)
+        doc.rect(data.cell.x + 6, data.cell.y + data.cell.height / 2 - 4.5, 9, 9)
+      }
+      if (data.column.index === 1) {
+        doc.setFillColor(IMPORTANCIA[c.importancia].hex)
+        doc.rect(data.cell.x + 1, data.cell.y + 1, 2.5, data.cell.height - 2, 'F')
+      }
+    },
+  })
+
+  const alto = doc.internal.pageSize.getHeight()
+  const paginas = doc.getNumberOfPages()
+  for (let i = 1; i <= paginas; i++) {
+    doc.setPage(i)
+    doc.setDrawColor(...LINEA)
+    doc.setLineWidth(0.5)
+    doc.line(M, alto - 42, ancho - M, alto - 42)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7)
+    doc.setTextColor(...GRIS)
+    doc.text('HARVEY  ·  LISTADO GENERADO AUTOMÁTICAMENTE', M, alto - 28)
+    doc.text(`${i} / ${paginas}`, ancho - M, alto - 28, { align: 'right' })
+  }
+
+  return doc
+}
+
+export function generarPendientesPDF(
+  estado: Estado,
+  usuarioId: string,
+  compromisos: Compromiso[],
+  contexto?: string,
+) {
+  const doc = construirPendientes(estado, usuarioId, compromisos, contexto)
+  doc.save(`pendientes-${slug(nombreDe(estado, usuarioId))}.pdf`)
 }
 
 /* ── Auxiliares ───────────────────────────────────────────── */

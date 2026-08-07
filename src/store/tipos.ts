@@ -3,10 +3,20 @@ import type { Config, Estado } from '../types'
 /* Contrato del repositorio, en su propio módulo para que las
    implementaciones no dependan unas de otras. */
 
-export type Coleccion = 'usuarios' | 'reuniones' | 'temas' | 'compromisos' | 'notificaciones'
+export type Coleccion =
+  | 'usuarios'
+  | 'salas'
+  | 'membresias'
+  | 'reuniones'
+  | 'temas'
+  | 'compromisos'
+  | 'notificaciones'
 
+/** Orden de escritura: respeta las claves foráneas. */
 export const COLECCIONES: Coleccion[] = [
   'usuarios',
+  'salas',
+  'membresias',
   'reuniones',
   'temas',
   'compromisos',

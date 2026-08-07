@@ -3,52 +3,91 @@
 --
 -- Se aplica DESPUÉS de habilitar la Data API: recién ahí Neon crea
 -- el esquema `auth` (con auth.user_id()) y el rol `authenticated`.
+--
+-- Regla de oro: **sólo se ve lo de las salas a las que pertenecés**.
+-- Dentro de una sala, el organizador arma la agenda y el miembro
+-- propone. El superadmin atraviesa todo, y es lo único que se
+-- decide fuera de las salas.
 -- ─────────────────────────────────────────────────────────────
 
 begin;
 
-/* ── Identidad y rol del usuario en curso ────────────────── */
+/* ── Identidad ───────────────────────────────────────────── */
 
--- Fila de `usuarios` que corresponde al JWT en curso.
-create or replace function public.mi_usuario_id() returns text
-language sql stable security definer set search_path = public as $$
-  select id from public.usuarios where "authUserId" = auth.user_id() limit 1
+/**
+ * Correo del token en curso.
+ *
+ * Es la llave de la primera vinculación: el organizador da de alta a
+ * alguien con su correo y, cuando esa persona entra con Google, se
+ * reconoce por ahí y se engancha con la ficha que ya existía.
+ */
+create or replace function public.mi_email() returns text
+language sql stable as $$
+  select lower(nullif(current_setting('request.jwt.claims', true), '')::json->>'email')
 $$;
 
-create or replace function public.mi_rol() returns text
+/**
+ * Mi ficha: por vínculo ya hecho, o por correo si todavía no se hizo.
+ */
+create or replace function public.mi_usuario_id() returns text
+language sql stable security definer set search_path = public as $$
+  select id from public.usuarios
+  where "authUserId" = auth.user_id()
+     or ("authUserId" is null and lower(email) = public.mi_email())
+  order by ("authUserId" is not null) desc
+  limit 1
+$$;
+
+create or replace function public.soy_superadmin() returns boolean
 language sql stable security definer set search_path = public as $$
   select coalesce(
-    (select rol from public.usuarios where "authUserId" = auth.user_id() limit 1),
-    'miembro'
+    (select alcance = 'superadmin' from public.usuarios where id = public.mi_usuario_id()),
+    false
   )
 $$;
 
-create or replace function public.soy_admin() returns boolean
+/* ── Pertenencia a salas ─────────────────────────────────── */
+
+create or replace function public.soy_de_la_sala(sala text) returns boolean
 language sql stable security definer set search_path = public as $$
-  select public.mi_rol() = 'admin'
+  select public.soy_superadmin() or exists (
+    select 1 from public.membresias m
+    where m."salaId" = sala and m."usuarioId" = public.mi_usuario_id()
+  )
 $$;
 
--- Admin u organizador: quienes arman la agenda y moderan.
-create or replace function public.puedo_organizar() returns boolean
+create or replace function public.organizo_la_sala(sala text) returns boolean
 language sql stable security definer set search_path = public as $$
-  select public.mi_rol() in ('admin', 'organizador')
+  select public.soy_superadmin() or exists (
+    select 1 from public.membresias m
+    where m."salaId" = sala and m."usuarioId" = public.mi_usuario_id()
+      and m.rol = 'organizador'
+  )
+$$;
+
+/** Salas donde tengo algo que ver. Usada por las políticas de lectura. */
+create or replace function public.mis_salas() returns setof text
+language sql stable security definer set search_path = public as $$
+  select case
+    when public.soy_superadmin() then (select id from public.salas)
+  end
+  union
+  select m."salaId" from public.membresias m where m."usuarioId" = public.mi_usuario_id()
 $$;
 
 /*
- * Nadie se auto-asciende. Al crear o modificar la propia fila desde la
- * aplicación, el rol queda congelado salvo que quien escribe sea admin.
- * La excepción es la primera persona que entra: si la tabla está vacía,
- * arranca admin.
+ * Nadie se auto-asciende ni se vuelve superadmin solo. Al crear o
+ * modificar la propia ficha, el alcance queda congelado salvo que
+ * quien escribe ya sea superadmin.
  *
- * El trigger sólo actúa sobre escrituras con JWT, es decir las que llegan
- * por la Data API. Una carga administrativa por SQL directo (el seed, una
- * migración) no trae token y pasa sin tocar: si no, sembrar el equipo con
- * sus roles sería imposible.
+ * El trigger sólo actúa sobre escrituras con JWT, es decir las que
+ * llegan por la Data API. Una carga administrativa por SQL directo
+ * (el seed, una migración) no trae token y pasa sin tocar: si no,
+ * sembrar el equipo sería imposible.
  */
-create or replace function public.proteger_rol() returns trigger
+create or replace function public.proteger_alcance() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare
-  hay_usuarios boolean;
   quien text;
 begin
   begin
@@ -57,25 +96,42 @@ begin
     quien := null;
   end;
 
-  if quien is null or public.soy_admin() then
+  if quien is null or public.soy_superadmin() then
     return new;
   end if;
 
-  if tg_op = 'INSERT' then
-    select exists (select 1 from public.usuarios) into hay_usuarios;
-    new.rol := case when hay_usuarios then 'miembro' else 'admin' end;
-  else
-    new.rol := old.rol;
-  end if;
-
+  new.alcance := case when tg_op = 'INSERT' then 'usuario' else old.alcance end;
   return new;
 end;
 $$;
 
-drop trigger if exists usuarios_proteger_rol on public.usuarios;
-create trigger usuarios_proteger_rol
+drop trigger if exists usuarios_proteger_alcance on public.usuarios;
+create trigger usuarios_proteger_alcance
   before insert or update on public.usuarios
-  for each row execute function public.proteger_rol();
+  for each row execute function public.proteger_alcance();
+
+/*
+ * Quien crea una sala queda como su organizador. Sin esto, crearía
+ * una sala a la que después no podría entrar.
+ */
+create or replace function public.alta_sala() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  yo text := public.mi_usuario_id();
+begin
+  if yo is not null then
+    insert into public.membresias (id, "salaId", "usuarioId", rol)
+    values ('m_' || substr(md5(random()::text || new.id), 1, 12), new.id, yo, 'organizador')
+    on conflict ("salaId", "usuarioId") do update set rol = 'organizador';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists salas_alta on public.salas;
+create trigger salas_alta
+  after insert on public.salas
+  for each row execute function public.alta_sala();
 
 /* ── Permisos del rol `authenticated` ────────────────────── */
 
@@ -87,124 +143,216 @@ alter default privileges in schema public
 alter default privileges in schema public
   grant usage, select on sequences to authenticated;
 
-grant execute on function public.mi_usuario_id, public.mi_rol,
-                          public.soy_admin, public.puedo_organizar to authenticated;
+grant execute on function public.mi_usuario_id, public.mi_email, public.soy_superadmin,
+                          public.soy_de_la_sala, public.organizo_la_sala,
+                          public.mis_salas to authenticated;
 
 /* ── RLS ─────────────────────────────────────────────────── */
 
 alter table public.usuarios       enable row level security;
+alter table public.salas          enable row level security;
+alter table public.membresias     enable row level security;
 alter table public.reuniones      enable row level security;
 alter table public.temas          enable row level security;
 alter table public.compromisos    enable row level security;
 alter table public.notificaciones enable row level security;
 alter table public.config         enable row level security;
 
--- Equipo chico donde todos ven todo: la lectura es abierta a la
--- gente autenticada. Lo que se controla es quién escribe qué.
+/* usuarios ─ la ficha de alguien se ve si compartimos alguna sala */
 
--- usuarios
-drop policy if exists usuarios_leer      on public.usuarios;
-drop policy if exists usuarios_alta      on public.usuarios;
-drop policy if exists usuarios_editar    on public.usuarios;
-drop policy if exists usuarios_borrar    on public.usuarios;
+drop policy if exists usuarios_leer   on public.usuarios;
+drop policy if exists usuarios_alta   on public.usuarios;
+drop policy if exists usuarios_editar on public.usuarios;
+drop policy if exists usuarios_borrar on public.usuarios;
 
 create policy usuarios_leer on public.usuarios
-  for select to authenticated using (true);
+  for select to authenticated
+  using (
+    public.soy_superadmin()
+    or id = public.mi_usuario_id()
+    or exists (
+      select 1 from public.membresias mios, public.membresias suyas
+      where mios."usuarioId" = public.mi_usuario_id()
+        and suyas."usuarioId" = public.usuarios.id
+        and mios."salaId" = suyas."salaId"
+    )
+  );
 
--- Cada quien puede darse de alta a sí mismo (primer ingreso con Google);
--- los admin pueden dar de alta a cualquiera.
+-- Alta: uno mismo en el primer ingreso, o el organizador dando de
+-- alta a alguien de su equipo con el correo con el que va a entrar.
 create policy usuarios_alta on public.usuarios
   for insert to authenticated
-  with check ("authUserId" = auth.user_id() or public.soy_admin());
+  with check (
+    "authUserId" = auth.user_id()
+    or public.soy_superadmin()
+    or exists (
+      select 1 from public.membresias m
+      where m."usuarioId" = public.mi_usuario_id() and m.rol = 'organizador'
+    )
+  );
 
+/*
+ * Se puede editar la ficha propia, y también reclamar una que todavía
+ * no tiene dueño si el correo coincide con el del token: así se cierra
+ * el vínculo del primer ingreso. El organizador edita a los suyos.
+ */
 create policy usuarios_editar on public.usuarios
   for update to authenticated
-  using ("authUserId" = auth.user_id() or public.soy_admin())
-  with check ("authUserId" = auth.user_id() or public.soy_admin());
+  using (
+    public.soy_superadmin()
+    or id = public.mi_usuario_id()
+    or ("authUserId" is null and lower(email) = public.mi_email())
+    or exists (
+      select 1 from public.membresias mia, public.membresias suya
+      where mia."usuarioId" = public.mi_usuario_id() and mia.rol = 'organizador'
+        and suya."usuarioId" = public.usuarios.id
+        and suya."salaId" = mia."salaId"
+    )
+  )
+  with check (
+    public.soy_superadmin()
+    or id = public.mi_usuario_id()
+    or ("authUserId" is null and lower(email) = public.mi_email())
+    or exists (
+      select 1 from public.membresias mia, public.membresias suya
+      where mia."usuarioId" = public.mi_usuario_id() and mia.rol = 'organizador'
+        and suya."usuarioId" = public.usuarios.id
+        and suya."salaId" = mia."salaId"
+    )
+  );
 
 create policy usuarios_borrar on public.usuarios
-  for delete to authenticated using (public.soy_admin());
+  for delete to authenticated using (public.soy_superadmin());
 
--- reuniones
+/* salas ─ sólo las propias */
+
+drop policy if exists salas_leer   on public.salas;
+drop policy if exists salas_alta   on public.salas;
+drop policy if exists salas_editar on public.salas;
+drop policy if exists salas_borrar on public.salas;
+
+create policy salas_leer on public.salas
+  for select to authenticated using (public.soy_de_la_sala(id));
+
+-- Cualquiera puede armar la sala de su equipo; queda como organizador.
+create policy salas_alta on public.salas
+  for insert to authenticated with check (true);
+
+create policy salas_editar on public.salas
+  for update to authenticated
+  using (public.organizo_la_sala(id)) with check (public.organizo_la_sala(id));
+
+create policy salas_borrar on public.salas
+  for delete to authenticated using (public.organizo_la_sala(id));
+
+/* membresias ─ el organizador arma su equipo */
+
+drop policy if exists membresias_leer   on public.membresias;
+drop policy if exists membresias_alta   on public.membresias;
+drop policy if exists membresias_editar on public.membresias;
+drop policy if exists membresias_borrar on public.membresias;
+
+create policy membresias_leer on public.membresias
+  for select to authenticated using (public.soy_de_la_sala("salaId"));
+
+create policy membresias_alta on public.membresias
+  for insert to authenticated with check (public.organizo_la_sala("salaId"));
+
+create policy membresias_editar on public.membresias
+  for update to authenticated
+  using (public.organizo_la_sala("salaId")) with check (public.organizo_la_sala("salaId"));
+
+create policy membresias_borrar on public.membresias
+  for delete to authenticated using (public.organizo_la_sala("salaId"));
+
+/* reuniones ─ las minutas se ven por sala, no por asistencia */
+
 drop policy if exists reuniones_leer   on public.reuniones;
 drop policy if exists reuniones_alta   on public.reuniones;
 drop policy if exists reuniones_editar on public.reuniones;
 drop policy if exists reuniones_borrar on public.reuniones;
 
 create policy reuniones_leer on public.reuniones
-  for select to authenticated using (true);
+  for select to authenticated using (public.soy_de_la_sala("salaId"));
 
 create policy reuniones_alta on public.reuniones
-  for insert to authenticated with check (public.puedo_organizar());
+  for insert to authenticated with check (public.organizo_la_sala("salaId"));
 
--- Modera quien organiza, o quien esté designado como moderador.
+-- Modera quien organiza la sala, o quien esté designado moderador.
 create policy reuniones_editar on public.reuniones
   for update to authenticated
-  using (public.puedo_organizar() or "moderadorId" = public.mi_usuario_id())
-  with check (public.puedo_organizar() or "moderadorId" = public.mi_usuario_id());
+  using (public.organizo_la_sala("salaId") or "moderadorId" = public.mi_usuario_id())
+  with check (public.organizo_la_sala("salaId") or "moderadorId" = public.mi_usuario_id());
 
 create policy reuniones_borrar on public.reuniones
-  for delete to authenticated using (public.puedo_organizar());
+  for delete to authenticated using (public.organizo_la_sala("salaId"));
 
--- temas: cualquiera propone, el organizador dispone
+/* temas ─ cualquiera de la sala propone, el organizador dispone */
+
 drop policy if exists temas_leer   on public.temas;
 drop policy if exists temas_alta   on public.temas;
 drop policy if exists temas_editar on public.temas;
 drop policy if exists temas_borrar on public.temas;
 
 create policy temas_leer on public.temas
-  for select to authenticated using (true);
+  for select to authenticated using (public.soy_de_la_sala("salaId"));
 
 create policy temas_alta on public.temas
-  for insert to authenticated with check (true);
+  for insert to authenticated with check (public.soy_de_la_sala("salaId"));
 
 create policy temas_editar on public.temas
   for update to authenticated
-  using (public.puedo_organizar() or "propuestoPor" = public.mi_usuario_id())
-  with check (public.puedo_organizar() or "propuestoPor" = public.mi_usuario_id());
+  using (public.organizo_la_sala("salaId") or "propuestoPor" = public.mi_usuario_id())
+  with check (public.organizo_la_sala("salaId") or "propuestoPor" = public.mi_usuario_id());
 
 create policy temas_borrar on public.temas
   for delete to authenticated
-  using (public.puedo_organizar() or "propuestoPor" = public.mi_usuario_id());
+  using (public.organizo_la_sala("salaId") or "propuestoPor" = public.mi_usuario_id());
 
--- compromisos: el responsable actualiza su propio avance
+/* compromisos ─ el responsable actualiza su propio avance */
+
 drop policy if exists compromisos_leer   on public.compromisos;
 drop policy if exists compromisos_alta   on public.compromisos;
 drop policy if exists compromisos_editar on public.compromisos;
 drop policy if exists compromisos_borrar on public.compromisos;
 
 create policy compromisos_leer on public.compromisos
-  for select to authenticated using (true);
+  for select to authenticated using (public.soy_de_la_sala("salaId"));
 
 create policy compromisos_alta on public.compromisos
-  for insert to authenticated with check (true);
+  for insert to authenticated with check (public.soy_de_la_sala("salaId"));
 
 create policy compromisos_editar on public.compromisos
-  for update to authenticated using (true) with check (true);
+  for update to authenticated
+  using (public.organizo_la_sala("salaId") or "responsableId" = public.mi_usuario_id())
+  with check (public.organizo_la_sala("salaId") or "responsableId" = public.mi_usuario_id());
 
 create policy compromisos_borrar on public.compromisos
   for delete to authenticated
-  using (public.puedo_organizar() or "responsableId" = public.mi_usuario_id());
+  using (public.organizo_la_sala("salaId") or "responsableId" = public.mi_usuario_id());
 
--- notificaciones: las emite la app al cerrar agenda y al cerrar reunión
+/* notificaciones */
+
 drop policy if exists notif_leer   on public.notificaciones;
 drop policy if exists notif_alta   on public.notificaciones;
 drop policy if exists notif_editar on public.notificaciones;
 drop policy if exists notif_borrar on public.notificaciones;
 
 create policy notif_leer on public.notificaciones
-  for select to authenticated using (true);
+  for select to authenticated using (public.soy_de_la_sala("salaId"));
 
 create policy notif_alta on public.notificaciones
-  for insert to authenticated with check (true);
+  for insert to authenticated with check (public.soy_de_la_sala("salaId"));
 
 create policy notif_editar on public.notificaciones
-  for update to authenticated using (true) with check (true);
+  for update to authenticated
+  using (public.soy_de_la_sala("salaId")) with check (public.soy_de_la_sala("salaId"));
 
 create policy notif_borrar on public.notificaciones
-  for delete to authenticated using (public.soy_admin());
+  for delete to authenticated using (public.organizo_la_sala("salaId"));
 
--- config
+/* config ─ global, sólo la toca el superadmin */
+
 drop policy if exists config_leer   on public.config;
 drop policy if exists config_alta   on public.config;
 drop policy if exists config_editar on public.config;
@@ -213,9 +361,10 @@ create policy config_leer on public.config
   for select to authenticated using (true);
 
 create policy config_alta on public.config
-  for insert to authenticated with check (public.soy_admin());
+  for insert to authenticated with check (public.soy_superadmin());
 
 create policy config_editar on public.config
-  for update to authenticated using (public.soy_admin()) with check (public.soy_admin());
+  for update to authenticated
+  using (public.soy_superadmin()) with check (public.soy_superadmin());
 
 commit;

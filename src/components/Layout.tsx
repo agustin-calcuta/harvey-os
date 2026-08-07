@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
+  AlertTriangle,
   CalendarDays,
+  Check,
   CheckCircle2,
+  ChevronDown,
+  DoorOpen,
+  Eye,
+  Info,
   LayoutDashboard,
   ListChecks,
   LogOut,
@@ -10,12 +16,10 @@ import {
   Menu,
   Settings,
   X,
-  AlertTriangle,
-  Info,
-  Eye,
 } from 'lucide-react'
-import { useApp, ROL_LABEL } from '../store/AppContext'
-import { cx, estaVencido, proximaReunion, cuentaRegresiva, deadlineAgenda } from '../lib/utils'
+import { useApp } from '../store/AppContext'
+import { cx, cuentaRegresiva, deadlineAgenda, estaVencido, proximaReunion } from '../lib/utils'
+import { ROLES_SALA } from '../types'
 
 const NAV = [
   { a: '/', icono: LayoutDashboard, texto: 'Panel', exacto: true },
@@ -25,13 +29,26 @@ const NAV = [
 ]
 
 export default function Layout() {
-  const { yo, estado, salir, esAdmin, vistaPrevia } = useApp()
+  const {
+    yo,
+    estado,
+    salir,
+    vistaPrevia,
+    misSalas,
+    salaActiva,
+    elegirSala,
+    miRol,
+    esSuperadmin,
+    compromisosVisibles,
+  } = useApp()
+
   const [abierto, setAbierto] = useState(false)
+  const [salasAbiertas, setSalasAbiertas] = useState(false)
   const navegar = useNavigate()
   const ruta = useLocation()
 
-  // El menú móvil se cierra al navegar y no deja el fondo scrolleable.
   useEffect(() => setAbierto(false), [ruta.pathname])
+  useEffect(() => setSalasAbiertas(false), [ruta.pathname, salaActiva?.id])
   useEffect(() => {
     if (!abierto) return
     const previo = document.body.style.overflow
@@ -41,28 +58,28 @@ export default function Layout() {
     }
   }, [abierto])
 
-  const misPendientes = estado.compromisos.filter(
+  const misPendientes = compromisosVisibles.filter(
     (c) => c.responsableId === yo?.id && c.estado !== 'hecho',
   )
-  const vencidos = estado.compromisos.filter((c) => estaVencido(c))
-  const proxima = proximaReunion(estado)
+  const vencidos = compromisosVisibles.filter((c) => estaVencido(c))
+  const proxima = salaActiva ? proximaReunion(estado, salaActiva.id) : undefined
 
-  const enlaces = esAdmin
+  const enlaces = esSuperadmin
     ? [...NAV, { a: '/admin', icono: Settings, texto: 'Administración' }]
     : NAV
 
   return (
     <div className="flex min-h-screen">
-      {/* ── Barra lateral ── */}
-      {/* La barra queda en oscuro: sostiene el contraste de la marca
-          y separa la navegación del área de trabajo. */}
+      {/* ── Barra lateral ──
+          Queda en oscuro: sostiene el contraste de la marca y separa
+          la navegación del área de trabajo. */}
       <aside
         className={cx(
           'noche fixed inset-y-0 left-0 z-40 flex w-[248px] flex-col transition-transform lg:translate-x-0',
           abierto ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        <div className="flex items-center justify-between border-b border-[--color-nocheborde] px-5 py-5">
+        <div className="flex items-center justify-between px-5 py-5">
           <button onClick={() => navegar('/')} className="text-left">
             <div className="display text-2xl leading-none">Harvey</div>
             <div className="label mt-1">Sistema de reuniones</div>
@@ -76,7 +93,57 @@ export default function Layout() {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-3">
+        {/* ── Sala activa ──
+            Todo lo que se ve abajo pertenece a esta sala. */}
+        <div className="px-3 pb-3">
+          <button
+            onClick={() => setSalasAbiertas((v) => !v)}
+            className="flex w-full items-center gap-2 border border-[--color-nocheborde] px-3 py-2.5 text-left transition-colors hover:border-white/30"
+          >
+            <DoorOpen size={14} className="shrink-0 text-white/50" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm text-white/90">
+                {salaActiva?.nombre ?? 'Sin sala'}
+              </span>
+              <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">
+                {miRol ? ROLES_SALA[miRol].nombre : '—'}
+              </span>
+            </span>
+            <ChevronDown
+              size={14}
+              className={cx(
+                'shrink-0 text-white/50 transition-transform',
+                salasAbiertas && 'rotate-180',
+              )}
+            />
+          </button>
+
+          {salasAbiertas && (
+            <div className="mt-1 border border-[--color-nocheborde] bg-black/30">
+              {misSalas.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => elegirSala(s.id)}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-white/70 transition-colors hover:bg-white/5 hover:text-white"
+                >
+                  <Check
+                    size={12}
+                    className={cx('shrink-0', s.id === salaActiva?.id ? 'text-signal' : 'opacity-0')}
+                  />
+                  <span className="truncate">{s.nombre}</span>
+                </button>
+              ))}
+              <button
+                onClick={() => navegar('/salas')}
+                className="flex w-full items-center gap-2 border-t border-[--color-nocheborde] px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-white/50 transition-colors hover:text-white"
+              >
+                Ver todas las salas
+              </button>
+            </div>
+          )}
+        </div>
+
+        <nav className="flex-1 overflow-y-auto px-3">
           {enlaces.map((n) => (
             <NavLink
               key={n.a}
@@ -85,7 +152,7 @@ export default function Layout() {
               onClick={() => setAbierto(false)}
               className={({ isActive }) =>
                 cx(
-                  'group mb-0.5 flex items-center gap-3 border-l-2 px-3 py-2.5 font-semibold text-[11px] uppercase tracking-[0.12em] transition-all',
+                  'group mb-0.5 flex items-center gap-3 border-l-2 px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] transition-all',
                   isActive
                     ? 'border-signal bg-white/8 text-white'
                     : 'border-transparent text-white/55 hover:bg-white/5 hover:text-white',
@@ -114,7 +181,6 @@ export default function Layout() {
           ))}
         </nav>
 
-        {/* Próxima reunión, siempre a la vista */}
         {proxima && (
           <button
             onClick={() => {
@@ -125,7 +191,7 @@ export default function Layout() {
           >
             <div className="label mb-1.5">Próxima reunión</div>
             <div className="mb-2 text-xs leading-snug text-white/85">{proxima.titulo}</div>
-            {proxima.estado === 'agenda_abierta' ? (
+            {proxima.estado === 'agenda_abierta' && !proxima.cierreManual ? (
               <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[#E8A33D]">
                 <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-[#E8A33D]" />
                 Cierra en {cuentaRegresiva(deadlineAgenda(proxima)).texto}
@@ -138,7 +204,6 @@ export default function Layout() {
           </button>
         )}
 
-        {/* Usuario */}
         <div className="border-t border-[--color-nocheborde] p-3">
           <div className="flex items-center gap-2.5">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center border border-white/20 text-[9px] font-semibold tracking-wider text-white/70">
@@ -151,7 +216,7 @@ export default function Layout() {
             <div className="min-w-0 flex-1">
               <div className="truncate text-xs text-white/90">{yo?.nombre}</div>
               <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">
-                {yo ? ROL_LABEL[yo.rol] : ''}
+                {esSuperadmin ? 'Soporte' : (yo?.cargo ?? '')}
               </div>
             </div>
             <button
@@ -175,32 +240,27 @@ export default function Layout() {
       {/* ── Contenido ── */}
       <div className="flex min-w-0 flex-1 flex-col lg:pl-[248px]">
         <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-borde bg-fondo/95 px-4 py-3 backdrop-blur lg:hidden">
-          <button
-            onClick={() => setAbierto(true)}
-            aria-label="Abrir menú"
-            className="-m-2 p-2"
-          >
+          <button onClick={() => setAbierto(true)} aria-label="Abrir menú" className="-m-2 p-2">
             <Menu size={20} />
           </button>
           <button onClick={() => navegar('/')} className="display text-lg">
             Harvey
           </button>
-          <span className="ml-auto truncate font-semibold text-[10px] uppercase tracking-[0.14em] text-suave">
-            {enlaces.find((n) => (n.exacto ? ruta.pathname === n.a : ruta.pathname.startsWith(n.a)))
-              ?.texto ?? ''}
+          <span className="ml-auto truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-suave">
+            {salaActiva?.nombre ?? ''}
           </span>
         </header>
 
         {vistaPrevia && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber/40 bg-amber/10 px-4 py-2.5 sm:px-6">
-            <span className="flex items-center gap-2 font-semibold text-[10px] uppercase tracking-[0.14em] text-amber">
+            <span className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber">
               <Eye size={12} />
-              Vista previa como {yo ? ROL_LABEL[yo.rol] : ''} · datos de ejemplo, sólo en este
-              navegador
+              Vista previa como {miRol ? ROLES_SALA[miRol].nombre : '—'} · datos de ejemplo, sólo
+              en este navegador
             </span>
             <button
               onClick={salir}
-              className="font-semibold text-[10px] uppercase tracking-[0.14em] text-amber underline underline-offset-2 hover:text-tinta"
+              className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber underline underline-offset-2 hover:text-tinta"
             >
               Salir y entrar con Google
             </button>
@@ -212,8 +272,8 @@ export default function Layout() {
         </main>
 
         <footer className="border-t border-borde px-6 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
-            <span>Harvey OS · vista previa</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-tenue">
+            <span>Harvey · vista previa</span>
             <span>Desarrollado por Calcuta</span>
           </div>
         </footer>

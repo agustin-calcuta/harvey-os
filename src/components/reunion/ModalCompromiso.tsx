@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '../../store/AppContext'
-import { paraInputDate } from '../../lib/utils'
+import { integrantes, paraInputDate } from '../../lib/utils'
 import {
   ESTADO_COMPROMISO,
   IMPORTANCIA,
@@ -21,11 +21,12 @@ export default function ModalCompromiso({
 }: {
   abierto: boolean
   onCerrar: () => void
-  reunionId: string
+  reunionId?: string
   temaId?: string
   compromiso?: Compromiso
 }) {
-  const { estado, crearCompromiso, actualizarCompromiso } = useApp()
+  const { estado, crearCompromiso, actualizarCompromiso, salaActiva } = useApp()
+  const gente = salaActiva ? integrantes(estado, salaActiva.id) : []
 
   const [accion, setAccion] = useState('')
   const [detalle, setDetalle] = useState('')
@@ -39,12 +40,12 @@ export default function ModalCompromiso({
     if (!abierto) return
     setAccion(compromiso?.accion ?? '')
     setDetalle(compromiso?.detalle ?? '')
-    setResponsableId(compromiso?.responsableId ?? estado.usuarios[0]?.id ?? '')
+    setResponsableId(compromiso?.responsableId ?? gente[0]?.id ?? '')
     setFechaLimite(paraInputDate(compromiso?.fechaLimite) || sugerirFecha())
     setImportancia(compromiso?.importancia ?? 'media')
     setEst(compromiso?.estado ?? 'pendiente')
     setAvance(compromiso?.avance ?? '')
-  }, [abierto, compromiso, estado.usuarios])
+  }, [abierto, compromiso, salaActiva, estado])
 
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -103,13 +104,11 @@ export default function ModalCompromiso({
               onChange={(e) => setResponsableId(e.target.value)}
               required
             >
-              {estado.usuarios
-                .filter((u) => u.activo)
-                .map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.nombre}
-                  </option>
-                ))}
+              {gente.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nombre}
+                </option>
+              ))}
             </select>
           </Campo>
           <Campo etiqueta="Fecha límite">

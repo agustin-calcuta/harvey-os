@@ -36,7 +36,9 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
   const [conclusiones, setConclusiones] = useState(reunion.conclusionesGenerales ?? '')
   const [observaciones, setObservaciones] = useState(reunion.observaciones ?? '')
   const [proxima, setProxima] = useState(paraInputDate(reunion.proximaReunionFecha))
-  const [incluirArrastrados, setIncluirArrastrados] = useState(false)
+  /* Qué pendientes viejos entran en la minuta lo decide el organizador
+     uno por uno, no una casilla de todo o nada. */
+  const [enElPDF, setEnElPDF] = useState<Set<string>>(new Set())
   const [nuevoCompromiso, setNuevoCompromiso] = useState(false)
   const [editando, setEditando] = useState<Compromiso | undefined>()
   const [porBorrar, setPorBorrar] = useState<Compromiso | undefined>()
@@ -64,9 +66,14 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
       <div className="flex flex-wrap items-center gap-2">
         <Boton
           variante="solido"
-          onClick={() => generarMinutaPDF(estado, reunion, { incluirArrastrados })}
+          onClick={() =>
+            generarMinutaPDF(estado, reunion, { pendientesIncluidos: [...enElPDF] })
+          }
         >
           <Download size={13} /> Descargar minuta PDF
+          {enElPDF.size > 0 && (
+            <span className="ml-1 opacity-70">+{enElPDF.size}</span>
+          )}
         </Boton>
         <Boton onClick={() => setVerCorreo(true)}>
           <Mail size={13} /> Ver el correo
@@ -76,15 +83,6 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
             <RotateCcw size={12} /> Reabrir para editar
           </Boton>
         )}
-        <label className="flex w-full cursor-pointer items-center gap-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave sm:ml-auto sm:w-auto">
-          <input
-            type="checkbox"
-            className="h-3.5 w-3.5 accent-[#C0392B]"
-            checked={incluirArrastrados}
-            onChange={(e) => setIncluirArrastrados(e.target.checked)}
-          />
-          Sumar pendientes anteriores al PDF
-        </label>
       </div>
 
       {/* ── Ficha, tal cual la minuta de Fran ── */}
@@ -285,14 +283,43 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
       {/* ── Pendientes anteriores ── */}
       {arrastrados.length > 0 && (
         <section>
-          <Etiqueta className="bracket mb-3">Pendientes de reuniones anteriores</Etiqueta>
-          <p className="mb-3 max-w-2xl text-xs text-tenue">
-            No forman parte de esta minuta, pero quedan a un click para repasarlos. Podés
-            incluirlos en el PDF con la casilla de arriba.
-          </p>
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <Etiqueta className="bracket mb-1">Pendientes de reuniones anteriores</Etiqueta>
+              <p className="max-w-2xl text-xs text-tenue">
+                No forman parte de esta minuta. Tildá los que quieras sumar al PDF.
+              </p>
+            </div>
+            <button
+              onClick={() =>
+                setEnElPDF((prev) =>
+                  prev.size === arrastrados.length
+                    ? new Set()
+                    : new Set(arrastrados.map((c) => c.id)),
+                )
+              }
+              className="text-[10px] font-semibold uppercase tracking-[0.12em] text-suave underline underline-offset-2 hover:text-tinta"
+            >
+              {enElPDF.size === arrastrados.length ? 'Ninguno' : 'Todos'}
+            </button>
+          </div>
           <ul className="card divide-y divide-borde">
             {arrastrados.map((c) => (
               <li key={c.id} className="flex flex-wrap items-center gap-3 p-3">
+                <input
+                  type="checkbox"
+                  className="h-3.5 w-3.5 shrink-0 accent-[#C0392B]"
+                  checked={enElPDF.has(c.id)}
+                  onChange={(e) =>
+                    setEnElPDF((prev) => {
+                      const s = new Set(prev)
+                      if (e.target.checked) s.add(c.id)
+                      else s.delete(c.id)
+                      return s
+                    })
+                  }
+                  aria-label={`Sumar «${c.accion}» al PDF`}
+                />
                 <ChipImportancia valor={c.importancia} conTexto={false} />
                 <span className="min-w-0 flex-1 truncate text-sm">{c.accion}</span>
                 <span className="text-xs text-suave">{nombreDe(estado, c.responsableId)}</span>

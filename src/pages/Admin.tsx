@@ -1,25 +1,32 @@
 import { useState } from 'react'
-import { Database, Pencil, Plus, RotateCcw, Send, Trash2 } from 'lucide-react'
-import { useApp, ROL_LABEL } from '../store/AppContext'
+import { Database, DoorOpen, Pencil, Plus, RotateCcw, Send, Trash2, Users } from 'lucide-react'
+import { useApp } from '../store/AppContext'
 import { firebaseConfigurado } from '../lib/firebase'
 import { neonConfigurado } from '../lib/neon'
 import { correoConfigurado, enviarCorreo } from '../lib/email'
-import { fechaCorta, uid } from '../lib/utils'
-import { ROLES, type Rol, type Usuario } from '../types'
-import {
-  Avatar,
-  Boton,
-  Campo,
-  Chip,
-  Confirmar,
-  Modal,
-  Seccion,
-  Segmentado,
-} from '../components/ui'
+import { fechaCorta, integrantes, uid } from '../lib/utils'
+import type { Alcance, Usuario } from '../types'
+import { Boton, Campo, Chip, Confirmar, Modal, Seccion, Segmentado } from '../components/ui'
+
+/* ─────────────────────────────────────────────────────────────
+   Panel de soporte.
+
+   Sólo lo ve el superadmin: no es una pantalla del cliente, es la
+   consola de quien mantiene la herramienta. El equipo administra
+   su propia sala desde la pantalla de Salas.
+   ───────────────────────────────────────────────────────────── */
 
 export default function Admin() {
-  const { estado, yo, esAdmin, borrarUsuario, actualizarConfig, restablecerDemo, modo, avisar } =
-    useApp()
+  const {
+    estado,
+    yo,
+    esSuperadmin,
+    borrarUsuario,
+    actualizarConfig,
+    restablecerDemo,
+    modo,
+    avisar,
+  } = useApp()
 
   const [editando, setEditando] = useState<Usuario | undefined>()
   const [creando, setCreando] = useState(false)
@@ -34,21 +41,21 @@ export default function Admin() {
     try {
       const r = await enviarCorreo({
         destinatarios: [yo.email],
-        asunto: 'Prueba de envío · Harvey OS',
+        asunto: 'Prueba de envío · Harvey',
         texto:
-          'Si estás leyendo esto, el envío automático de Harvey OS quedó funcionando. Los correos de temario y de minuta van a salir por esta misma vía.',
-        html: `<div style="background:#0A0A0A;padding:32px 16px;font-family:Helvetica,Arial,sans-serif">
-  <div style="max-width:560px;margin:0 auto;background:#111;border:1px solid #262626">
-    <div style="padding:28px 32px;border-bottom:1px solid #262626">
-      <div style="font-size:10px;letter-spacing:3px;color:#8C8C8C;text-transform:uppercase">[ Prueba ]</div>
-      <div style="font-size:32px;font-weight:900;color:#F4F2EE;letter-spacing:-1px;text-transform:uppercase;margin-top:10px;line-height:1">Funciona</div>
+          'Si estás leyendo esto, el envío automático de Harvey quedó funcionando. Los correos de temario y de minuta van a salir por esta misma vía.',
+        html: `<div style="background:#F7F5F1;padding:32px 16px;font-family:Inter,Helvetica,Arial,sans-serif">
+  <div style="max-width:560px;margin:0 auto;background:#FFFFFF;border:1px solid #E3DED4">
+    <div style="padding:28px 32px;border-bottom:1px solid #E3DED4">
+      <div style="font-size:10px;letter-spacing:3px;color:#6B665D;text-transform:uppercase">[ Prueba ]</div>
+      <div style="font-size:32px;font-weight:800;color:#14120F;text-transform:uppercase;margin-top:10px;line-height:1.1">Funciona</div>
     </div>
-    <div style="padding:28px 32px;color:#D8D6D2;font-size:14px;line-height:1.65">
+    <div style="padding:28px 32px;color:#2C2924;font-size:14px;line-height:1.65">
       Si estás leyendo esto, el envío automático quedó funcionando. Los correos de
       temario y de minuta van a salir por esta misma vía.
     </div>
-    <div style="padding:18px 32px;border-top:1px solid #262626;font-size:10px;letter-spacing:2px;color:#5C5C5C;text-transform:uppercase">
-      Harvey OS · enviado automáticamente
+    <div style="padding:18px 32px;border-top:1px solid #E3DED4;font-size:10px;letter-spacing:2px;color:#9A948A;text-transform:uppercase">
+      Harvey · enviado automáticamente
     </div>
   </div>
 </div>`,
@@ -66,154 +73,117 @@ export default function Admin() {
     }
   }
 
-  if (!esAdmin) {
+  if (!esSuperadmin) {
     return (
       <div className="card p-8 text-center">
         <div className="display mb-2 text-2xl text-suave">Sin acceso</div>
-        <p className="text-sm text-tenue">Esta sección es sólo para administradores.</p>
+        <p className="text-sm text-tenue">
+          Esta sección es de soporte técnico. Para gestionar tu equipo, entrá a la sala.
+        </p>
       </div>
     )
   }
 
   return (
     <div className="space-y-10">
-      {/* ── Equipo ── */}
+      {/* ── Salas ── */}
+      <Seccion kicker="Todo lo que hay" titulo="Salas">
+        <ul className="card divide-y divide-borde">
+          {estado.salas.map((s) => {
+            const gente = integrantes(estado, s.id)
+            return (
+              <li key={s.id} className="flex flex-wrap items-center gap-3 p-4">
+                <DoorOpen size={15} className="shrink-0 text-tenue" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-sm">
+                    {s.nombre}
+                    {s.archivada && <Chip>Archivada</Chip>}
+                  </div>
+                  <div className="truncate text-xs text-tenue">
+                    {gente.length} personas ·{' '}
+                    {estado.reuniones.filter((r) => r.salaId === s.id).length} reuniones ·{' '}
+                    {estado.temas.filter((t) => t.salaId === s.id && t.estado === 'banco').length}{' '}
+                    en el banco
+                  </div>
+                </div>
+                <span className="hidden text-xs text-tenue sm:block">
+                  Desde {fechaCorta(s.creadaEn)}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      </Seccion>
+
+      {/* ── Personas ── */}
       <Seccion
-        kicker="Quién es quién"
-        titulo="Equipo y roles"
+        kicker="Todas las cuentas"
+        titulo="Personas"
         acciones={
           <Boton variante="solido" onClick={() => setCreando(true)}>
             <Plus size={13} /> Agregar persona
           </Boton>
         }
       >
-        <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {(Object.keys(ROLES) as Rol[]).map((r) => (
-            <div key={r} className="card p-3">
-              <div className="mb-1 flex items-center justify-between">
-                <span className="font-semibold text-[10px] uppercase tracking-[0.14em]">
-                  {ROLES[r].nombre}
-                </span>
-                <span className="font-semibold text-[10px] text-tenue">
-                  {estado.usuarios.filter((u) => u.rol === r).length}
-                </span>
-              </div>
-              <p className="text-[11px] leading-relaxed text-tenue">{ROLES[r].desc}</p>
-            </div>
-          ))}
-        </div>
+        <p className="mb-4 max-w-2xl text-sm text-suave">
+          El alcance no es el rol: el rol vive en cada sala. Acá sólo se define quién es soporte
+          técnico, con acceso por encima de todas las salas.
+        </p>
 
         <ul className="card divide-y divide-borde">
-          {estado.usuarios.map((u) => (
-            <li key={u.id} className="flex flex-wrap items-center gap-3 p-4">
-              <Avatar nombre={u.nombre} url={u.avatarUrl} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">{u.nombre}</span>
-                  {!u.activo && <Chip>Inactivo</Chip>}
+          {estado.usuarios.map((u) => {
+            const salas = estado.membresias.filter((m) => m.usuarioId === u.id).length
+            return (
+              <li key={u.id} className="flex flex-wrap items-center gap-3 p-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{u.nombre}</span>
+                    {!u.activo && <Chip>Inactiva</Chip>}
+                  </div>
+                  <div className="truncate text-xs text-tenue">
+                    {u.email}
+                    {u.cargo && ` · ${u.cargo}`}
+                  </div>
                 </div>
-                <div className="truncate text-xs text-tenue">
-                  {u.email}
-                  {u.cargo && ` · ${u.cargo}`}
+                <span className="flex items-center gap-1.5 text-xs text-tenue">
+                  <Users size={11} />
+                  {salas}
+                </span>
+                {u.alcance === 'superadmin' && <Chip tono="signal">Soporte</Chip>}
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setEditando(u)}
+                    className="border border-borde2 bg-panel p-1.5 text-suave transition-colors hover:border-tinta hover:text-tinta"
+                  >
+                    <Pencil size={12} />
+                  </button>
+                  <button
+                    onClick={() => setPorBorrar(u)}
+                    className="border border-borde2 bg-panel p-1.5 text-suave transition-colors hover:border-signal hover:text-signal"
+                  >
+                    <Trash2 size={12} />
+                  </button>
                 </div>
-              </div>
-              <Chip
-                tono={u.rol === 'admin' ? 'signal' : u.rol === 'organizador' ? 'amber' : 'neutro'}
-              >
-                {ROL_LABEL[u.rol]}
-              </Chip>
-              <span className="hidden font-semibold text-[10px] text-tenue sm:block">
-                Desde {fechaCorta(u.creadoEn)}
-              </span>
-              <div className="flex gap-1">
-                <button
-                  onClick={() => setEditando(u)}
-                  className="border border-borde2 p-1.5 text-suave transition-colors hover:border-tinta hover:text-tinta"
-                >
-                  <Pencil size={12} />
-                </button>
-                <button
-                  onClick={() => setPorBorrar(u)}
-                  className="border border-borde2 p-1.5 text-suave transition-colors hover:border-signal hover:text-signal"
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            </li>
-          ))}
+              </li>
+            )
+          })}
         </ul>
       </Seccion>
 
-      {/* ── Configuración ── */}
-      <Seccion kicker="Reglas del juego" titulo="Configuración">
-        <div className="card space-y-5 p-5">
-          <div className="grid gap-4 sm:grid-cols-2">
+      {/* ── Estado técnico ── */}
+      <Seccion kicker="Debajo del capot" titulo="Estado técnico">
+        <div className="card divide-y divide-borde">
+          <div className="p-4">
             <Campo etiqueta="Organización">
               <input
-                className="w-full"
+                className="w-full sm:w-72"
                 value={estado.config.organizacion}
                 onChange={(e) => actualizarConfig({ organizacion: e.target.value })}
               />
             </Campo>
-            <Campo etiqueta="Cadencia habitual" ayuda="Se sugiere al crear una reunión nueva.">
-              <input
-                className="w-full"
-                value={estado.config.cadencia}
-                onChange={(e) => actualizarConfig({ cadencia: e.target.value })}
-                placeholder="Lunes 10:00"
-              />
-            </Campo>
           </div>
 
-          <Campo
-            etiqueta="El temario cierra"
-            ayuda="Cuántas horas antes de la reunión deja de aceptarse la carga de temas."
-          >
-            <div className="flex flex-wrap gap-1.5">
-              {[12, 24, 48, 72].map((h) => (
-                <button
-                  key={h}
-                  onClick={() => actualizarConfig({ horasCierreAgendaDefault: h })}
-                  className={
-                    estado.config.horasCierreAgendaDefault === h
-                      ? 'border border-tinta bg-tinta px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-fondo'
-                      : 'border border-borde2 px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
-                  }
-                >
-                  {h} h antes
-                </button>
-              ))}
-            </div>
-          </Campo>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Campo etiqueta="Duración por defecto de la reunión (min)">
-              <input
-                type="number"
-                min={15}
-                step={5}
-                className="w-full"
-                value={estado.config.duracionReunionDefaultMin}
-                onChange={(e) =>
-                  actualizarConfig({ duracionReunionDefaultMin: Number(e.target.value) })
-                }
-              />
-            </Campo>
-            <Campo etiqueta="Duración por defecto de cada tema (min)">
-              <input
-                type="number"
-                min={5}
-                step={5}
-                className="w-full"
-                value={estado.config.duracionTemaDefaultMin}
-                onChange={(e) =>
-                  actualizarConfig({ duracionTemaDefaultMin: Number(e.target.value) })
-                }
-              />
-            </Campo>
-          </div>
-
-          <label className="flex cursor-pointer items-start gap-3">
+          <label className="flex cursor-pointer items-start gap-3 p-4">
             <input
               type="checkbox"
               className="mt-0.5 h-4 w-4 accent-[#C0392B]"
@@ -227,12 +197,7 @@ export default function Admin() {
               </span>
             </span>
           </label>
-        </div>
-      </Seccion>
 
-      {/* ── Estado técnico ── */}
-      <Seccion kicker="Debajo del capot" titulo="Estado técnico">
-        <div className="card divide-y divide-borde">
           <Fila
             etiqueta="Persistencia"
             valor={
@@ -245,22 +210,20 @@ export default function Admin() {
             tono={modo === 'demo' ? 'amber' : 'acid'}
             nota={
               modo === 'neon'
-                ? 'Base compartida vía Data API, con Row Level Security por rol. Se refresca cada 12 segundos y al volver a la pestaña.'
+                ? 'Base compartida vía Data API, con Row Level Security por sala. Se refresca cada 12 segundos y al volver a la pestaña.'
                 : modo === 'firebase'
                   ? 'Los datos se comparten en vivo entre todos los usuarios.'
-                  : 'Cada navegador guarda su propia copia. Al cargar las credenciales pasa a ser compartida.'
+                  : 'Cada navegador guarda su propia copia.'
             }
           />
           <Fila
             etiqueta="Acceso con Google"
-            valor={neonConfigurado || firebaseConfigurado ? 'Activo' : 'Pendiente de credenciales'}
+            valor={neonConfigurado || firebaseConfigurado ? 'Activo' : 'Pendiente'}
             tono={neonConfigurado || firebaseConfigurado ? 'acid' : 'amber'}
             nota={
               neonConfigurado
-                ? 'Neon Auth. La identidad se vincula por correo con la ficha del equipo, así cada uno entra con su rol.'
-                : firebaseConfigurado
-                  ? 'Firebase Authentication con proveedor de Google.'
-                  : 'Se activa al cargar las variables del proveedor.'
+                ? 'Neon Auth. La identidad se vincula por correo con la ficha ya cargada, así cada uno entra con el rol que tiene en cada sala.'
+                : 'Se activa al cargar las variables del proveedor.'
             }
           />
           <Fila
@@ -269,10 +232,11 @@ export default function Admin() {
             tono={modo === 'neon' ? 'acid' : 'amber'}
             nota={
               modo === 'neon'
-                ? 'Las políticas viven en Postgres: un miembro no puede crear reuniones aunque manipule la app desde el navegador.'
-                : 'Los roles se aplican en la interfaz. Con base real pasan a estar respaldados por la base.'
+                ? 'Las políticas viven en Postgres: sólo se lee lo de las salas propias, y un miembro no puede crear reuniones aunque manipule la app desde el navegador.'
+                : 'Los roles se aplican en la interfaz.'
             }
           />
+
           <div className="flex flex-wrap items-center justify-between gap-3 p-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -287,7 +251,7 @@ export default function Admin() {
             </div>
             <div className="flex items-center gap-2">
               <Chip tono={correoConfigurado ? 'acid' : 'amber'}>
-                {correoConfigurado ? 'Conectado' : 'Sin casilla conectada'}
+                {correoConfigurado ? 'Conectado' : 'Sin casilla'}
               </Chip>
               {correoConfigurado && (
                 <Boton tam="sm" onClick={probarCorreo} disabled={probando}>
@@ -296,13 +260,14 @@ export default function Admin() {
               )}
             </div>
           </div>
+
           <div className="flex flex-wrap items-center justify-between gap-3 p-4">
             <div>
               <div className="text-sm">Datos de demostración</div>
               <div className="text-xs text-tenue">
                 {modo === 'neon'
-                  ? 'Con base compartida el restablecimiento se hace desde el repositorio, corriendo db/seed.sql. Así nadie borra el trabajo del resto por accidente.'
-                  : `Vuelve todo al estado original: ${estado.reuniones.length} reuniones, ${estado.temas.length} temas y ${estado.compromisos.length} compromisos.`}
+                  ? 'Con base compartida el restablecimiento se hace desde el repositorio, corriendo db/seed.sql.'
+                  : `Vuelve todo al estado original: ${estado.salas.length} salas, ${estado.reuniones.length} reuniones y ${estado.compromisos.length} compromisos.`}
               </div>
             </div>
             <Boton
@@ -316,9 +281,8 @@ export default function Admin() {
         </div>
       </Seccion>
 
-      {/* ── Modales ── */}
-      <ModalUsuario abierto={creando} onCerrar={() => setCreando(false)} />
-      <ModalUsuario
+      <ModalPersona abierto={creando} onCerrar={() => setCreando(false)} />
+      <ModalPersona
         abierto={!!editando}
         onCerrar={() => setEditando(undefined)}
         usuario={editando}
@@ -326,7 +290,7 @@ export default function Admin() {
       <Confirmar
         abierto={!!porBorrar}
         titulo="Eliminar persona"
-        texto={`Se elimina a ${porBorrar?.nombre}. Sus compromisos quedan registrados pero sin responsable visible.`}
+        texto={`Se elimina a ${porBorrar?.nombre} y sale de todas sus salas. Sus compromisos quedan registrados.`}
         textoBoton="Eliminar"
         peligro
         onCancelar={() => setPorBorrar(undefined)}
@@ -337,7 +301,7 @@ export default function Admin() {
       />
       <Confirmar
         abierto={confirmarReset}
-        titulo="Restablecer la demo"
+        titulo="Restablecer la demostración"
         texto="Se descartan todos los cambios y se vuelve al conjunto de datos original. No se puede deshacer."
         textoBoton="Restablecer"
         peligro
@@ -378,7 +342,20 @@ function Fila({
   )
 }
 
-function ModalUsuario({
+const ALCANCES: { valor: Alcance; nombre: string; desc: string }[] = [
+  {
+    valor: 'usuario',
+    nombre: 'Normal',
+    desc: 'Ve sólo sus salas. El rol lo define cada sala.',
+  },
+  {
+    valor: 'superadmin',
+    nombre: 'Soporte',
+    desc: 'Ve y puede intervenir en todas las salas. Queda fuera de los desplegables del equipo.',
+  },
+]
+
+function ModalPersona({
   abierto,
   onCerrar,
   usuario,
@@ -391,17 +368,16 @@ function ModalUsuario({
   const [nombre, setNombre] = useState('')
   const [email, setEmail] = useState('')
   const [cargo, setCargo] = useState('')
-  const [rol, setRol] = useState<Rol>('miembro')
+  const [alcance, setAlcance] = useState<Alcance>('usuario')
   const [activo, setActivo] = useState(true)
 
-  // Cargamos los valores cada vez que se abre el modal.
   const [ultimo, setUltimo] = useState<string | undefined>()
-  if (abierto && ultimo !== (usuario?.id ?? 'nuevo')) {
-    setUltimo(usuario?.id ?? 'nuevo')
+  if (abierto && ultimo !== (usuario?.id ?? 'nueva')) {
+    setUltimo(usuario?.id ?? 'nueva')
     setNombre(usuario?.nombre ?? '')
     setEmail(usuario?.email ?? '')
     setCargo(usuario?.cargo ?? '')
-    setRol(usuario?.rol ?? 'miembro')
+    setAlcance(usuario?.alcance ?? 'usuario')
     setActivo(usuario?.activo ?? true)
   }
   if (!abierto && ultimo !== undefined) setUltimo(undefined)
@@ -410,10 +386,11 @@ function ModalUsuario({
     e.preventDefault()
     await guardarUsuario({
       id: usuario?.id ?? uid('u'),
+      authUserId: usuario?.authUserId,
       nombre: nombre.trim(),
-      email: email.trim(),
+      email: email.trim().toLowerCase(),
       cargo: cargo.trim() || undefined,
-      rol,
+      alcance,
       activo,
       avatarUrl: usuario?.avatarUrl,
       creadoEn: usuario?.creadoEn ?? new Date().toISOString(),
@@ -425,14 +402,19 @@ function ModalUsuario({
     <Modal
       abierto={abierto}
       onCerrar={onCerrar}
-      kicker="Equipo"
+      kicker="Cuentas"
       titulo={usuario ? 'Editar persona' : 'Agregar persona'}
     >
       <form onSubmit={enviar} className="space-y-4">
         <Campo etiqueta="Nombre">
-          <input className="w-full" value={nombre} onChange={(e) => setNombre(e.target.value)} required />
+          <input
+            className="w-full"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            required
+          />
         </Campo>
-        <Campo etiqueta="Correo" ayuda="Con este correo va a poder entrar con Google.">
+        <Campo etiqueta="Correo" ayuda="Con este correo entra con Google.">
           <input
             type="email"
             className="w-full"
@@ -449,15 +431,14 @@ function ModalUsuario({
             placeholder="Socio · Operaciones"
           />
         </Campo>
-        <Campo etiqueta="Rol" ayuda={ROLES[rol].desc}>
+        <Campo
+          etiqueta="Alcance"
+          ayuda={ALCANCES.find((a) => a.valor === alcance)?.desc}
+        >
           <Segmentado
-            valor={rol}
-            onChange={setRol}
-            opciones={(Object.keys(ROLES) as Rol[]).map((r) => ({
-              valor: r,
-              label: ROLES[r].nombre,
-              title: ROLES[r].desc,
-            }))}
+            valor={alcance}
+            onChange={setAlcance}
+            opciones={ALCANCES.map((a) => ({ valor: a.valor, label: a.nombre, title: a.desc }))}
           />
         </Campo>
         <label className="flex cursor-pointer items-center gap-3">
@@ -467,7 +448,12 @@ function ModalUsuario({
             checked={activo}
             onChange={(e) => setActivo(e.target.checked)}
           />
-          <span className="text-sm">Activo</span>
+          <span className="text-sm">
+            Activa
+            <span className="ml-2 text-xs text-tenue">
+              Si no, deja de aparecer en los desplegables pero conserva el acceso.
+            </span>
+          </span>
         </label>
         <div className="flex justify-end gap-2 pt-2">
           <Boton type="button" variante="fantasma" onClick={onCerrar}>

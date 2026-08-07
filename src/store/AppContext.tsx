@@ -14,23 +14,20 @@ import {
   loginConGoogle,
   observarSesion,
 } from '../lib/firebase'
-import {
-  entrarConGoogleNeon,
-  neonConfigurado,
-  salirDeNeon,
-  sesionActual,
-} from '../lib/neon'
+import { entrarConGoogleNeon, neonConfigurado, salirDeNeon, sesionActual } from '../lib/neon'
 import { correoAgendaCerrada, correoMinuta, enviarCorreo } from '../lib/email'
 import { ESTADO_INICIAL } from '../lib/seed'
-import { agendaDe, uid } from '../lib/utils'
+import { agendaDe, rolEnSala, salasDe, uid } from '../lib/utils'
 import type {
   Compromiso,
   Config,
   Estado,
   EstadoCompromiso,
+  Membresia,
   Notificacion,
   Reunion,
-  Rol,
+  RolSala,
+  Sala,
   Tema,
   Usuario,
 } from '../types'
@@ -43,11 +40,16 @@ import {
 } from './repo'
 
 /* ─────────────────────────────────────────────────────────────
-   Estado global de la aplicación: sesión, datos y acciones.
+   Estado global: sesión, sala activa, datos y acciones.
+
+   Todo lo que se ve está recortado por la sala activa. Los
+   permisos se resuelven contra la membresía en esa sala, no
+   contra un rol global.
    ───────────────────────────────────────────────────────────── */
 
 const CLAVE_SESION = 'harvey-os:sesion:v1'
 const CLAVE_VISTA_PREVIA = 'harvey-os:vista-previa:v1'
+const CLAVE_SALA = 'harvey-os:sala:v1'
 
 export type Aviso = { id: string; texto: string; tono: 'ok' | 'error' | 'info' }
 
@@ -56,22 +58,35 @@ interface Ctx {
   yo: Usuario | null
   cargando: boolean
   modo: 'demo' | 'firebase' | 'neon'
-  /** Recorrido por rol sin sesión: nada de lo que se toque sale del navegador. */
   vistaPrevia: boolean
-  entrarComoDemo(usuarioId: string): void
+  entrarComoDemo(usuarioId: string, salaId?: string): void
   entrarConGoogle(): Promise<void>
   salir(): Promise<void>
-
-  // permisos
-  esAdmin: boolean
-  puedeOrganizar: boolean
-  puedeModerar(r: Reunion): boolean
 
   // datos
   estado: Estado
 
+  // salas
+  misSalas: Sala[]
+  salaActiva: Sala | null
+  elegirSala(id: string): void
+  crearSala(datos: Partial<Sala>): Promise<Sala | undefined>
+  actualizarSala(id: string, cambios: Partial<Sala>): Promise<void>
+  archivarSala(id: string): Promise<void>
+  sumarAlaSala(salaId: string, usuarioId: string, rol: RolSala): Promise<void>
+  cambiarRolEnSala(salaId: string, usuarioId: string, rol: RolSala): Promise<void>
+  sacarDeLaSala(salaId: string, usuarioId: string): Promise<void>
+
+  // permisos, siempre relativos a la sala activa
+  esSuperadmin: boolean
+  miRol: RolSala | undefined
+  puedeOrganizar: boolean
+  puedeModerar(r: Reunion): boolean
+  /** El organizador ve los compromisos de todos; el miembro, sólo los suyos. */
+  compromisosVisibles: Compromiso[]
+
   // reuniones
-  crearReunion(datos: Partial<Reunion>): Promise<Reunion>
+  crearReunion(datos: Partial<Reunion>): Promise<Reunion | undefined>
   actualizarReunion(id: string, cambios: Partial<Reunion>): Promise<void>
   borrarReunion(id: string): Promise<void>
   abrirAgenda(id: string): Promise<void>
@@ -81,29 +96,34 @@ interface Ctx {
   reabrirReunion(id: string): Promise<void>
 
   // temas
-  proponerTema(datos: Omit<Tema, 'id' | 'creadoEn' | 'orden' | 'estado'> & { estado?: Tema['estado'] }): Promise<void>
+  proponerTema(
+    datos: Omit<Tema, 'id' | 'creadoEn' | 'orden' | 'estado' | 'salaId'> & {
+      estado?: Tema['estado']
+      salaId?: string
+    },
+  ): Promise<void>
   actualizarTema(id: string, cambios: Partial<Tema>): Promise<void>
   borrarTema(id: string): Promise<void>
   reordenarTemas(reunionId: string, idsEnOrden: string[]): Promise<void>
+  /** Saca un tema del banco y lo mete en una reunión. */
+  bajarDelBanco(temaId: string, reunionId: string): Promise<void>
+  /** Devuelve un tema al banco de la sala. */
+  devolverAlBanco(temaId: string): Promise<void>
 
   // compromisos
-  crearCompromiso(datos: Omit<Compromiso, 'id' | 'creadoEn'>): Promise<void>
+  crearCompromiso(datos: Omit<Compromiso, 'id' | 'creadoEn' | 'salaId'>): Promise<void>
   actualizarCompromiso(id: string, cambios: Partial<Compromiso>): Promise<void>
   borrarCompromiso(id: string): Promise<void>
   moverCompromiso(id: string, estado: EstadoCompromiso): Promise<void>
 
-  // usuarios y config
+  // personas y config
   guardarUsuario(u: Usuario): Promise<void>
   borrarUsuario(id: string): Promise<void>
   actualizarConfig(cambios: Partial<Config>): Promise<void>
 
-  // notificaciones
   reenviarNotificacion(id: string): Promise<void>
-
-  // utilidades de demo
   restablecerDemo(): Promise<void>
 
-  // avisos
   avisos: Aviso[]
   avisar(texto: string, tono?: Aviso['tono']): void
   descartarAviso(id: string): void
@@ -115,14 +135,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [estado, setEstado] = useState<Estado>(ESTADO_INICIAL)
   const [yo, setYo] = useState<Usuario | null>(null)
   const [cargando, setCargando] = useState(true)
-  // Recorrido por rol sin sesión: los cambios no salen del navegador.
+  const [salaId, setSalaId] = useState<string | null>(
+    () => localStorage.getItem(CLAVE_SALA),
+  )
+  const [avisos, setAvisos] = useState<Aviso[]>([])
   const [vistaPrevia, setVistaPrevia] = useState(
     () => localStorage.getItem(CLAVE_VISTA_PREVIA) === '1',
   )
-  const [avisos, setAvisos] = useState<Aviso[]>([])
+
   const ref = useRef(estado)
   ref.current = estado
-  // `persistir` se define más abajo; el efecto de sesión lo necesita antes.
   const persistirRef = useRef<
     (<T extends { id: string }>(col: Coleccion, item: T) => Promise<void>) | null
   >(null)
@@ -144,9 +166,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let vivo = true
-
     ;(async () => {
-      // Recorrido por rol: se retoma con los datos locales.
       if (vistaPrevia) {
         usarDatosDeDemostracion()
         const local = await repo.cargar()
@@ -158,16 +178,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setCargando(false)
         return
       }
-
-      // Con base remota la lectura exige token: la primera carga la
-      // dispara el efecto de sesión. En demo se carga y listo.
       if (!hayBaseRemota) {
         const inicial = await repo.cargar()
         if (vivo) setEstado(inicial)
       }
       if (vivo && !neonConfigurado) setCargando(false)
     })()
-
     return () => {
       vivo = false
     }
@@ -181,11 +197,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   /* ── Sesión ─────────────────────────────────────────────── */
 
-  /*
-   * Con Neon la identidad viene del JWT. La primera vez se vincula
-   * por email contra la fila que ya exista en `usuarios`: así el
-   * equipo puede estar precargado con sus roles antes de que entren.
-   */
   useEffect(() => {
     if (!neonConfigurado || vistaPrevia) return
     let vivo = true
@@ -199,7 +210,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
 
       let datos = ref.current
-      // Al volver del OAuth puede que el estado todavía esté vacío.
       if (datos.usuarios.length === 0) {
         try {
           datos = await repo.cargar()
@@ -218,7 +228,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (porAuth) {
         setYo(porAuth)
       } else if (porEmail) {
-        // Primer ingreso de alguien ya cargado: se le pega el authUserId.
         const vinculado: Usuario = {
           ...porEmail,
           authUserId: s.id,
@@ -227,13 +236,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setYo(vinculado)
         await persistirRef.current?.('usuarios', vinculado)
       } else {
-        // Alguien nuevo. El rol lo decide el trigger de la base.
+        // Alguien nuevo. El alcance lo decide el trigger de la base.
         const nuevo: Usuario = {
           id: `u_${s.id.slice(0, 12)}`,
           authUserId: s.id,
           nombre: s.nombre,
           email: s.email,
-          rol: datos.usuarios.length === 0 ? 'admin' : 'miembro',
+          alcance: 'usuario',
           avatarUrl: s.avatarUrl,
           activo: true,
           creadoEn: new Date().toISOString(),
@@ -259,27 +268,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return
     }
     return observarSesion((fu) => {
-      if (!fu) {
-        const guardado = localStorage.getItem(CLAVE_SESION)
-        if (!guardado) setYo(null)
-        return
-      }
+      if (!fu) return
       const existente = ref.current.usuarios.find(
         (u) => u.email.toLowerCase() === (fu.email ?? '').toLowerCase(),
       )
-      const usuario: Usuario = existente ?? {
-        id: fu.uid,
-        nombre: fu.displayName ?? fu.email ?? 'Sin nombre',
-        email: fu.email ?? '',
-        // El primer usuario que entra queda como admin; el resto, como miembro.
-        rol: ref.current.usuarios.length === 0 ? 'admin' : 'miembro',
-        avatarUrl: fu.photoURL ?? undefined,
-        activo: true,
-        creadoEn: new Date().toISOString(),
-      }
-      if (!existente) void repo.guardarDoc('usuarios', usuario)
-      setYo(usuario)
+      setYo(
+        existente ?? {
+          id: fu.uid,
+          nombre: fu.displayName ?? fu.email ?? 'Sin nombre',
+          email: fu.email ?? '',
+          alcance: 'usuario',
+          avatarUrl: fu.photoURL ?? undefined,
+          activo: true,
+          creadoEn: new Date().toISOString(),
+        },
+      )
     })
+  }, [vistaPrevia])
+
+  /* ── Salas ──────────────────────────────────────────────── */
+
+  const misSalas = useMemo(() => salasDe(estado, yo), [estado, yo])
+
+  /* La sala activa siempre tiene que ser una de las mías. */
+  useEffect(() => {
+    if (!misSalas.length) return
+    if (!salaId || !misSalas.some((s) => s.id === salaId)) {
+      const elegida = misSalas[0].id
+      setSalaId(elegida)
+      localStorage.setItem(CLAVE_SALA, elegida)
+    }
+  }, [misSalas, salaId])
+
+  const salaActiva = useMemo(
+    () => misSalas.find((s) => s.id === salaId) ?? null,
+    [misSalas, salaId],
+  )
+
+  const elegirSala = useCallback((id: string) => {
+    setSalaId(id)
+    localStorage.setItem(CLAVE_SALA, id)
   }, [])
 
   /* ── Mutaciones ─────────────────────────────────────────── */
@@ -302,6 +330,130 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }))
     await repo.borrarDoc(col, id)
   }, [])
+
+  /* ── Permisos ───────────────────────────────────────────── */
+
+  const esSuperadmin = yo?.alcance === 'superadmin'
+  const miRol = useMemo(
+    () => (esSuperadmin ? 'organizador' : rolEnSala(estado, salaId ?? undefined, yo?.id)),
+    [estado, salaId, yo, esSuperadmin],
+  )
+  const puedeOrganizar = miRol === 'organizador'
+
+  const puedeModerar = useCallback(
+    (r: Reunion) =>
+      esSuperadmin ||
+      rolEnSala(ref.current, r.salaId, yo?.id) === 'organizador' ||
+      r.moderadorId === yo?.id,
+    [esSuperadmin, yo],
+  )
+
+  /*
+   * Un miembro ve sólo lo suyo. Lo pidió Fran mirando la pantalla:
+   * "si yo entro, soy un empleado, debería haber sólo mis pendientes".
+   */
+  const compromisosVisibles = useMemo(() => {
+    const deLaSala = estado.compromisos.filter((c) => c.salaId === salaId)
+    return puedeOrganizar ? deLaSala : deLaSala.filter((c) => c.responsableId === yo?.id)
+  }, [estado.compromisos, salaId, puedeOrganizar, yo])
+
+  /* ── Salas: acciones ────────────────────────────────────── */
+
+  const crearSala = useCallback(
+    async (datos: Partial<Sala>) => {
+      if (!yo) return undefined
+      const s: Sala = {
+        id: uid('sala'),
+        nombre: datos.nombre?.trim() || 'Sala sin nombre',
+        descripcion: datos.descripcion,
+        cadencia: datos.cadencia,
+        horasCierreAgenda: datos.horasCierreAgenda ?? 24,
+        cierreManual: datos.cierreManual ?? false,
+        duracionReunionDefaultMin: datos.duracionReunionDefaultMin ?? 60,
+        duracionTemaDefaultMin: datos.duracionTemaDefaultMin ?? 15,
+        lugarHabitual: datos.lugarHabitual,
+        creadaPor: yo.id,
+        creadaEn: new Date().toISOString(),
+        archivada: false,
+      }
+      await persistir('salas', s)
+      // Quien la crea la organiza. En la base lo hace un trigger;
+      // acá se replica para que la interfaz responda al instante.
+      const m: Membresia = {
+        id: uid('mb'),
+        salaId: s.id,
+        usuarioId: yo.id,
+        rol: 'organizador',
+        desde: new Date().toISOString(),
+      }
+      await persistir('membresias', m)
+      elegirSala(s.id)
+      avisar(`Sala «${s.nombre}» creada. Ya podés sumar a tu equipo.`)
+      return s
+    },
+    [yo, persistir, elegirSala, avisar],
+  )
+
+  const actualizarSala = useCallback(
+    async (id: string, cambios: Partial<Sala>) => {
+      const actual = ref.current.salas.find((s) => s.id === id)
+      if (!actual) return
+      await persistir('salas', { ...actual, ...cambios })
+    },
+    [persistir],
+  )
+
+  const archivarSala = useCallback(
+    async (id: string) => {
+      await actualizarSala(id, { archivada: true })
+      avisar('Sala archivada.', 'info')
+    },
+    [actualizarSala, avisar],
+  )
+
+  const sumarAlaSala = useCallback(
+    async (sId: string, usuarioId: string, rol: RolSala) => {
+      const ya = ref.current.membresias.find(
+        (m) => m.salaId === sId && m.usuarioId === usuarioId,
+      )
+      if (ya) {
+        await persistir('membresias', { ...ya, rol })
+        return
+      }
+      await persistir('membresias', {
+        id: uid('mb'),
+        salaId: sId,
+        usuarioId,
+        rol,
+        desde: new Date().toISOString(),
+      })
+      avisar('Persona sumada a la sala.')
+    },
+    [persistir, avisar],
+  )
+
+  const cambiarRolEnSala = useCallback(
+    async (sId: string, usuarioId: string, rol: RolSala) => {
+      const m = ref.current.membresias.find(
+        (x) => x.salaId === sId && x.usuarioId === usuarioId,
+      )
+      if (m) await persistir('membresias', { ...m, rol })
+    },
+    [persistir],
+  )
+
+  const sacarDeLaSala = useCallback(
+    async (sId: string, usuarioId: string) => {
+      const m = ref.current.membresias.find(
+        (x) => x.salaId === sId && x.usuarioId === usuarioId,
+      )
+      if (m) {
+        await eliminar('membresias', m.id)
+        avisar('Persona sacada de la sala.', 'info')
+      }
+    },
+    [eliminar, avisar],
+  )
 
   /* ── Notificaciones ─────────────────────────────────────── */
 
@@ -333,6 +485,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const n: Notificacion = {
         id: uid('n'),
+        salaId: reunion.salaId,
         tipo,
         reunionId: reunion.id,
         asunto: compuesto.asunto,
@@ -349,21 +502,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [persistir],
   )
 
-  /* ── Acciones: reuniones ────────────────────────────────── */
+  /* ── Reuniones ──────────────────────────────────────────── */
 
   const crearReunion = useCallback(
     async (datos: Partial<Reunion>) => {
-      const cfg = ref.current.config
+      const sId = datos.salaId ?? salaId
+      const s = ref.current.salas.find((x) => x.id === sId)
+      if (!sId || !s) return undefined
       const r: Reunion = {
         id: uid('r'),
+        salaId: sId,
         titulo: datos.titulo ?? 'Reunión sin título',
         fecha: datos.fecha ?? new Date(Date.now() + 7 * 86400000).toISOString(),
-        duracionPrevistaMin: datos.duracionPrevistaMin ?? cfg.duracionReunionDefaultMin,
-        lugar: datos.lugar,
-        moderadorId: datos.moderadorId ?? yo?.id ?? ref.current.usuarios[0]?.id ?? '',
-        participantesIds: datos.participantesIds ?? ref.current.usuarios.map((u) => u.id),
+        duracionPrevistaMin: datos.duracionPrevistaMin ?? s.duracionReunionDefaultMin,
+        lugar: datos.lugar ?? s.lugarHabitual,
+        moderadorId: datos.moderadorId ?? yo?.id ?? '',
+        participantesIds:
+          datos.participantesIds ??
+          ref.current.membresias.filter((m) => m.salaId === sId).map((m) => m.usuarioId),
         estado: datos.estado ?? 'agenda_abierta',
-        horasCierreAgenda: datos.horasCierreAgenda ?? cfg.horasCierreAgendaDefault,
+        horasCierreAgenda: datos.horasCierreAgenda ?? s.horasCierreAgenda,
+        cierreManual: datos.cierreManual ?? s.cierreManual,
         proximaReunionFecha: datos.proximaReunionFecha,
         creadoPor: yo?.id ?? '',
         creadoEn: new Date().toISOString(),
@@ -372,7 +531,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       avisar('Reunión creada. Ya se pueden proponer temas.')
       return r
     },
-    [persistir, yo, avisar],
+    [salaId, persistir, yo, avisar],
   )
 
   const actualizarReunion = useCallback(
@@ -386,6 +545,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const borrarReunion = useCallback(
     async (id: string) => {
+      // Los temas del banco no se pierden: vuelven a quedar sueltos.
       for (const t of ref.current.temas.filter((t) => t.reunionId === id)) {
         await eliminar('temas', t.id)
       }
@@ -438,7 +598,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async (id: string) => {
       const r = ref.current.reuniones.find((x) => x.id === id)
       if (!r) return
-      // Todo tema aprobado pasa a "tratado" al cerrar.
       for (const t of agendaDe(ref.current, id)) {
         if (t.estado === 'aprobado') await persistir('temas', { ...t, estado: 'tratado' })
       }
@@ -466,26 +625,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [actualizarReunion, avisar],
   )
 
-  /* ── Acciones: temas ────────────────────────────────────── */
+  /* ── Temas ──────────────────────────────────────────────── */
 
   const proponerTema = useCallback(
-    async (datos: Omit<Tema, 'id' | 'creadoEn' | 'orden' | 'estado'> & { estado?: Tema['estado'] }) => {
-      const hermanos = ref.current.temas.filter((t) => t.reunionId === datos.reunionId)
+    async (
+      datos: Omit<Tema, 'id' | 'creadoEn' | 'orden' | 'estado' | 'salaId'> & {
+        estado?: Tema['estado']
+        salaId?: string
+      },
+    ) => {
+      const sId = datos.salaId ?? salaId
+      if (!sId) return
+      const hermanos = datos.reunionId
+        ? ref.current.temas.filter((t) => t.reunionId === datos.reunionId)
+        : []
       const t: Tema = {
         ...datos,
+        salaId: sId,
         id: uid('t'),
-        estado: datos.estado ?? 'propuesto',
+        estado: datos.estado ?? (datos.reunionId ? 'propuesto' : 'banco'),
         orden: hermanos.length,
         creadoEn: new Date().toISOString(),
       }
       await persistir('temas', t)
       avisar(
-        t.estado === 'aprobado'
-          ? 'Tema agregado a la agenda.'
-          : 'Tema propuesto. Queda esperando aprobación del organizador.',
+        t.estado === 'banco'
+          ? 'Tema guardado en el banco. Va a aparecer cuando se arme la próxima reunión.'
+          : t.estado === 'aprobado'
+            ? 'Tema agregado a la agenda.'
+            : 'Tema propuesto. Queda esperando aprobación del organizador.',
       )
     },
-    [persistir, avisar],
+    [salaId, persistir, avisar],
   )
 
   const actualizarTema = useCallback(
@@ -499,35 +670,60 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const borrarTema = useCallback((id: string) => eliminar('temas', id), [eliminar])
 
-  const reordenarTemas = useCallback(
-    async (reunionId: string, idsEnOrden: string[]) => {
-      const mapa = new Map(idsEnOrden.map((id, i) => [id, i]))
-      setEstado((prev) => ({
-        ...prev,
-        temas: prev.temas.map((t) =>
-          t.reunionId === reunionId && mapa.has(t.id) ? { ...t, orden: mapa.get(t.id)! } : t,
-        ),
-      }))
-      for (const [id, orden] of mapa) {
-        const t = ref.current.temas.find((x) => x.id === id)
-        if (t) await repo.guardarDoc('temas', { ...t, orden } as Tema)
-      }
+  const reordenarTemas = useCallback(async (reunionId: string, idsEnOrden: string[]) => {
+    const mapa = new Map(idsEnOrden.map((id, i) => [id, i]))
+    setEstado((prev) => ({
+      ...prev,
+      temas: prev.temas.map((t) =>
+        t.reunionId === reunionId && mapa.has(t.id) ? { ...t, orden: mapa.get(t.id)! } : t,
+      ),
+    }))
+    for (const [id, orden] of mapa) {
+      const t = ref.current.temas.find((x) => x.id === id)
+      if (t) await repo.guardarDoc('temas', { ...t, orden } as Tema)
+    }
+  }, [])
+
+  const bajarDelBanco = useCallback(
+    async (temaId: string, reunionId: string) => {
+      const t = ref.current.temas.find((x) => x.id === temaId)
+      if (!t) return
+      const hermanos = ref.current.temas.filter((x) => x.reunionId === reunionId)
+      await persistir('temas', {
+        ...t,
+        reunionId,
+        estado: 'aprobado',
+        orden: hermanos.length,
+      })
+      avisar('Tema agregado a la agenda.')
     },
-    [],
+    [persistir, avisar],
   )
 
-  /* ── Acciones: compromisos ──────────────────────────────── */
+  const devolverAlBanco = useCallback(
+    async (temaId: string) => {
+      const t = ref.current.temas.find((x) => x.id === temaId)
+      if (!t) return
+      await persistir('temas', { ...t, reunionId: undefined, estado: 'banco', orden: 0 })
+      avisar('Tema devuelto al banco de la sala.', 'info')
+    },
+    [persistir, avisar],
+  )
+
+  /* ── Compromisos ────────────────────────────────────────── */
 
   const crearCompromiso = useCallback(
-    async (datos: Omit<Compromiso, 'id' | 'creadoEn'>) => {
+    async (datos: Omit<Compromiso, 'id' | 'creadoEn' | 'salaId'>) => {
+      if (!salaId) return
       await persistir('compromisos', {
         ...datos,
+        salaId,
         id: uid('c'),
         creadoEn: new Date().toISOString(),
       })
       avisar('Compromiso registrado.')
     },
-    [persistir, avisar],
+    [salaId, persistir, avisar],
   )
 
   const actualizarCompromiso = useCallback(
@@ -554,13 +750,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [persistir],
   )
 
-  /* ── Acciones: usuarios y config ────────────────────────── */
+  /* ── Personas y configuración ───────────────────────────── */
 
   const guardarUsuario = useCallback(
     async (u: Usuario) => {
       await persistir('usuarios', u)
       if (yo?.id === u.id) setYo(u)
-      avisar('Usuario guardado.')
+      avisar('Persona guardada.')
     },
     [persistir, yo, avisar],
   )
@@ -568,19 +764,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const borrarUsuario = useCallback(
     async (id: string) => {
       await eliminar('usuarios', id)
-      avisar('Usuario eliminado.', 'info')
+      avisar('Persona eliminada.', 'info')
     },
     [eliminar, avisar],
   )
 
-  const actualizarConfig = useCallback(
-    async (cambios: Partial<Config>) => {
-      const nueva = { ...ref.current.config, ...cambios }
-      setEstado((prev) => ({ ...prev, config: nueva }))
-      await repo.guardarConfig(nueva)
-    },
-    [],
-  )
+  const actualizarConfig = useCallback(async (cambios: Partial<Config>) => {
+    const nueva = { ...ref.current.config, ...cambios }
+    setEstado((prev) => ({ ...prev, config: nueva }))
+    await repo.guardarConfig(nueva)
+  }, [])
 
   const reenviarNotificacion = useCallback(
     async (id: string) => {
@@ -594,7 +787,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           texto: n.cuerpoTexto,
         })
         await persistir('notificaciones', { ...n, estado: r, error: undefined })
-        avisar(r === 'enviado' ? 'Correo reenviado.' : 'No hay proveedor de correo conectado.', r === 'enviado' ? 'ok' : 'info')
+        avisar(
+          r === 'enviado' ? 'Correo reenviado.' : 'No hay proveedor de correo conectado.',
+          r === 'enviado' ? 'ok' : 'info',
+        )
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
         await persistir('notificaciones', { ...n, estado: 'error', error: msg })
@@ -606,33 +802,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   /* ── Sesión: acciones ───────────────────────────────────── */
 
-  /**
-   * Entra a recorrer la plataforma con un rol determinado, sin sesión.
-   * Trabaja siempre sobre los datos locales: sirve para mostrar las
-   * vistas y los permisos sin tocar la base del equipo.
-   */
-  const entrarComoDemo = useCallback((usuarioId: string) => {
-    usarDatosDeDemostracion()
-    const local = structuredClone(ESTADO_INICIAL)
-    const u = local.usuarios.find((x) => x.id === usuarioId)
-    if (!u) return
-    localStorage.setItem(CLAVE_SESION, usuarioId)
-    localStorage.setItem(CLAVE_VISTA_PREVIA, '1')
-    setEstado(local)
-    setVistaPrevia(true)
-    setYo(u)
-  }, [])
+  const entrarComoDemo = useCallback(
+    (usuarioId: string, salaSugerida?: string) => {
+      usarDatosDeDemostracion()
+      const local = structuredClone(ESTADO_INICIAL)
+      const u = local.usuarios.find((x) => x.id === usuarioId)
+      if (!u) return
+      localStorage.setItem(CLAVE_SESION, usuarioId)
+      localStorage.setItem(CLAVE_VISTA_PREVIA, '1')
+      const suya =
+        salaSugerida ??
+        local.membresias.find((m) => m.usuarioId === usuarioId)?.salaId ??
+        local.salas[0]?.id
+      if (suya) {
+        setSalaId(suya)
+        localStorage.setItem(CLAVE_SALA, suya)
+      }
+      setEstado(local)
+      setVistaPrevia(true)
+      setYo(u)
+    },
+    [],
+  )
 
   const entrarConGoogle = useCallback(async () => {
     try {
-      if (neonConfigurado) {
-        await entrarConGoogleNeon()
-        return
-      }
-      if (firebaseConfigurado) {
-        await loginConGoogle()
-        return
-      }
+      if (neonConfigurado) return void (await entrarConGoogleNeon())
+      if (firebaseConfigurado) return void (await loginConGoogle())
       avisar('Todavía no hay credenciales de Google cargadas. Entrá con un perfil de demo.', 'info')
     } catch (e) {
       avisar(`No se pudo iniciar sesión: ${e instanceof Error ? e.message : e}`, 'error')
@@ -642,9 +838,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const salir = useCallback(async () => {
     localStorage.removeItem(CLAVE_SESION)
     localStorage.removeItem(CLAVE_VISTA_PREVIA)
+    localStorage.removeItem(CLAVE_SALA)
     usarBasePrincipal()
     setVistaPrevia(false)
     setYo(null)
+    setSalaId(null)
     setEstado(ESTADO_INICIAL)
     if (neonConfigurado) await salirDeNeon()
     if (firebaseConfigurado) await cerrarSesionFirebase()
@@ -657,58 +855,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     avisar('Datos de demostración restablecidos.', 'info')
   }, [avisar])
 
-  /* ── Permisos ───────────────────────────────────────────── */
-
-  const esAdmin = yo?.rol === 'admin'
-  const puedeOrganizar = yo?.rol === 'admin' || yo?.rol === 'organizador'
-  const puedeModerar = useCallback(
-    (r: Reunion) => esAdmin || yo?.rol === 'organizador' || r.moderadorId === yo?.id,
-    [esAdmin, yo],
-  )
-
   const valor = useMemo<Ctx>(
     () => ({
-      yo,
-      cargando,
-      modo: repo.modo,
-      vistaPrevia,
-      entrarComoDemo,
-      entrarConGoogle,
-      salir,
-      esAdmin,
-      puedeOrganizar,
-      puedeModerar,
+      yo, cargando, modo: repo.modo, vistaPrevia,
+      entrarComoDemo, entrarConGoogle, salir,
       estado,
-      crearReunion,
-      actualizarReunion,
-      borrarReunion,
-      abrirAgenda,
-      cerrarAgenda,
-      iniciarReunion,
-      cerrarReunion,
-      reabrirReunion,
-      proponerTema,
-      actualizarTema,
-      borrarTema,
-      reordenarTemas,
-      crearCompromiso,
-      actualizarCompromiso,
-      borrarCompromiso,
-      moverCompromiso,
-      guardarUsuario,
-      borrarUsuario,
-      actualizarConfig,
-      reenviarNotificacion,
-      restablecerDemo,
-      avisos,
-      avisar,
-      descartarAviso,
+      misSalas, salaActiva, elegirSala,
+      crearSala, actualizarSala, archivarSala,
+      sumarAlaSala, cambiarRolEnSala, sacarDeLaSala,
+      esSuperadmin, miRol, puedeOrganizar, puedeModerar, compromisosVisibles,
+      crearReunion, actualizarReunion, borrarReunion,
+      abrirAgenda, cerrarAgenda, iniciarReunion, cerrarReunion, reabrirReunion,
+      proponerTema, actualizarTema, borrarTema, reordenarTemas,
+      bajarDelBanco, devolverAlBanco,
+      crearCompromiso, actualizarCompromiso, borrarCompromiso, moverCompromiso,
+      guardarUsuario, borrarUsuario, actualizarConfig,
+      reenviarNotificacion, restablecerDemo,
+      avisos, avisar, descartarAviso,
     }),
     [
-      yo, cargando, estado, esAdmin, puedeOrganizar, puedeModerar, avisos, vistaPrevia,
-      entrarComoDemo, entrarConGoogle, salir, crearReunion, actualizarReunion,
-      borrarReunion, abrirAgenda, cerrarAgenda, iniciarReunion, cerrarReunion,
-      reabrirReunion, proponerTema, actualizarTema, borrarTema, reordenarTemas,
+      yo, cargando, vistaPrevia, estado, misSalas, salaActiva, esSuperadmin, miRol,
+      puedeOrganizar, puedeModerar, compromisosVisibles, avisos,
+      entrarComoDemo, entrarConGoogle, salir, elegirSala,
+      crearSala, actualizarSala, archivarSala, sumarAlaSala, cambiarRolEnSala, sacarDeLaSala,
+      crearReunion, actualizarReunion, borrarReunion, abrirAgenda, cerrarAgenda,
+      iniciarReunion, cerrarReunion, reabrirReunion,
+      proponerTema, actualizarTema, borrarTema, reordenarTemas, bajarDelBanco, devolverAlBanco,
       crearCompromiso, actualizarCompromiso, borrarCompromiso, moverCompromiso,
       guardarUsuario, borrarUsuario, actualizarConfig, reenviarNotificacion,
       restablecerDemo, avisar, descartarAviso,
@@ -722,11 +894,4 @@ export function useApp(): Ctx {
   const c = useContext(AppCtx)
   if (!c) throw new Error('useApp debe usarse dentro de <AppProvider>')
   return c
-}
-
-export const ROL_LABEL: Record<Rol, string> = {
-  admin: 'Admin',
-  organizador: 'Organizador',
-  miembro: 'Miembro',
-  invitado: 'Invitado',
 }

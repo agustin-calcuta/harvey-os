@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '../../store/AppContext'
+import { integrantes } from '../../lib/utils'
 import { IMPORTANCIA, OBJETIVOS, type Importancia, type Objetivo, type Tema } from '../../types'
 import { Boton, Campo, Modal, Segmentado } from '../ui'
 
 /* ─────────────────────────────────────────────────────────────
    Alta y edición de un tema.
-   Los tres campos que exigió Fran: importancia (semáforo),
-   objetivo (los cuatro tipos) y quién lo propone.
+
+   Los tres campos que exigió Fran: importancia (semáforo), objetivo
+   (los cuatro tipos) y quién lo propone. Sin reunión, el tema va al
+   banco de la sala y espera ahí hasta que se arme una.
    ───────────────────────────────────────────────────────────── */
 
 export default function ModalTema({
   abierto,
   onCerrar,
+  salaId,
   reunionId,
   tema,
   /** Si el usuario puede aprobar, el tema entra directo a la agenda. */
@@ -19,17 +23,20 @@ export default function ModalTema({
 }: {
   abierto: boolean
   onCerrar: () => void
-  reunionId: string
+  salaId: string
+  reunionId?: string
   tema?: Tema
   entraDirecto?: boolean
 }) {
   const { yo, estado, proponerTema, actualizarTema, puedeOrganizar } = useApp()
+  const sala = estado.salas.find((s) => s.id === salaId)
+  const gente = integrantes(estado, salaId)
 
   const [titulo, setTitulo] = useState('')
   const [detalle, setDetalle] = useState('')
   const [importancia, setImportancia] = useState<Importancia>('media')
   const [objetivo, setObjetivo] = useState<Objetivo>('decision')
-  const [duracion, setDuracion] = useState(estado.config.duracionTemaDefaultMin)
+  const [duracion, setDuracion] = useState(sala?.duracionTemaDefaultMin ?? 15)
   const [propuestoPor, setPropuestoPor] = useState(yo?.id ?? '')
 
   useEffect(() => {
@@ -38,13 +45,16 @@ export default function ModalTema({
     setDetalle(tema?.detalle ?? '')
     setImportancia(tema?.importancia ?? 'media')
     setObjetivo(tema?.objetivo ?? 'decision')
-    setDuracion(tema?.duracionMin ?? estado.config.duracionTemaDefaultMin)
+    setDuracion(tema?.duracionMin ?? sala?.duracionTemaDefaultMin ?? 15)
     setPropuestoPor(tema?.propuestoPor ?? yo?.id ?? '')
-  }, [abierto, tema, yo, estado.config.duracionTemaDefaultMin])
+  }, [abierto, tema, yo, sala])
+
+  const alBanco = !reunionId
 
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault()
     const datos = {
+      salaId,
       reunionId,
       titulo: titulo.trim(),
       detalle: detalle.trim() || undefined,
@@ -54,7 +64,11 @@ export default function ModalTema({
       propuestoPor,
     }
     if (tema) await actualizarTema(tema.id, datos)
-    else await proponerTema({ ...datos, estado: entraDirecto ? 'aprobado' : 'propuesto' })
+    else
+      await proponerTema({
+        ...datos,
+        estado: alBanco ? 'banco' : entraDirecto ? 'aprobado' : 'propuesto',
+      })
     onCerrar()
   }
 
@@ -62,8 +76,8 @@ export default function ModalTema({
     <Modal
       abierto={abierto}
       onCerrar={onCerrar}
-      kicker={tema ? 'Editar' : 'Pre-reunión'}
-      titulo={tema ? 'Editar tema' : 'Proponer tema'}
+      kicker={tema ? 'Editar' : alBanco ? 'Banco de la sala' : 'Pre-reunión'}
+      titulo={tema ? 'Editar tema' : alBanco ? 'Anotar un tema' : 'Proponer tema'}
     >
       <form onSubmit={enviar} className="space-y-5">
         <Campo etiqueta="Tema">
@@ -117,7 +131,11 @@ export default function ModalTema({
         <div className="grid gap-4 sm:grid-cols-2">
           <Campo
             etiqueta="Tiempo sugerido (min)"
-            ayuda={puedeOrganizar ? 'Como organizador podés ajustarlo después.' : 'El organizador puede ajustarlo.'}
+            ayuda={
+              puedeOrganizar
+                ? 'Como organizador podés ajustarlo después.'
+                : 'El organizador puede ajustarlo.'
+            }
           >
             <input
               type="number"
@@ -129,14 +147,17 @@ export default function ModalTema({
             />
           </Campo>
 
-          <Campo etiqueta="Propone">
+          <Campo
+            etiqueta="Propone"
+            ayuda={puedeOrganizar ? 'Podés cargarlo a nombre de otra persona.' : undefined}
+          >
             <select
               className="w-full"
               value={propuestoPor}
               onChange={(e) => setPropuestoPor(e.target.value)}
               disabled={!puedeOrganizar}
             >
-              {estado.usuarios.filter((u) => u.activo).map((u) => (
+              {gente.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.nombre}
                 </option>
@@ -145,10 +166,13 @@ export default function ModalTema({
           </Campo>
         </div>
 
-        {!tema && !entraDirecto && (
+        {!tema && (
           <p className="border border-borde bg-hueco p-3 text-xs leading-relaxed text-suave">
-            El tema queda como propuesto. El organizador decide si entra en la agenda de esta
-            reunión.
+            {alBanco
+              ? 'Queda anotado en el banco de la sala, sin fecha. Cuando se arme la próxima reunión va a aparecer para que el organizador lo baje a la agenda.'
+              : entraDirecto
+                ? 'Entra directo a la agenda de esta reunión.'
+                : 'El tema queda como propuesto. El organizador decide si entra en la agenda de esta reunión.'}
           </p>
         )}
 
@@ -157,7 +181,13 @@ export default function ModalTema({
             Cancelar
           </Boton>
           <Boton type="submit" variante="solido">
-            {tema ? 'Guardar' : entraDirecto ? 'Agregar a la agenda' : 'Proponer tema'}
+            {tema
+              ? 'Guardar'
+              : alBanco
+                ? 'Guardar en el banco'
+                : entraDirecto
+                  ? 'Agregar a la agenda'
+                  : 'Proponer tema'}
           </Boton>
         </div>
       </form>

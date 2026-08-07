@@ -25,7 +25,7 @@ const layout = (titulo: string, kicker: string, cuerpo: string) => `
     </div>
     <div style="padding:28px 32px;color:#2C2924;font-size:14px;line-height:1.65">${cuerpo}</div>
     <div style="padding:18px 32px;border-top:1px solid ${BORDE};font-size:10px;letter-spacing:2px;color:${TENUE};text-transform:uppercase">
-      Harvey OS · enviado automáticamente
+      Harvey · enviado automáticamente
     </div>
   </div>
 </div>`
