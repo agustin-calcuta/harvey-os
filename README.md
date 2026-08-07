@@ -113,16 +113,45 @@ como *secrets* del repositorio para que el deploy las tome.
 Hay que agregar el dominio de la aplicación a los **trusted domains** de Neon
 Auth, o el ingreso con Google devuelve `Invalid callbackURL`.
 
-### Envío de correo
+## Envío de correo
 
 GitHub Pages sirve archivos estáticos, así que no hay proceso propio que pueda
-mandar mails. Los correos se **componen completos y quedan registrados** en la
-sección Correos, desde donde se pueden ver, copiar o abrir en el cliente de
-correo.
+mandar mails. El envío sale del navegador a través de **EmailJS**, que despacha
+desde la casilla conectada en su panel.
 
-Para que salgan solos hay que apuntar `VITE_EMAIL_ENDPOINT` a un endpoint que
-reciba `{ destinatarios, asunto, html, texto }` por POST — una Cloud Function
-con Resend, EmailJS o similar.
+Sin casilla conectada la aplicación sigue funcionando: los correos se componen
+completos y quedan registrados en la sección Correos, desde donde se pueden ver,
+copiar o abrir en el cliente de correo.
+
+### Conectar la casilla
+
+1. Crear cuenta en [emailjs.com](https://www.emailjs.com) (200 correos por mes
+   en el plan gratuito).
+2. **Email Services** → conectar la casilla desde la que van a salir los correos.
+   Anotar el **Service ID**.
+3. **Email Templates** → nueva plantilla con estos campos:
+
+   | Campo      | Valor         |
+   | ---------- | ------------- |
+   | To Email   | `{{to_email}}`|
+   | Subject    | `{{subject}}` |
+   | Content    | `{{{html}}}`  |
+
+   El contenido va con **tres llaves**: con dos, EmailJS escapa el HTML y el
+   correo llega como código a la vista. Anotar el **Template ID**.
+4. **Account → General** → copiar la **Public Key**.
+5. Cargar los tres valores en `.env` y como *secrets* del repositorio
+   (`VITE_EMAILJS_SERVICE_ID`, `VITE_EMAILJS_TEMPLATE_ID`,
+   `VITE_EMAILJS_PUBLIC_KEY`).
+
+En **Administración → Estado técnico** hay un botón *Probar* que manda un correo
+de prueba a quien esté con la sesión abierta, para confirmar que la casilla
+responde antes de usarlo en una reunión real.
+
+> La clave pública de EmailJS viaja al navegador: es su modelo de uso y por eso
+> conviene restringir los dominios permitidos en el panel de EmailJS. Para
+> producción, lo prolijo es mover el envío detrás de `VITE_EMAIL_ENDPOINT`, un
+> endpoint propio que guarde la credencial del lado del servidor.
 
 ---
 

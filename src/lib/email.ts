@@ -183,29 +183,83 @@ export function correoMinuta(e: Estado, r: Reunion) {
 
 /* ── Envío ────────────────────────────────────────────────── */
 
-/**
- * Punto único de salida de correo.
- *
- * GitHub Pages es estático, así que no hay proceso propio que pueda mandar
- * mails. Hoy el correo se compone completo y queda registrado en la
- * plataforma. Para que salga de verdad alcanza con conectar un proveedor
- * acá abajo (Resend vía Cloud Function, EmailJS, etc.) y devolver 'enviado'.
- */
-export async function enviarCorreo(_payload: {
+const EMAILJS = {
+  servicio: import.meta.env.VITE_EMAILJS_SERVICE_ID,
+  plantilla: import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+  clave: import.meta.env.VITE_EMAILJS_PUBLIC_KEY,
+}
+
+export const correoConfigurado = Boolean(
+  (EMAILJS.servicio && EMAILJS.plantilla && EMAILJS.clave) ||
+    import.meta.env.VITE_EMAIL_ENDPOINT,
+)
+
+export interface Payload {
   destinatarios: string[]
   asunto: string
   html: string
   texto: string
-}): Promise<'simulado' | 'enviado'> {
-  const endpoint = import.meta.env.VITE_EMAIL_ENDPOINT
-  if (!endpoint) return 'simulado'
+}
 
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(_payload),
-  })
-  if (!res.ok) throw new Error(`El proveedor de correo devolvió ${res.status}`)
+/**
+ * Punto único de salida de correo.
+ *
+ * GitHub Pages es estático: no hay proceso propio que pueda mandar mails.
+ * El envío sale del navegador a través de EmailJS, que despacha desde la
+ * casilla conectada en su panel.
+ *
+ * Sin proveedor configurado el correo igual se compone entero y queda
+ * registrado en la plataforma: se puede ver, copiar o abrir en el cliente
+ * de correo. Por eso el estado 'simulado' no es un error.
+ *
+ * `VITE_EMAIL_ENDPOINT` queda como alternativa para cuando el envío pase
+ * por un backend propio (Resend detrás de una función, por ejemplo).
+ */
+export async function enviarCorreo(payload: Payload): Promise<'simulado' | 'enviado'> {
+  const endpoint = import.meta.env.VITE_EMAIL_ENDPOINT
+  if (endpoint) {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) throw new Error(`El proveedor de correo devolvió ${res.status}`)
+    return 'enviado'
+  }
+
+  if (!EMAILJS.servicio || !EMAILJS.plantilla || !EMAILJS.clave) return 'simulado'
+
+  // EmailJS despacha un mensaje por llamada, así que se manda uno por
+  // persona. Con equipos de este tamaño el costo es despreciable y
+  // además cada quien recibe el correo dirigido a él.
+  const { default: emailjs } = await import('@emailjs/browser')
+
+  const fallidos: string[] = []
+  for (const destinatario of payload.destinatarios) {
+    try {
+      await emailjs.send(
+        EMAILJS.servicio,
+        EMAILJS.plantilla,
+        {
+          to_email: destinatario,
+          subject: payload.asunto,
+          html: payload.html,
+          texto: payload.texto,
+        },
+        { publicKey: EMAILJS.clave },
+      )
+    } catch (e) {
+      const detalle = e instanceof Error ? e.message : JSON.stringify(e)
+      fallidos.push(`${destinatario} (${detalle})`)
+    }
+  }
+
+  if (fallidos.length === payload.destinatarios.length) {
+    throw new Error(`No se pudo enviar a nadie: ${fallidos.join('; ')}`)
+  }
+  if (fallidos.length) {
+    throw new Error(`Enviado con fallas. No llegó a: ${fallidos.join('; ')}`)
+  }
   return 'enviado'
 }
 

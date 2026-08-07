@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Database, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react'
+import { Database, Pencil, Plus, RotateCcw, Send, Trash2 } from 'lucide-react'
 import { useApp, ROL_LABEL } from '../store/AppContext'
 import { firebaseConfigurado } from '../lib/firebase'
 import { neonConfigurado } from '../lib/neon'
+import { correoConfigurado, enviarCorreo } from '../lib/email'
 import { fechaCorta, uid } from '../lib/utils'
 import { ROLES, type Rol, type Usuario } from '../types'
 import {
@@ -17,12 +18,53 @@ import {
 } from '../components/ui'
 
 export default function Admin() {
-  const { estado, esAdmin, borrarUsuario, actualizarConfig, restablecerDemo, modo } = useApp()
+  const { estado, yo, esAdmin, borrarUsuario, actualizarConfig, restablecerDemo, modo, avisar } =
+    useApp()
 
   const [editando, setEditando] = useState<Usuario | undefined>()
   const [creando, setCreando] = useState(false)
   const [porBorrar, setPorBorrar] = useState<Usuario | undefined>()
   const [confirmarReset, setConfirmarReset] = useState(false)
+  const [probando, setProbando] = useState(false)
+
+  /* Verifica el envío sin tener que cerrar una reunión de verdad. */
+  const probarCorreo = async () => {
+    if (!yo?.email) return
+    setProbando(true)
+    try {
+      const r = await enviarCorreo({
+        destinatarios: [yo.email],
+        asunto: 'Prueba de envío · Harvey OS',
+        texto:
+          'Si estás leyendo esto, el envío automático de Harvey OS quedó funcionando. Los correos de temario y de minuta van a salir por esta misma vía.',
+        html: `<div style="background:#0A0A0A;padding:32px 16px;font-family:Helvetica,Arial,sans-serif">
+  <div style="max-width:560px;margin:0 auto;background:#111;border:1px solid #262626">
+    <div style="padding:28px 32px;border-bottom:1px solid #262626">
+      <div style="font-size:10px;letter-spacing:3px;color:#8C8C8C;text-transform:uppercase">[ Prueba ]</div>
+      <div style="font-size:32px;font-weight:900;color:#F4F2EE;letter-spacing:-1px;text-transform:uppercase;margin-top:10px;line-height:1">Funciona</div>
+    </div>
+    <div style="padding:28px 32px;color:#D8D6D2;font-size:14px;line-height:1.65">
+      Si estás leyendo esto, el envío automático quedó funcionando. Los correos de
+      temario y de minuta van a salir por esta misma vía.
+    </div>
+    <div style="padding:18px 32px;border-top:1px solid #262626;font-size:10px;letter-spacing:2px;color:#5C5C5C;text-transform:uppercase">
+      Harvey OS · enviado automáticamente
+    </div>
+  </div>
+</div>`,
+      })
+      avisar(
+        r === 'enviado'
+          ? `Correo de prueba enviado a ${yo.email}. Revisá la bandeja y el correo no deseado.`
+          : 'No hay casilla conectada todavía: el correo se compuso pero no salió.',
+        r === 'enviado' ? 'ok' : 'info',
+      )
+    } catch (e) {
+      avisar(`Falló el envío: ${e instanceof Error ? e.message : e}`, 'error')
+    } finally {
+      setProbando(false)
+    }
+  }
 
   if (!esAdmin) {
     return (
@@ -231,12 +273,29 @@ export default function Admin() {
                 : 'Los roles se aplican en la interfaz. Con base real pasan a estar respaldados por la base.'
             }
           />
-          <Fila
-            etiqueta="Envío de correo"
-            valor={import.meta.env.VITE_EMAIL_ENDPOINT ? 'Conectado' : 'Sin proveedor'}
-            tono={import.meta.env.VITE_EMAIL_ENDPOINT ? 'acid' : 'amber'}
-            nota="Los correos se componen siempre y quedan registrados en la sección Correos."
-          />
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <Send size={13} className="text-smoke-2" />
+                <span className="text-sm">Envío de correo</span>
+              </div>
+              <p className="mt-1 max-w-xl pl-5 text-xs text-smoke-2">
+                {correoConfigurado
+                  ? 'Salen solos al cerrar el temario y al cerrar la reunión. Probalo acá para confirmar que la casilla responde.'
+                  : 'Los correos se componen siempre y quedan registrados en la sección Correos, listos para copiar o abrir en el cliente de correo.'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Chip tono={correoConfigurado ? 'acid' : 'amber'}>
+                {correoConfigurado ? 'Conectado' : 'Sin casilla conectada'}
+              </Chip>
+              {correoConfigurado && (
+                <Boton tam="sm" onClick={probarCorreo} disabled={probando}>
+                  <Send size={11} /> {probando ? 'Enviando…' : 'Probar'}
+                </Boton>
+              )}
+            </div>
+          </div>
           <div className="flex flex-wrap items-center justify-between gap-3 p-4">
             <div>
               <div className="text-sm">Datos de demostración</div>

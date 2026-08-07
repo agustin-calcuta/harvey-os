@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Copy, ExternalLink, Eye, Mail, Send } from 'lucide-react'
 import { useApp } from '../store/AppContext'
-import { abrirEnClienteDeCorreo } from '../lib/email'
+import { abrirEnClienteDeCorreo, correoConfigurado } from '../lib/email'
 import { fechaHora, relativo } from '../lib/utils'
 import type { Notificacion, TipoNotificacion } from '../types'
 import { Boton, Capa, Chip, Etiqueta, Seccion, Vacio } from '../components/ui'
@@ -19,7 +19,7 @@ export default function Correos() {
   const [viendo, setViendo] = useState<Notificacion | undefined>()
 
   const lista = [...estado.notificaciones].sort((a, b) => b.creadoEn.localeCompare(a.creadoEn))
-  const hayProveedor = Boolean(import.meta.env.VITE_EMAIL_ENDPOINT)
+  const hayProveedor = correoConfigurado
 
   return (
     <div className="space-y-6">
@@ -29,21 +29,29 @@ export default function Correos() {
           cerrarse la sesión, con conclusiones y compromisos. Acá queda el registro de todos.
         </p>
 
-        {!hayProveedor && (
-          <div className="card mb-5 border-amber/40 p-4">
-            <div className="mb-1.5 flex items-center gap-2">
-              <Mail size={14} className="text-amber" />
-              <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-amber">
-                Sin proveedor de envío conectado
-              </span>
-            </div>
-            <p className="text-xs leading-relaxed text-smoke">
-              Los correos se componen completos y quedan registrados, pero todavía no salen
-              solos. Podés verlos, copiarlos o abrirlos en tu cliente de correo. Para que salgan
-              automáticamente hay que conectar un proveedor de envío.
-            </p>
+        <div
+          className={
+            hayProveedor ? 'card mb-5 border-acid/40 p-4' : 'card mb-5 border-amber/40 p-4'
+          }
+        >
+          <div className="mb-1.5 flex items-center gap-2">
+            <Mail size={14} className={hayProveedor ? 'text-acid' : 'text-amber'} />
+            <span
+              className={
+                hayProveedor
+                  ? 'font-mono text-[11px] uppercase tracking-[0.14em] text-acid'
+                  : 'font-mono text-[11px] uppercase tracking-[0.14em] text-amber'
+              }
+            >
+              {hayProveedor ? 'Envío automático activo' : 'Sin proveedor de envío conectado'}
+            </span>
           </div>
-        )}
+          <p className="text-xs leading-relaxed text-smoke">
+            {hayProveedor
+              ? 'Los correos salen solos al cerrarse el temario y al cerrarse la reunión. Acá queda el registro de cada uno, con su contenido y sus destinatarios.'
+              : 'Los correos se componen completos y quedan registrados, pero todavía no salen solos. Podés verlos, copiarlos o abrirlos en tu cliente de correo. Para que salgan automáticamente hay que conectar la casilla de envío.'}
+          </p>
+        </div>
 
         {lista.length === 0 ? (
           <Vacio
