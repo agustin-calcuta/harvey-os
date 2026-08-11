@@ -287,8 +287,9 @@ No son trabajo pendiente nuestro, son datos que faltan:
 | --- | --- |
 | `ESTADO.md` | Este. El estado completo y lo que queda pendiente. |
 | `PEDIDOS-A-HARVEY.md` | Lo que hay que preguntarle al cliente, ordenado por urgencia. Para llevar a la reunión. |
-| `docs/Harvey - Guia de uso.pdf` | Manual de cinco páginas para mostrarle al equipo. |
-| `docs/guia-de-uso.html` | La fuente de ese PDF. Se regenera con Chrome: `--headless --no-pdf-header-footer --print-to-pdf`. |
+| `docs/Harvey - Guia de uso.pdf` | Manual de seis páginas para entregarle al cliente, con la identidad de **Calcuta**: Space Grotesk, la paleta del brandbook y el logotipo. |
+| `docs/guia-de-uso.html` | La fuente de ese PDF. Cada página está maquetada a medida fija —`position: fixed` no se repite de forma confiable al imprimir— así que al editar hay que revisar que el contenido siga entrando. Se regenera con Chrome: `--headless --no-pdf-header-footer --print-to-pdf`. |
+| `docs/marca/` | Logotipo e isotipo de Calcuta recortados al contenido y en los tres colores que usa el manual. Derivados de `CalcutaDesign/Logos`. |
 | `docs/mensaje-para-fran.md` | Resumen de los cambios y lo que falta definir, listo para pegar en WhatsApp. |
 | `db/` | Esquema, políticas y datos de ejemplo. Se pueden volver a aplicar en cualquier momento. |
 
