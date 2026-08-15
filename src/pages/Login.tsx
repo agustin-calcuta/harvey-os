@@ -8,8 +8,8 @@ const CINTA =
   'TEMARIO · REUNIÓN · MINUTA EN VIVO · SEGUIMIENTO · TAREAS CON RESPONSABLE Y FECHA · '
 
 /*
- * Un recorrido por perfil. El de superadmin es una cuenta nuestra: se
- * ofrece para poder mostrarlo, no porque el equipo lo vaya a usar.
+ * Un recorrido por perfil. El de superadmin se ofrece para poder
+ * mostrarlo, no porque el equipo lo vaya a usar todos los días.
  */
 const VISTAS = [
   {
@@ -25,10 +25,10 @@ const VISTAS = [
     que: 'Propone temas, crea y sigue sus tareas, y pide entrar a las salas donde quiera participar.',
   },
   {
-    id: 'u_soporte',
+    id: 'u_superadmin',
     sala: S_GERENCIAL,
     nombre: 'Superadmin',
-    que: 'La cuenta de Calcuta: ve todas las salas, todas las reuniones y todas las tareas.',
+    que: 'Ve todas las salas, todas las reuniones y todas las tareas. No pertenece a ningún equipo.',
   },
 ]
 
@@ -62,7 +62,7 @@ export default function Login() {
           </div>
 
           <div className="relative py-12">
-            <h1 className="display text-[clamp(3rem,9vw,6rem)]">Imporbamas</h1>
+            <h1 className="display text-[clamp(2.5rem,7vw,5rem)]">Imporbamas</h1>
             <p className="mt-6 max-w-md text-sm leading-relaxed text-suave">
               Las reuniones dejan de perderse. Cada equipo tiene su sala, con el temario cargado
               con anticipación, tiempos asignados, minuta que se arma sola y tareas con
@@ -130,7 +130,9 @@ export default function Login() {
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm">
                         {v.nombre}
-                        <span className="ml-2 text-[11px] text-tenue">{u.nombre}</span>
+                        {u.nombre !== v.nombre && (
+                          <span className="ml-2 text-[11px] text-tenue">{u.nombre}</span>
+                        )}
                       </div>
                       <div className="truncate text-[11px] leading-snug text-tenue">{v.que}</div>
                     </div>
