@@ -38,7 +38,7 @@ export const ROLES_SALA: Record<RolSala, { nombre: string; desc: string }> = {
 /**
  * Alcance de la cuenta, por encima de las salas.
  *
- * `superadmin` es soporte técnico, no forma parte de ningún equipo:
+ * `superadmin` es la cuenta nuestra, no forma parte de ningún equipo:
  * ve todo, puede intervenir en cualquier sala y es el único que
  * puede dar de baja a un administrador. Queda fuera de toda lista
  * donde se elige gente.

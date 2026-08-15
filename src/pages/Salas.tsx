@@ -147,7 +147,7 @@ export default function Salas() {
                     <div className="min-w-0">
                       <div className="mb-1.5 flex flex-wrap items-center gap-2">
                         <Chip tono={esSuperadmin ? 'cold' : organizo ? 'amber' : 'neutro'}>
-                          {esSuperadmin ? 'Soporte' : miRol ? ROLES_SALA[miRol].nombre : 'Sin rol'}
+                          {esSuperadmin ? 'Superadmin' : miRol ? ROLES_SALA[miRol].nombre : 'Sin rol'}
                         </Chip>
                         {organizo && pidiendo > 0 && (
                           <Chip tono="signal">
@@ -374,7 +374,7 @@ function ModalSala({
   /* A quiénes sumar de entrada. En la edición se maneja desde Equipo. */
   const [invitados, setInvitados] = useState<string[]>([])
 
-  /* Todo el mundo menos yo y menos las cuentas de soporte. */
+  /* Todo el mundo menos yo y menos las cuentas superadmin. */
   const disponibles = estado.usuarios.filter(
     (u) => u.activo && u.id !== yo?.id && u.alcance !== 'superadmin',
   )

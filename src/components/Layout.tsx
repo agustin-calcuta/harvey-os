@@ -121,7 +121,7 @@ export default function Layout() {
                 {salaActiva?.nombre ?? 'Sin sala'}
               </span>
               <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">
-                {esSuperadmin ? 'Soporte' : miRol ? ROLES_SALA[miRol].nombre : '—'}
+                {esSuperadmin ? 'Superadmin' : miRol ? ROLES_SALA[miRol].nombre : '—'}
               </span>
             </span>
             <ChevronDown
@@ -241,7 +241,7 @@ export default function Layout() {
             <div className="min-w-0 flex-1">
               <div className="truncate text-xs text-white/90">{yo?.nombre}</div>
               <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">
-                {esSuperadmin ? 'Soporte' : (yo?.cargo ?? '')}
+                {esSuperadmin ? 'Superadmin' : (yo?.cargo ?? '')}
               </div>
             </div>
             <button
@@ -280,7 +280,7 @@ export default function Layout() {
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber/40 bg-amber/10 px-4 py-2.5 sm:px-6">
             <span className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber">
               <Eye size={12} />
-              Vista previa como {esSuperadmin ? 'Soporte' : miRol ? ROLES_SALA[miRol].nombre : '—'}{' '}
+              Vista previa como {esSuperadmin ? 'Superadmin' : miRol ? ROLES_SALA[miRol].nombre : '—'}{' '}
               · datos de ejemplo, sólo en este navegador
             </span>
             <button

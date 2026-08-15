@@ -66,7 +66,7 @@ psql "$PGURL" -f db/rls.sql                        # las políticas cambiaron co
 La migración es idempotente y no borra nada: agrega columnas, saca el estado
 «borrador» y el «bloqueado», y manda al temario personal los temas que estaban
 en el banco de cada sala. Deja marcados como habilitados para crear salas a los
-organizadores de la sala de socios y a las cuentas de soporte.
+organizadores de la sala de socios y a las cuentas de superadmin.
 
 ---
 
@@ -219,7 +219,7 @@ Los **permisos viven en la base**. Verificado contra la base real:
 - Renata, miembro de Diseño, ve su sala y nada más, y no alcanza la sala de
   socios ni consultándola de frente.
 - Lucas ve sus dos salas, con el rol que le toca en cada una.
-- Quien pide para sí el alcance de soporte queda como usuario normal.
+- Quien pide para sí el alcance de superadmin queda como usuario normal.
 - El único organizador de una sala no puede salir y dejarla sin conducción.
 - Un pedido de entrada lo ve quien lo hizo y quien organiza esa sala; nadie más.
 
@@ -243,13 +243,14 @@ móvil, tablet y escritorio.
 
 ## Accesos
 
-### Soporte técnico
+### Superadmin
 
 `superadmin` es una cuenta nuestra: ve todo y puede intervenir en cualquier sala.
 Es lo único que se decide por fuera de las salas, y **nadie se lo puede dar a sí
 mismo**: un disparador congela el alcance salvo que quien escribe ya sea
 superadmin. **No pertenece a ningún equipo y queda fuera de toda lista donde se
-elige gente.**
+elige gente.** En pantalla figura como **Superadmin**, no como «soporte» ni
+«admin».
 
 - agustin@calcutaconsulting.com
 - aguducculi@gmail.com
@@ -276,8 +277,9 @@ sirve para mostrar que Camila, que también es de Marketing, no la ve.
 ### Vistas por rol, sin iniciar sesión
 
 La pantalla de acceso ofrece recorrer la plataforma como **organizador** o como
-**miembro**, con datos de ejemplo y sin tocar la base. La vista de soporte no se
-ofrece: es una cuenta nuestra, no algo que el equipo vaya a usar.
+**miembro**, con datos de ejemplo y sin tocar la base. La tercera, **superadmin**,
+es una cuenta nuestra: se ofrece para poder mostrarla, no porque el equipo la
+vaya a usar.
 
 ---
 
@@ -414,7 +416,7 @@ psql "$PGURL" -c "notify pgrst, 'reload schema';"
 ```
 
 `db/seed.sql` es idempotente. Al recargarlo hay que volver a agregar las cuentas
-de soporte, que no forman parte del conjunto de demostración:
+de superadmin, que no forman parte del conjunto de demostración:
 
 ```sql
 insert into public.usuarios (id, nombre, email, alcance, "puedeCrearSalas", cargo, activo, "creadoEn") values

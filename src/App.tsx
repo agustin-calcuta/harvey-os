@@ -42,7 +42,7 @@ function Rutas() {
         {/*
           Correos salió de producción: mostraba vistas previas de mensajes
           sin configurar y confundía. El registro sigue estando para
-          soporte, que es quien lo necesita para revisar un envío.
+          superadmin, que es quien lo necesita para revisar un envío.
         */}
         <Route
           path="correos"

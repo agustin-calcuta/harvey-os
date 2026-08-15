@@ -8,7 +8,7 @@ const CINTA =
   'TEMARIO · REUNIÓN · MINUTA EN VIVO · SEGUIMIENTO · TAREAS CON RESPONSABLE Y FECHA · '
 
 /*
- * Un recorrido por perfil. El de soporte es una cuenta nuestra: se
+ * Un recorrido por perfil. El de superadmin es una cuenta nuestra: se
  * ofrece para poder mostrarlo, no porque el equipo lo vaya a usar.
  */
 const VISTAS = [
@@ -27,7 +27,7 @@ const VISTAS = [
   {
     id: 'u_soporte',
     sala: S_GERENCIAL,
-    nombre: 'Soporte',
+    nombre: 'Superadmin',
     que: 'La cuenta de Calcuta: ve todas las salas, todas las reuniones y todas las tareas.',
   },
 ]

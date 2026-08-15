@@ -83,7 +83,7 @@ export const USUARIOS: Usuario[] = [
   socio('u_sofia', 'Sofía Ledesma', 'sofia@harveywillys.com', 'Gerencia · Operaciones'),
 
   /*
-   * Soporte: la cuenta de Calcuta. Ve todas las salas y puede
+   * Superadmin: la cuenta de Calcuta. Ve todas las salas y puede
    * intervenir en cualquiera, pero no pertenece a ningún equipo y
    * queda fuera de las listas donde se elige gente.
    */
@@ -93,7 +93,7 @@ export const USUARIOS: Usuario[] = [
     email: 'soporte@calcutaconsulting.com',
     alcance: 'superadmin',
     puedeCrearSalas: true,
-    cargo: 'Soporte técnico',
+    cargo: 'Superadmin',
     activo: true,
     creadoEn: en(-140),
   },

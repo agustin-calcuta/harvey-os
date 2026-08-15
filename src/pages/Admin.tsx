@@ -9,7 +9,7 @@ import type { Alcance, Usuario } from '../types'
 import { Boton, Campo, Chip, Confirmar, Modal, Seccion, Segmentado } from '../components/ui'
 
 /* ─────────────────────────────────────────────────────────────
-   Panel de soporte.
+   Panel de superadmin.
 
    Sólo lo ve el superadmin: no es una pantalla del cliente, es la
    consola de quien mantiene la herramienta. El equipo administra
@@ -41,9 +41,9 @@ export default function Admin() {
     try {
       const r = await enviarCorreo({
         destinatarios: [yo.email],
-        asunto: 'Prueba de envío · Harvey',
+        asunto: `Prueba de envío · ${estado.config.organizacion}`,
         texto:
-          'Si estás leyendo esto, el envío automático de Harvey quedó funcionando. Los correos de temario y de minuta van a salir por esta misma vía.',
+          'Si estás leyendo esto, el envío automático quedó funcionando. Los correos de temario y de minuta van a salir por esta misma vía.',
         html: `<div style="background:#F7F5F1;padding:32px 16px;font-family:Inter,Helvetica,Arial,sans-serif">
   <div style="max-width:560px;margin:0 auto;background:#FFFFFF;border:1px solid #E3DED4">
     <div style="padding:28px 32px;border-bottom:1px solid #E3DED4">
@@ -55,7 +55,7 @@ export default function Admin() {
       temario y de minuta van a salir por esta misma vía.
     </div>
     <div style="padding:18px 32px;border-top:1px solid #E3DED4;font-size:10px;letter-spacing:2px;color:#9A948A;text-transform:uppercase">
-      Harvey · enviado automáticamente
+      ${estado.config.organizacion} · enviado automáticamente
     </div>
   </div>
 </div>`,
@@ -78,7 +78,7 @@ export default function Admin() {
       <div className="card p-8 text-center">
         <div className="display mb-2 text-2xl text-suave">Sin acceso</div>
         <p className="text-sm text-tenue">
-          Esta sección es de soporte técnico. Para gestionar tu equipo, entrá a la sala.
+          Esta sección es del superadmin. Para gestionar tu equipo, entrá a la sala.
         </p>
       </div>
     )
@@ -126,9 +126,9 @@ export default function Admin() {
         }
       >
         <p className="mb-4 max-w-2xl text-sm text-suave">
-          El alcance no es el rol: el rol vive en cada sala. Acá se define quién es soporte
-          técnico —con acceso por encima de todas las salas— y quién puede abrir salas nuevas,
-          que quedó en manos de los socios.
+          El alcance no es el perfil: el perfil vive en cada sala. Acá se define quién es
+          superadmin —con acceso por encima de todas las salas— y quién puede abrir salas
+          nuevas, que quedó en manos de los socios.
         </p>
 
         <ul className="card divide-y divide-borde">
@@ -153,7 +153,7 @@ export default function Admin() {
                 {u.puedeCrearSalas && u.alcance !== 'superadmin' && (
                   <Chip tono="amber">Abre salas</Chip>
                 )}
-                {u.alcance === 'superadmin' && <Chip tono="signal">Soporte</Chip>}
+                {u.alcance === 'superadmin' && <Chip tono="signal">Superadmin</Chip>}
                 <div className="flex gap-1">
                   <button
                     onClick={() => setEditando(u)}
@@ -252,7 +252,7 @@ export default function Admin() {
               <p className="mt-1 max-w-xl pl-5 text-xs text-tenue">
                 {correoConfigurado
                   ? 'Salen solos al cerrar el temario y al cerrar la reunión. Probalo acá para confirmar que la casilla responde.'
-                  : 'Los correos se componen siempre y quedan registrados y se pueden revisar desde soporte, listos para copiar o abrir en el cliente de correo.'}
+                  : 'Los correos se componen siempre y quedan registrados y se pueden revisar desde acá, listos para copiar o abrir en el cliente de correo.'}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -352,11 +352,11 @@ const ALCANCES: { valor: Alcance; nombre: string; desc: string }[] = [
   {
     valor: 'usuario',
     nombre: 'Normal',
-    desc: 'Ve sólo sus salas. El rol lo define cada sala.',
+    desc: 'Ve sólo sus salas. El perfil lo define cada sala.',
   },
   {
     valor: 'superadmin',
-    nombre: 'Soporte',
+    nombre: 'Superadmin',
     desc: 'Ve y puede intervenir en todas las salas. Queda fuera de los desplegables del equipo.',
   },
 ]
