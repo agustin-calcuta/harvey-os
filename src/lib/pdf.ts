@@ -53,7 +53,7 @@ export function construirMinuta(
   doc.setTextColor(255, 255, 255)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(30)
-  doc.text((estado.config.organizacion || 'Impor Bamas').toUpperCase(), M, 52)
+  doc.text((estado.config.organizacion || 'Imporbamas').toUpperCase(), M, 52)
 
   doc.setFillColor(...ROJO)
   doc.rect(M, 62, 30, 3, 'F')
@@ -290,7 +290,7 @@ export function construirMinuta(
     doc.setFontSize(7)
     doc.setTextColor(...GRIS)
     doc.text(
-      `${(estado.config.organizacion || 'Impor Bamas').toUpperCase()}  ·  MINUTA GENERADA AUTOMÁTICAMENTE`,
+      `${(estado.config.organizacion || 'Imporbamas').toUpperCase()}  ·  MINUTA GENERADA AUTOMÁTICAMENTE`,
       M,
       alto - 28,
     )
@@ -336,7 +336,7 @@ export function construirPendientes(
   doc.setTextColor(255, 255, 255)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(30)
-  doc.text((estado.config.organizacion || 'Impor Bamas').toUpperCase(), M, 50)
+  doc.text((estado.config.organizacion || 'Imporbamas').toUpperCase(), M, 50)
 
   doc.setFillColor(...ROJO)
   doc.rect(M, 60, 30, 3, 'F')
@@ -447,7 +447,7 @@ export function construirPendientes(
     doc.setFontSize(7)
     doc.setTextColor(...GRIS)
     doc.text(
-      `${(estado.config.organizacion || 'Impor Bamas').toUpperCase()}  ·  LISTADO GENERADO AUTOMÁTICAMENTE`,
+      `${(estado.config.organizacion || 'Imporbamas').toUpperCase()}  ·  LISTADO GENERADO AUTOMÁTICAMENTE`,
       M,
       alto - 28,
     )

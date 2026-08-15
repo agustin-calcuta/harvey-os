@@ -28,7 +28,7 @@ import {
   OBJETIVOS,
   type Reunion,
 } from '../../types'
-import { Boton, Chip, Confirmar, Etiqueta, Vacio } from '../ui'
+import { Boton, Chip, Confirmar, Vacio } from '../ui'
 import ModalCompromiso from './ModalCompromiso'
 
 /* ─────────────────────────────────────────────────────────────
@@ -182,22 +182,18 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
             <div className="card">
               <div className="flex flex-wrap items-start justify-between gap-4 border-b border-borde p-5">
                 <div className="min-w-0">
-                  <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-suave">
-                    <span>
-                      Tema {indice + 1} de {agenda.length}
-                    </span>
-                    <span className="text-borde2">·</span>
-                    <span style={{ color: IMPORTANCIA[tema.importancia].hex }}>
-                      Importancia {IMPORTANCIA[tema.importancia].nombre.toLowerCase()}
-                    </span>
-                    <span className="text-borde2">·</span>
+                  <h2 className="text-xl leading-snug sm:text-2xl">{tema.titulo}</h2>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-tenue">
+                    <span
+                      className="inline-block h-1.5 w-1.5 rounded-full"
+                      style={{ background: IMPORTANCIA[tema.importancia].hex }}
+                      title={`Importancia ${IMPORTANCIA[tema.importancia].nombre.toLowerCase()}`}
+                    />
                     <span title={OBJETIVOS[tema.objetivo].desc}>
                       {OBJETIVOS[tema.objetivo].nombre}
                     </span>
-                    <span className="text-borde2">·</span>
                     <span>Propuso {nombreDe(estado, tema.propuestoPor)}</span>
                   </div>
-                  <h2 className="display text-2xl sm:text-3xl">{tema.titulo}</h2>
                   {tema.detalle && (
                     <p className="mt-3 max-w-2xl text-sm leading-relaxed text-suave">
                       {tema.detalle}
@@ -246,7 +242,7 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
                   quién se lleva qué. */}
               <div className="p-5">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <Etiqueta>Tareas que salen de este tema</Etiqueta>
+                  <span className="text-sm">Tareas que salen de este tema</span>
                   <Boton variante="solido" onClick={() => setNuevaTarea(true)}>
                     <Plus size={13} /> Registrar tarea
                   </Boton>
@@ -276,7 +272,7 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
 
             {/* Notas: lo que se pide anotar cambia según el objetivo. */}
             <div className="card p-5">
-              <Etiqueta className="mb-3">{OBJETIVOS[tema.objetivo].pideConclusion}</Etiqueta>
+              <span className="mb-3 block text-sm">{OBJETIVOS[tema.objetivo].pideConclusion}</span>
               <textarea
                 className="w-full resize-y font-sans text-sm leading-relaxed"
                 rows={6}
@@ -361,15 +357,14 @@ function Seguimiento({ reunion }: { reunion: Reunion }) {
 
   return (
     <div className="space-y-5">
-      <div className="card p-5">
-        <Etiqueta className="mb-1">Seguimiento</Etiqueta>
-        <h2 className="display text-2xl">Lo que quedó de antes</h2>
-        <p className="mt-2 text-sm text-suave">
+      <h2 className="subtitulo">
+        Lo que quedó de antes
+        <span className="cuenta">
           {tareas.length === 0
-            ? 'No quedó ninguna tarea abierta de reuniones anteriores.'
-            : `${tareas.length} ${tareas.length === 1 ? 'tarea abierta' : 'tareas abiertas'}. Repasalas una por una y marcá cómo viene cada una.`}
-        </p>
-      </div>
+            ? 'nada abierto'
+            : `${tareas.length} ${tareas.length === 1 ? 'tarea' : 'tareas'}`}
+        </span>
+      </h2>
 
       {tareas.length > 0 && (
         <ul className="card divide-y divide-borde">
@@ -419,12 +414,9 @@ function Seguimiento({ reunion }: { reunion: Reunion }) {
 
       {sinTratar.length > 0 && (
         <section>
-          <h3 className="display mb-1 text-xl">
-            Temas que quedaron sin hablar <span className="text-suave">{sinTratar.length}</span>
+          <h3 className="subtitulo">
+            Temas que quedaron sin hablar <span className="cuenta">{sinTratar.length}</span>
           </h3>
-          <p className="mb-3 text-xs text-suave">
-            Vienen de reuniones anteriores de esta sala. Si hoy hay lugar, incluilos.
-          </p>
           <ul className="card divide-y divide-borde">
             {sinTratar.map((t) => (
               <li key={t.id} className="flex flex-wrap items-center gap-3 p-4">

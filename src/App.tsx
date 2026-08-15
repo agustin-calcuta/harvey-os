@@ -60,7 +60,7 @@ function Rutas() {
 function Cargando() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <div className="display text-4xl">Impor Bamas</div>
+      <div className="display text-4xl">Imporbamas</div>
       <div className="h-px w-32 overflow-hidden bg-borde">
         <div className="h-full w-1/3 animate-pulse bg-signal" />
       </div>

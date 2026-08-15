@@ -39,7 +39,7 @@ import {
   type EstadoCompromiso,
   type Importancia,
 } from '../types'
-import { Avatar, Boton, Chip, Etiqueta, Metrica, Seccion, Vacio } from '../components/ui'
+import { Avatar, Boton, Chip, Etiqueta, Seccion, Vacio } from '../components/ui'
 import { generarPendientesPDF } from '../lib/pdf'
 import ModalCompromiso from '../components/reunion/ModalCompromiso'
 
@@ -81,9 +81,12 @@ export default function Compromisos() {
     () => (localStorage.getItem(CLAVE_VISTA) as Vista) || 'tablero',
   )
   const [agrupar, setAgrupar] = useState<Agrupacion>('responsable')
-  const [responsable, setResponsable] = useState<string>(
-    filtroInicial === 'mios' && yo ? yo.id : 'todos',
-  )
+  /*
+   * Se abre con lo propio, siempre: "Mis tareas" tiene que ser mis
+   * tareas. El socio pasa a ver las del equipo con el interruptor de
+   * arriba; el miembro no tiene nada que cambiar.
+   */
+  const [responsable, setResponsable] = useState<string>(yo?.id ?? 'todos')
   const [importancia, setImportancia] = useState<Importancia | 'todas'>('todas')
   const [plazo, setPlazo] = useState<Plazo>(
     filtroInicial === 'vencidos' ? 'vencidos' : filtroInicial === 'semana' ? 'semana' : 'todos',
@@ -108,8 +111,14 @@ export default function Compromisos() {
       filtroInicial === 'vencidos' ? 'vencidos' : filtroInicial === 'semana' ? 'semana' : 'todos',
     )
     setIncluirHechos(filtroInicial !== 'abiertos')
-    if (filtroInicial === 'mios' && yo) setResponsable(yo.id)
+    if (filtroInicial === 'equipo') setResponsable('todos')
+    else if (yo) setResponsable(yo.id)
   }, [filtroInicial, yo])
+
+  const soloMias = responsable === yo?.id
+  const propias = compromisosVisibles.filter((c) => c.responsableId === yo?.id)
+  /* El alcance de las cifras acompaña a lo que se está mirando. */
+  const alcance = soloMias ? propias : compromisosVisibles
 
   const filtrados = useMemo(
     () =>
@@ -139,7 +148,6 @@ export default function Compromisos() {
     void moverCompromiso(String(e.active.id), nuevoEstado)
   }
 
-  const vencidos = filtrados.filter((c) => estaVencido(c))
 
   const botonFiltro = (activo: boolean) =>
     activo
@@ -178,26 +186,49 @@ export default function Compromisos() {
           </>
         }
       >
-        {/* Tres cifras, no cuatro: quien no organiza sólo ve las suyas,
-            así que "a tu nombre" sería lo mismo que "abiertas". */}
-        <div className="mb-5 grid grid-cols-3 gap-3">
-          <Metrica
-            valor={compromisosVisibles.filter((c) => c.estado !== 'hecho').length}
-            etiqueta={puedeOrganizar ? 'Abiertas del equipo' : 'Tus tareas abiertas'}
-            a="?filtro=abiertos"
-          />
-          <Metrica
-            valor={compromisosVisibles.filter((c) => estaVencido(c)).length}
-            etiqueta="Vencidas"
-            tono={vencidos.length ? 'signal' : undefined}
-            a="?filtro=vencidos"
-          />
-          <Metrica
-            valor={compromisosVisibles.filter((c) => venceProximo(c)).length}
-            etiqueta="Vencen esta semana"
-            tono="amber"
-            a="?filtro=semana"
-          />
+        {/* ── Mías / del equipo ──
+            Sólo para el socio: el miembro ve lo suyo y no hay nada que
+            elegir. Las cifras de al lado acompañan a lo que se mira. */}
+        <div className="mb-5 flex flex-wrap items-center gap-3">
+          {puedeOrganizar && yo && (
+            <div className="flex border border-borde2">
+              {(
+                [
+                  [yo.id, 'Mías'],
+                  ['todos', 'Del equipo'],
+                ] as const
+              ).map(([valor, texto]) => (
+                <button
+                  key={valor}
+                  onClick={() => setResponsable(valor)}
+                  className={cx(
+                    'px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors',
+                    responsable === valor
+                      ? 'bg-tinta text-fondo'
+                      : 'bg-panel text-suave hover:text-tinta',
+                  )}
+                >
+                  {texto}
+                </button>
+              ))}
+            </div>
+          )}
+          <span className="text-xs text-suave">
+            {alcance.filter((c) => c.estado !== 'hecho').length}{' '}
+            {alcance.filter((c) => c.estado !== 'hecho').length === 1 ? 'abierta' : 'abiertas'}
+            {alcance.filter((c) => estaVencido(c)).length > 0 && (
+              <span className="text-signal">
+                {' · '}
+                {alcance.filter((c) => estaVencido(c)).length} vencidas
+              </span>
+            )}
+            {alcance.filter((c) => venceProximo(c)).length > 0 && (
+              <span className="text-amber">
+                {' · '}
+                {alcance.filter((c) => venceProximo(c)).length} vencen esta semana
+              </span>
+            )}
+          </span>
         </div>
 
         {/* ── Filtros, comunes a las dos vistas ── */}
@@ -205,11 +236,12 @@ export default function Compromisos() {
           <input
             className="col-span-2 sm:w-48"
             placeholder="Buscar…"
+            aria-label="Buscar una tarea"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
           />
-          {/* Sólo para quien conduce el equipo: el resto ve lo suyo y punto. */}
-          {puedeOrganizar && (
+          {/* Por persona, sólo cuando se están mirando las del equipo. */}
+          {puedeOrganizar && !soloMias && (
             <select
               value={responsable}
               onChange={(e) => setResponsable(e.target.value)}
@@ -226,6 +258,7 @@ export default function Compromisos() {
           <select
             value={importancia}
             onChange={(e) => setImportancia(e.target.value as Importancia | 'todas')}
+            aria-label="Filtrar por importancia"
           >
             <option value="todas">Toda importancia</option>
             {(Object.keys(IMPORTANCIA) as Importancia[]).map((k) => (
@@ -236,32 +269,16 @@ export default function Compromisos() {
           </select>
           <button
             onClick={() => setPlazo((p) => (p === 'vencidos' ? 'todos' : 'vencidos'))}
-            className={
-              plazo === 'vencidos'
-                ? 'border border-signal bg-signal px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white'
-                : 'border border-borde2 bg-panel px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:border-signal hover:text-signal'
-            }
+            className={botonFiltro(plazo === 'vencidos')}
           >
-            Vencidos
+            Vencidas
           </button>
           <button
             onClick={() => setPlazo((p) => (p === 'semana' ? 'todos' : 'semana'))}
-            className={
-              plazo === 'semana'
-                ? 'border border-amber bg-amber px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white'
-                : 'border border-borde2 bg-panel px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:border-amber hover:text-amber'
-            }
+            className={botonFiltro(plazo === 'semana')}
           >
             Vencen esta semana
           </button>
-          {yo && puedeOrganizar && (
-            <button
-              onClick={() => setResponsable(responsable === yo.id ? 'todos' : yo.id)}
-              className={botonFiltro(responsable === yo.id)}
-            >
-              Sólo mías
-            </button>
-          )}
           <label className="col-span-2 flex cursor-pointer items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave sm:col-auto">
             <input
               type="checkbox"
@@ -383,7 +400,7 @@ function VistaLista({
         <div key={clave}>
           <div className="mb-2 flex items-center gap-3">
             {agrupar === 'responsable' && <Avatar nombre={clave} tam="sm" />}
-            <h3 className="display text-lg">{clave}</h3>
+            <h3 className="text-sm">{clave}</h3>
             <span className="text-xs text-tenue">{items.length}</span>
             {items.some((c) => estaVencido(c)) && (
               <Chip tono="signal">{items.filter((c) => estaVencido(c)).length} vencidos</Chip>

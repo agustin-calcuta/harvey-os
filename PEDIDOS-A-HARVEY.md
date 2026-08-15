@@ -86,9 +86,9 @@ alguien de Calcuta).
 
 ### 3.1 El logo
 
-Ahora es el de **Impor Bamas**, no el de Harvey: la van a usar para todas sus
+Ahora es el de **Imporbamas**, no el de Harvey: la van a usar para todas sus
 sociedades. Hace falta en **SVG o PNG con fondo transparente**, y confirmar cómo
-se escribe —en la minuta figura "Imporbamas" y "Impor Bamas"—.
+se escribe —en la minuta figura "Imporbamas" y "Imporbamas"—.
 
 Va en la barra lateral, en la pestaña del navegador y en la cabecera del PDF de
 la minuta.
@@ -186,6 +186,6 @@ momento si quedan así o pasan a nombre de ellos.
 2. **Qué salas arrancan**, quién organiza cada una y **quiénes pueden abrir
    salas nuevas** (quedó definido que son los cuatro socios).
 3. **Desde qué casilla** salen los correos automáticos.
-4. **El logo de Impor Bamas** en SVG o PNG.
+4. **El logo de Imporbamas** en SVG o PNG.
 
 Con esas cuatro cosas el tablero queda andando en el día.

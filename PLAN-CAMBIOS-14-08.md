@@ -228,8 +228,8 @@ anotado por si vuelve.*
 
 | # | Qué hay que hacer | Dónde |
 | --- | --- | --- |
-| 59 | **Reemplazar Harvey por Impor Bamas en toda la plataforma**: barra lateral, pestaña del navegador, pantalla de acceso, PDF y correos. Van a usarla para todas sus sociedades, no sólo para Harvey. | `src/components/Layout.tsx`, `index.html`, `src/lib/pdf.ts`, `src/lib/email.ts` |
-| 60 | **Falta que manden el logo** en SVG o PNG. Sin eso queda el wordmark tipográfico con el nombre nuevo. Y confirmar la grafía: en la minuta aparece "Imporbamas" y "Impor Bamas". | — |
+| 59 | **Reemplazar Harvey por Imporbamas en toda la plataforma**: barra lateral, pestaña del navegador, pantalla de acceso, PDF y correos. Van a usarla para todas sus sociedades, no sólo para Harvey. | `src/components/Layout.tsx`, `index.html`, `src/lib/pdf.ts`, `src/lib/email.ts` |
+| 60 | **Falta que manden el logo** en SVG o PNG. Sin eso queda el wordmark tipográfico con el nombre nuevo. Y confirmar la grafía: en la minuta aparece "Imporbamas" y "Imporbamas". | — |
 
 ---
 
@@ -301,7 +301,7 @@ afuera y por qué.
 
 - **Ariel** coordina la reunión con los socios para ver su gestor de tareas.
 - **Fran** escribe al grupo para agendar con Mati y Nanu el jueves 20 o viernes 21.
-- **Ellos** tienen que mandar el logo de Impor Bamas y confirmar cómo se escribe.
+- **Ellos** tienen que mandar el logo de Imporbamas y confirmar cómo se escribe.
 - **Denise** confirmaba el horario del martes por si se corría por Safira.
 
 ---

@@ -146,8 +146,8 @@ export default function Salas() {
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                        <Chip tono={organizo ? 'amber' : 'neutro'}>
-                          {miRol ? ROLES_SALA[miRol].nombre : 'Sin rol'}
+                        <Chip tono={esSuperadmin ? 'cold' : organizo ? 'amber' : 'neutro'}>
+                          {esSuperadmin ? 'Soporte' : miRol ? ROLES_SALA[miRol].nombre : 'Sin rol'}
                         </Chip>
                         {organizo && pidiendo > 0 && (
                           <Chip tono="signal">
@@ -156,7 +156,7 @@ export default function Salas() {
                         )}
                         {s.cadencia && <span className="text-xs text-tenue">{s.cadencia}</span>}
                       </div>
-                      <h3 className="display text-2xl">{s.nombre}</h3>
+                      <h3 className="text-lg">{s.nombre}</h3>
                       {s.descripcion && (
                         <p className="mt-1 text-sm leading-relaxed text-suave">{s.descripcion}</p>
                       )}

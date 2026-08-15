@@ -83,7 +83,7 @@ export default function Panel() {
             month: 'long',
           })}
         </div>
-        <h1 className="display text-4xl sm:text-5xl">Hola, {yo?.nombre.split(' ')[0]}</h1>
+        <h1 className="display text-3xl sm:text-4xl">Hola, {yo?.nombre.split(' ')[0]}</h1>
         <p className="mt-2 max-w-xl text-sm text-suave">{saludo}</p>
       </div>
 
@@ -130,7 +130,7 @@ export default function Panel() {
                 </Chip>
                 <Link
                   to={`/reuniones/${proxima.id}`}
-                  className="display mt-2 block text-2xl transition-colors hover:text-signal sm:text-3xl"
+                  className="display mt-2 block text-xl transition-colors hover:text-signal sm:text-2xl"
                 >
                   {proxima.titulo}
                 </Link>

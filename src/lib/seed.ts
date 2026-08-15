@@ -81,6 +81,22 @@ export const USUARIOS: Usuario[] = [
   // Entró hace poco y todavía no está en ninguna sala: pidió sumarse
   // a la de socios y el pedido espera respuesta.
   socio('u_sofia', 'Sofía Ledesma', 'sofia@harveywillys.com', 'Gerencia · Operaciones'),
+
+  /*
+   * Soporte: la cuenta de Calcuta. Ve todas las salas y puede
+   * intervenir en cualquiera, pero no pertenece a ningún equipo y
+   * queda fuera de las listas donde se elige gente.
+   */
+  {
+    id: 'u_soporte',
+    nombre: 'Calcuta',
+    email: 'soporte@calcutaconsulting.com',
+    alcance: 'superadmin',
+    puedeCrearSalas: true,
+    cargo: 'Soporte técnico',
+    activo: true,
+    creadoEn: en(-140),
+  },
 ]
 
 const SOCIOS = ['u_matias', 'u_tomas', 'u_nico', 'u_lucas']
@@ -689,7 +705,7 @@ export const ESTADO_INICIAL: Estado = {
   compromisos: COMPROMISOS,
   notificaciones: NOTIFICACIONES,
   config: {
-    organizacion: 'Impor Bamas',
+    organizacion: 'Imporbamas',
     emailsActivos: true,
   },
 }

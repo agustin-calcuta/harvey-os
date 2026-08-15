@@ -8,6 +8,7 @@ import {
   compromisosArrastrados,
   compromisosDe,
   estaVencido,
+  rolEnSala,
   fechaCorta,
   fechaLarga,
   hora,
@@ -60,6 +61,7 @@ type PasoId = (typeof PASOS)[number]['id']
 export default function FasePost({ reunion }: { reunion: Reunion }) {
   const {
     estado,
+    yo,
     puedeModerar,
     actualizarReunion,
     borrarCompromiso,
@@ -71,6 +73,9 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
   const nuevas = compromisosDe(estado, reunion.id)
   const arrastradas = compromisosArrastrados(estado, reunion.id)
   const editable = puedeModerar(reunion)
+  /* Borrar es del socio de esa sala, no de cualquiera que modere. */
+  const puedeBorrar =
+    yo?.alcance === 'superadmin' || rolEnSala(estado, reunion.salaId, yo?.id) === 'organizador'
 
   const [conclusiones, setConclusiones] = useState(reunion.conclusionesGenerales ?? '')
   const [observaciones, setObservaciones] = useState(reunion.observaciones ?? '')
@@ -132,15 +137,9 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="display text-2xl sm:text-3xl">Generación de minuta</h2>
-        <p className="mt-2 max-w-2xl text-sm text-suave">
-          Revisá los cuatro apartados y completá lo que falte. Cuando termines el recorrido se
-          habilita descargarla y enviarla.
-        </p>
-      </div>
-
-      {/* ── El recorrido ── */}
+      {/* ── El recorrido ──
+          Reemplaza al título y a su bajada: se entiende igual y ocupa
+          una franja en vez de media pantalla. */}
       <nav aria-label="Apartados de la minuta" className="card flex flex-wrap gap-px bg-borde">
         {PASOS.map((p) => (
           <button
@@ -202,7 +201,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
 
       {/* ── 1. Conclusiones ── */}
       <section data-paso="conclusiones" ref={(el) => void (refs.current.conclusiones = el)}>
-        <Etiqueta className="bracket mb-3">Principales conclusiones</Etiqueta>
+        <h3 className="subtitulo">Principales conclusiones</h3>
         {editable ? (
           <textarea
             className="w-full resize-y text-sm leading-relaxed"
@@ -221,7 +220,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
 
       {/* ── 2. Temas ── */}
       <section data-paso="temas" ref={(el) => void (refs.current.temas = el)}>
-        <Etiqueta className="bracket mb-3">Qué se habló en cada tema</Etiqueta>
+        <h3 className="subtitulo">Qué se habló en cada tema</h3>
         {temas.length === 0 ? (
           <Vacio titulo="Sin temas" texto="Esta reunión no tuvo temas en agenda." />
         ) : (
@@ -270,14 +269,14 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
           Una sola caja: las tareas nuevas y las que venían de antes sin
           terminar. Diferenciadas adentro, no en secciones separadas. */}
       <section data-paso="pasos" ref={(el) => void (refs.current.pasos = el)}>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <Etiqueta className="bracket">Próximos pasos</Etiqueta>
+        <h3 className="subtitulo justify-between">
+          Próximos pasos
           {editable && (
             <Boton tam="sm" variante="solido" onClick={() => setNuevaTarea(true)}>
               <Plus size={12} /> Agregar tarea
             </Boton>
           )}
-        </div>
+        </h3>
 
         {nuevas.length === 0 && arrastradas.length === 0 ? (
           <Vacio titulo="Sin tareas" texto="No quedó nadie a cargo de nada en esta reunión." />
@@ -307,7 +306,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
                     c={c}
                     editable={editable}
                     onEditar={() => setEditando(c)}
-                    onBorrar={() => setPorBorrar(c)}
+                    onBorrar={puedeBorrar ? () => setPorBorrar(c) : undefined}
                   />
                 ))}
 
@@ -348,7 +347,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
 
       {/* ── 4. Observaciones ── */}
       <section data-paso="observaciones" ref={(el) => void (refs.current.observaciones = el)}>
-        <Etiqueta className="bracket mb-3">Observaciones adicionales</Etiqueta>
+        <h3 className="subtitulo">Observaciones adicionales</h3>
         {editable ? (
           <textarea
             className="w-full resize-y text-sm leading-relaxed"
@@ -440,6 +439,7 @@ function Fila({
   marcada?: boolean
   onMarcar?: (v: boolean) => void
   onEditar?: () => void
+  /** Sin esto, no se muestra el botón: borrar es del socio. */
   onBorrar?: () => void
 }) {
   const { estado } = useApp()
@@ -485,22 +485,26 @@ function Fila({
         </Chip>
       </td>
       <td className="p-3">
-        {editable && onEditar && onBorrar && (
+        {editable && (onEditar || onBorrar) && (
           <div className="flex justify-end gap-1">
-            <button
-              onClick={onEditar}
-              aria-label={`Editar «${c.accion}»`}
-              className="border border-borde2 p-1.5 text-suave transition-colors hover:border-tinta hover:text-tinta"
-            >
-              <Pencil size={11} />
-            </button>
-            <button
-              onClick={onBorrar}
-              aria-label={`Eliminar «${c.accion}»`}
-              className="border border-borde2 p-1.5 text-suave transition-colors hover:border-signal hover:text-signal"
-            >
-              <Trash2 size={11} />
-            </button>
+            {onEditar && (
+              <button
+                onClick={onEditar}
+                aria-label={`Editar «${c.accion}»`}
+                className="border border-borde2 p-1.5 text-suave transition-colors hover:border-tinta hover:text-tinta"
+              >
+                <Pencil size={11} />
+              </button>
+            )}
+            {onBorrar && (
+              <button
+                onClick={onBorrar}
+                aria-label={`Eliminar «${c.accion}»`}
+                className="border border-borde2 p-1.5 text-suave transition-colors hover:border-signal hover:text-signal"
+              >
+                <Trash2 size={11} />
+              </button>
+            )}
           </div>
         )}
       </td>

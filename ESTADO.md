@@ -1,4 +1,4 @@
-# Estado del proyecto — Impor Bamas (ex Harvey)
+# Estado del proyecto — Imporbamas (ex Harvey)
 
 **Última actualización:** 15 de agosto de 2026
 **Plataforma en línea:** https://agustin-calcuta.github.io/harvey-os/
@@ -48,7 +48,7 @@ Lo que cambia de fondo, y no sólo de nombre:
 - **«Compromiso» pasó a llamarse «tarea»** en toda la interfaz, y quedan tres
   estados: pendiente, en curso, hecha.
 - **Salió la solapa de Correos** de la vista del equipo.
-- La marca pasa a **Impor Bamas**: la usan para todas sus sociedades.
+- La marca pasa a **Imporbamas**: la usan para todas sus sociedades.
 
 ---
 
@@ -81,8 +81,12 @@ aprobar"*.
 
 | | Qué puede hacer en esa sala |
 | --- | --- |
-| **Organizador** | Arma la agenda, aprueba temas, asigna tiempos, modera, y decide quién entra a la sala y con qué rol. Ve las tareas de todo el equipo. |
-| **Miembro** | Propone temas, participa y sigue sus propias tareas. |
+| **Socio** | Abre salas nuevas, arma la agenda, aprueba temas, modera y decide quién entra. Puede ver las tareas de todo el equipo y es el único que puede borrar. |
+| **Miembro** | Propone temas, crea reuniones, participa y sigue sus propias tareas. No abre salas: pide entrar a las que ya existen. |
+
+De cara a quien la usa son **socio** y **miembro**; adentro, la clave del rol
+sigue diciendo `organizador` —renombrarla obligaba a migrar la base y las
+políticas, y no cambia nada de lo que se ve—.
 
 **Abrir salas es de los socios.** Se marca persona por persona desde
 Administración y lo cuida la base, igual que el alcance: nadie se lo da a sí
@@ -191,8 +195,10 @@ bloc personal) · **Tareas** · **Salas**.
 - **Tareas** en una sola sección con dos vistas: tablero (arrastrar entre
   estados) y lista (agrupable por responsable, reunión o vencimiento).
 - Tres estados: pendiente, en curso y hecha. Lo trabado se cuenta en el avance.
-- Un miembro ve sólo las suyas, **sin el filtro por responsable**; el
-  organizador, las de todo el equipo.
+- **Abre siempre con las propias.** El socio tiene un interruptor para pasar a
+  las del equipo; el miembro no ve ni ese interruptor ni el filtro por persona.
+- **Borrar es del socio.** Cualquiera crea tareas y actualiza el avance de las
+  suyas, pero sacar una del registro no.
 - **PDF con las tareas de una persona**, con casillas para tildar, para mandarle
   a cada uno lo suyo por donde lo lea.
 - Tareas sueltas, sin reunión asociada.
@@ -317,14 +323,14 @@ Después, en **Administración → Estado técnico** hay un botón *Probar*.
 ### 2. El logo
 
 Está el wordmark tipográfico, ya con el nombre nuevo. **Falta que manden el logo
-de Impor Bamas** en SVG o PNG: va a la barra lateral, al favicon y al PDF. Y hay
+de Imporbamas** en SVG o PNG: va a la barra lateral, al favicon y al PDF. Y hay
 que confirmar cómo se escribe —en la minuta aparece "Imporbamas" y "Impor
-Bamas"—; por ahora quedó *Impor Bamas*, y se cambia desde Administración sin
+Bamas"—; por ahora quedó *Imporbamas*, y se cambia desde Administración sin
 tocar código.
 
 ### 3. La pantalla de Google dice "neon.tech"
 
-Usa las credenciales compartidas de Neon. Para que diga Impor Bamas hay que
+Usa las credenciales compartidas de Neon. Para que diga Imporbamas hay que
 registrar una aplicación propia en Google Cloud: media hora. **Es la misma
 aplicación que hace falta para mandar el invite por Google Calendar**, así que
 conviene hacer las dos juntas.
@@ -348,7 +354,7 @@ No son trabajo pendiente nuestro, son datos que faltan:
 - Si cargamos las tareas que hoy tienen abiertas, para arrancar con su realidad
   y no con datos de ejemplo.
 - **Cómo se escribe la marca**: en la minuta figura "Imporbamas" y "Impor
-  Bamas". Quedó *Impor Bamas* y se cambia desde Administración.
+  Bamas". Quedó *Imporbamas* y se cambia desde Administración.
 
 ---
 
@@ -386,8 +392,8 @@ No son trabajo pendiente nuestro, son datos que faltan:
 | `PLAN-CAMBIOS-14-08.md` | Los 62 puntos que salieron de la reunión del 14, con qué se hizo y qué quedó afuera. |
 | `db/migracion-2026-08-15.sql` | Lleva una base que ya está andando al esquema nuevo, sin perder lo cargado. |
 | `PEDIDOS-A-HARVEY.md` | Lo que hay que preguntarle al cliente, ordenado por urgencia. Para llevar a la reunión. |
-| `docs/Harvey - Guia de uso.pdf` | Manual de seis páginas para entregarle al cliente, con la identidad de **Calcuta**: Space Grotesk, la paleta del brandbook y el logotipo. |
-| `docs/guia-de-uso.html` | La fuente de ese PDF. Cada página está maquetada a medida fija —`position: fixed` no se repite de forma confiable al imprimir— así que al editar hay que revisar que el contenido siga entrando. Se regenera con Chrome: `--headless --no-pdf-header-footer --print-to-pdf`. |
+| `docs/Imporbamas - Guia de uso.pdf` | Manual de seis páginas para entregarle al cliente, con la identidad de **Calcuta**: Space Grotesk, la paleta del brandbook y el logotipo. Al día con los cambios del 14/08. |
+| `docs/guia-de-uso.html` | La fuente de ese PDF. Cada página está maquetada a medida fija —`position: fixed` no se repite de forma confiable al imprimir— así que al editar hay que revisar que el contenido siga entrando. Se regenera con Chromium: `--headless --no-pdf-header-footer --print-to-pdf`. En esta máquina no hay Chrome, pero Brave sirve igual. |
 | `docs/marca/` | Logotipo e isotipo de Calcuta recortados al contenido y en los tres colores que usa el manual. Derivados de `CalcutaDesign/Logos`. |
 | `docs/mensaje-para-fran.md` | Resumen de los cambios y lo que falta definir, listo para pegar en WhatsApp. |
 | `db/` | Esquema, políticas y datos de ejemplo. Se pueden volver a aplicar en cualquier momento. |

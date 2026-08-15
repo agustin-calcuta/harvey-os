@@ -14,18 +14,24 @@
 /* ── Roles ────────────────────────────────────────────────── */
 
 /**
- * Rol dentro de una sala. No es global: vive en la membresía.
+ * Rol dentro de una sala. No es global: vive en la membresía, así que
+ * la misma persona puede ser socia de la suya y miembro en la de al
+ * lado.
+ *
+ * La clave interna sigue diciendo `organizador` —renombrarla obliga a
+ * migrar la base y las políticas— pero de cara a quien la usa son
+ * **socio** y **miembro**, que es como se llaman entre ellos.
  */
 export type RolSala = 'organizador' | 'miembro'
 
 export const ROLES_SALA: Record<RolSala, { nombre: string; desc: string }> = {
   organizador: {
-    nombre: 'Organizador',
-    desc: 'Arma la agenda, aprueba temas, asigna tiempos, modera y gestiona quién entra a la sala.',
+    nombre: 'Socio',
+    desc: 'Arma la agenda, aprueba temas, modera, decide quién entra y puede borrar. Es el único que abre salas nuevas.',
   },
   miembro: {
     nombre: 'Miembro',
-    desc: 'Propone temas, participa y sigue sus propias tareas.',
+    desc: 'Propone temas, crea y sigue sus tareas, y pide entrar a las salas donde quiera participar.',
   },
 }
 

@@ -3,27 +3,32 @@ import { useApp } from '../store/AppContext'
 import { firebaseConfigurado } from '../lib/firebase'
 import { neonConfigurado } from '../lib/neon'
 import { ESTADO_INICIAL, S_GERENCIAL, S_MARKETING } from '../lib/seed'
-import { ROLES_SALA } from '../types'
 
 const CINTA =
   'TEMARIO · REUNIÓN · MINUTA EN VIVO · SEGUIMIENTO · TAREAS CON RESPONSABLE Y FECHA · '
 
 /*
- * Dos recorridos, uno por rol. El de soporte no se ofrece: es una
- * cuenta nuestra, no algo que el equipo vaya a usar.
+ * Un recorrido por perfil. El de soporte es una cuenta nuestra: se
+ * ofrece para poder mostrarlo, no porque el equipo lo vaya a usar.
  */
 const VISTAS = [
   {
     id: 'u_matias',
     sala: S_GERENCIAL,
-    rol: 'organizador' as const,
-    que: 'Arma la agenda, aprueba temas, asigna tiempos y modera. Ve las tareas de todo el equipo.',
+    nombre: 'Socio',
+    que: 'Abre salas, arma la agenda, aprueba temas y modera. Puede ver las tareas de todo su equipo.',
   },
   {
     id: 'u_pedro',
     sala: S_MARKETING,
-    rol: 'miembro' as const,
-    que: 'Propone temas y sigue sus propias tareas. Ve sólo la sala de su equipo.',
+    nombre: 'Miembro',
+    que: 'Propone temas, crea y sigue sus tareas, y pide entrar a las salas donde quiera participar.',
+  },
+  {
+    id: 'u_soporte',
+    sala: S_GERENCIAL,
+    nombre: 'Soporte',
+    que: 'La cuenta de Calcuta: ve todas las salas, todas las reuniones y todas las tareas.',
   },
 ]
 
@@ -53,11 +58,11 @@ export default function Login() {
             }}
           />
           <div className="relative">
-            <div className="label bracket">Calcuta para Impor Bamas</div>
+            <div className="label bracket">Calcuta para Imporbamas</div>
           </div>
 
           <div className="relative py-12">
-            <h1 className="display text-[clamp(3rem,9vw,6rem)]">Impor Bamas</h1>
+            <h1 className="display text-[clamp(3rem,9vw,6rem)]">Imporbamas</h1>
             <p className="mt-6 max-w-md text-sm leading-relaxed text-suave">
               Las reuniones dejan de perderse. Cada equipo tiene su sala, con el temario cargado
               con anticipación, tiempos asignados, minuta que se arma sola y tareas con
@@ -103,7 +108,7 @@ export default function Login() {
 
             <div className="my-7 flex items-center gap-3">
               <div className="h-px flex-1 bg-borde" />
-              <span className="label">O mirá cómo se ve cada rol</span>
+              <span className="label">O mirá cómo se ve cada perfil</span>
               <div className="h-px flex-1 bg-borde" />
             </div>
 
@@ -124,7 +129,7 @@ export default function Login() {
                   >
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm">
-                        {ROLES_SALA[v.rol].nombre}
+                        {v.nombre}
                         <span className="ml-2 text-[11px] text-tenue">{u.nombre}</span>
                       </div>
                       <div className="truncate text-[11px] leading-snug text-tenue">{v.que}</div>

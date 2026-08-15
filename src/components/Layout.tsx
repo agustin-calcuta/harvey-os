@@ -81,7 +81,7 @@ export default function Layout() {
     : NAV
 
   // La marca sale de la configuración: la usan para todas sus sociedades.
-  const marca = estado.config.organizacion || 'Impor Bamas'
+  const marca = estado.config.organizacion || 'Imporbamas'
 
   return (
     <div className="flex min-h-screen">
@@ -121,7 +121,7 @@ export default function Layout() {
                 {salaActiva?.nombre ?? 'Sin sala'}
               </span>
               <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">
-                {miRol ? ROLES_SALA[miRol].nombre : '—'}
+                {esSuperadmin ? 'Soporte' : miRol ? ROLES_SALA[miRol].nombre : '—'}
               </span>
             </span>
             <ChevronDown
@@ -280,8 +280,8 @@ export default function Layout() {
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber/40 bg-amber/10 px-4 py-2.5 sm:px-6">
             <span className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber">
               <Eye size={12} />
-              Vista previa como {miRol ? ROLES_SALA[miRol].nombre : '—'} · datos de ejemplo, sólo
-              en este navegador
+              Vista previa como {esSuperadmin ? 'Soporte' : miRol ? ROLES_SALA[miRol].nombre : '—'}{' '}
+              · datos de ejemplo, sólo en este navegador
             </span>
             <button
               onClick={salir}

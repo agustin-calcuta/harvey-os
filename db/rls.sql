@@ -548,9 +548,12 @@ create policy compromisos_editar on public.compromisos
   using (public.organizo_la_sala("salaId") or "responsableId" = public.mi_usuario_id())
   with check (public.organizo_la_sala("salaId") or "responsableId" = public.mi_usuario_id());
 
+-- Borrar es del socio de la sala. Cualquiera crea tareas y actualiza el
+-- avance de las suyas, pero sacar una del registro no: si dejó de tener
+-- sentido, se marca como hecha o la borra quien conduce el equipo.
 create policy compromisos_borrar on public.compromisos
   for delete to authenticated
-  using (public.organizo_la_sala("salaId") or "responsableId" = public.mi_usuario_id());
+  using (public.organizo_la_sala("salaId"));
 
 /* notificaciones */
 

@@ -2,13 +2,13 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<title>Harvey · Guía de uso — CALCUTA®</title>
+<title>Imporbamas · Guía de uso — CALCUTA®</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   /* ─────────────────────────────────────────────────────────
-     Sistema visual CALCUTA® aplicado al manual de Harvey.
+     Sistema visual CALCUTA® aplicado al manual de Imporbamas.
 
      Jerarquía de uso de la paleta, según el brandbook:
      Deep Black 35% · Plain White 30% · Soft Grey 20% ·
@@ -201,6 +201,8 @@
   }
   .tarjeta.azul-card b, .tarjeta.negra b { border-bottom-color: rgba(255,255,255,.25); }
   .tarjeta span { font-size: 8.4pt; color: #4a4a4a; line-height: 1.45; display: block; }
+  .tarjeta span strong { font-weight: 700; color: var(--black); }
+  .tarjeta.azul-card span strong, .tarjeta.negra span strong { color: var(--white); }
   .tarjeta.azul-card span, .tarjeta.negra span { color: rgba(255,255,255,.75); }
 
   .chip {
@@ -242,30 +244,30 @@
 
   <div>
     <span class="tag">Manual de uso</span>
-    <h1>Harvey<br /><em>Guía de</em> <b>uso</b></h1>
+    <h1>Imporbamas<br /><em>Guía de</em> <b>uso</b></h1>
     <p class="bajada">
       Cómo funciona la plataforma de reuniones: qué hace cada sección, quién
       puede hacer qué, y cómo se recorre una reunión de principio a fin.
     </p>
     <div class="fases">
       <div class="fase">
-        <b>Pre-reunión</b>
+        <b>Temario</b>
         <i>Los temas se cargan antes, con tiempo para leerlos.</i>
       </div>
       <div class="fase">
         <b>Reunión</b>
-        <i>Se sigue la agenda, se cronometra y se anota en el momento.</i>
+        <i>Se arranca por lo que quedó de la vez pasada y se anota en el momento.</i>
       </div>
       <div class="fase">
-        <b>Post-reunión</b>
-        <i>La minuta sale sola y cada uno queda con lo suyo.</i>
+        <b>Minuta</b>
+        <i>Se revisa, se manda, y cada uno queda con sus tareas.</i>
       </div>
     </div>
   </div>
 
   <div class="pieport">
-    <span>Desarrollado por CALCUTA® para Harvey</span>
-    <span>Agosto 2026 · v2</span>
+    <span>Desarrollado por CALCUTA® para Imporbamas</span>
+    <span>Agosto 2026 · v3</span>
   </div>
 </div>
 
@@ -273,7 +275,7 @@
 <div class="pagina">
   <div class="cabecera">
     <img src="marca/calcuta-logotipo-negro.svg" alt="CALCUTA" />
-    <span>Harvey · Guía de uso</span>
+    <span>Imporbamas · Guía de uso</span>
   </div>
 
   <div class="cuerpo">
@@ -294,25 +296,26 @@
         <div>
           <b>Antes — se arma el temario</b>
           <span>Cualquiera del equipo propone temas. Cada tema lleva su
-          importancia, para qué se trata y cuánto tiempo necesita. El organizador
-          decide cuáles entran y en qué orden. Al cerrar el temario, sale un
-          correo con la agenda definitiva.</span>
+          importancia y para qué se trata. El socio decide cuáles entran y en qué
+          orden. Al cerrar el temario sale un correo con la agenda, y si aparece
+          algo de último momento se puede sumar igual.</span>
         </div>
       </div>
       <div class="paso">
         <div>
-          <b>Durante — se sigue la agenda</b>
-          <span>Los temas aparecen uno por uno con su cronómetro. Se anota lo que
-          se resuelve y se cargan los compromisos en el momento, con responsable
-          y fecha. No hace falta que alguien tome nota aparte.</span>
+          <b>Durante — primero el seguimiento</b>
+          <span>Se arranca repasando las tareas que quedaron de la vez pasada y
+          se marca cómo viene cada una. Después, los temas del día: se anota lo
+          que se resuelve y se registran las tareas en el momento, con
+          responsable y fecha.</span>
         </div>
       </div>
       <div class="paso">
         <div>
           <b>Después — queda registrado</b>
-          <span>La minuta se arma sola con lo anotado y se puede bajar en PDF.
-          Cada compromiso queda con nombre y fecha, y se sigue desde el tablero
-          hasta que esté hecho.</span>
+          <span>La minuta se genera con lo anotado; se revisa entera y recién
+          ahí se descarga o se manda. Cada tarea queda con nombre y fecha, y se
+          sigue desde el tablero hasta que esté hecha.</span>
         </div>
       </div>
     </div>
@@ -330,9 +333,9 @@
     </div>
 
     <p class="intro">
-      Una <strong>sala</strong> es un equipo con sus reuniones, sus temas y sus
-      compromisos. Los socios tienen la suya; marketing, la suya; diseño, la
-      suya. Lo que pasa en una no se ve desde otra.
+      Una <strong>sala</strong> es un equipo con sus reuniones y sus tareas. Los
+      socios tienen la suya; marketing, la suya; diseño, la suya. Lo que pasa en
+      una no se ve desde otra.
     </p>
 
     <p>
@@ -346,26 +349,26 @@
       <span class="azul">Salas</span> en el menú se ven todas juntas.
     </p>
 
-    <h3>Los dos roles</h3>
+    <h3>Los dos perfiles</h3>
     <p>
-      El rol <strong>no es global, vive en cada sala</strong>. La misma persona
-      puede organizar la de su equipo y ser un miembro más en la de socios.
+      El perfil <strong>no es global, vive en cada sala</strong>. La misma
+      persona puede ser socia de la de su equipo y un miembro más en otra.
     </p>
 
     <table class="roles">
-      <tr><th>Rol</th><th>Qué puede hacer en esa sala</th></tr>
+      <tr><th>Perfil</th><th>Qué puede hacer en esa sala</th></tr>
       <tr>
-        <td><span class="chip b">Organizador</span></td>
-        <td>Crea reuniones, aprueba los temas propuestos, asigna los tiempos,
-        ordena la agenda, modera la reunión, cierra el temario y la minuta.
-        Decide quién entra a la sala y con qué rol.
-        <strong>Ve los compromisos de todo el equipo.</strong></td>
+        <td><span class="chip b">Socio</span></td>
+        <td><strong>Abre salas nuevas</strong>, aprueba los temas propuestos,
+        ordena la agenda, modera, cierra el temario y genera la minuta. Decide
+        quién entra a la sala. Puede ver las tareas de todo el equipo y es el
+        único que puede borrar.</td>
       </tr>
       <tr>
         <td><span class="chip">Miembro</span></td>
-        <td>Propone temas —para una reunión o para el banco—, participa de la
-        reunión y actualiza el avance de lo suyo.
-        <strong>Ve solamente sus propios compromisos.</strong></td>
+        <td>Propone temas, crea reuniones, participa y sigue sus tareas.
+        <strong>No abre salas: pide entrar</strong> a las que ya existen, y ve
+        solamente sus propias tareas.</td>
       </tr>
     </table>
   </div>
@@ -380,16 +383,16 @@
 <div class="pagina">
   <div class="cabecera">
     <img src="marca/calcuta-logotipo-negro.svg" alt="CALCUTA" />
-    <span>Harvey · Guía de uso</span>
+    <span>Imporbamas · Guía de uso</span>
   </div>
 
   <div class="cuerpo">
 
     <div class="caja">
       <span class="label">En la práctica</span>
-      <p>En la sala de socios los cuatro pueden estar como organizadores, todos a
-      la par: todos proponen y todos aprueban. En la sala de un equipo, el socio
-      organiza y su gente propone.</p>
+      <p>En la sala de socios están los cuatro, todos a la par: todos proponen y
+      todos aprueban, y no participa nadie más. En la sala de cada equipo, el
+      socio conduce y su gente propone.</p>
     </div>
 
     <div class="seccion-titulo separado">
@@ -406,11 +409,17 @@
 
     <h3>Sumar a alguien del equipo</h3>
     <p>
-      El organizador entra a <span class="azul">Salas → Equipo → Sumar a
-      alguien</span>, y lo da de alta con nombre, cargo y correo. No hace falta
-      código ni enlace de invitación: <strong>cuando esa persona entra con Google
-      con ese correo, el sistema la reconoce sola</strong> y ya ve la sala con su
-      rol.
+      El socio entra a <span class="azul">Salas → Equipo → Sumar a alguien</span>
+      y lo da de alta con nombre, cargo y correo. No hace falta código ni enlace
+      de invitación: <strong>cuando esa persona entra con Google con ese correo,
+      el sistema la reconoce sola</strong> y ya ve la sala con su perfil.
+    </p>
+
+    <h3>Sumar a alguien de afuera, a una reunión sola</h3>
+    <p>
+      Al crear o editar una reunión hay un <span class="azul">Sumar a alguien de
+      afuera</span>. Esa persona entra <strong>a esa reunión y a nada más</strong>:
+      ve sus temas y sus tareas, pero no el resto de las minutas de la sala.
     </p>
 
     <div class="caja foco">
@@ -422,17 +431,24 @@
     <h3>Si la sala ya existe</h3>
     <p>
       Al crear una sala, si el nombre ya está tomado el sistema avisa —aunque sea
-      de un equipo del que no formás parte— y muestra quién la organiza y cuánta
+      de un equipo del que no formás parte— y muestra quién la conduce y cuánta
       gente tiene. Ahí se puede <strong>pedir unirse</strong> en vez de armar una
-      segunda igual. El organizador ve el pedido al entrar a Salas y lo acepta o
-      lo rechaza.
+      segunda igual. El socio ve el pedido al entrar a Salas y lo acepta o lo
+      rechaza.
     </p>
 
     <h3>Salir de una sala</h3>
     <p>
       Desde <span class="azul">Salas → Salir</span>. Lo único que no se permite
-      es que se vaya el último organizador y la sala quede sin nadie que arme la
-      agenda: en ese caso hay que pasarle el rol a alguien primero.
+      es que se vaya el último socio y la sala quede sin nadie que arme la
+      agenda: en ese caso hay que pasarle el perfil a alguien primero.
+    </p>
+
+    <h3>Reuniones privadas</h3>
+    <p>
+      Al crear una reunión se la puede marcar como <strong>privada</strong>: no
+      aparece en el listado de la sala y la ven sólo quienes participan. Para lo
+      que no tiene por qué enterarse el resto del equipo.
     </p>
   </div>
 
@@ -446,7 +462,7 @@
 <div class="pagina">
   <div class="cabecera">
     <img src="marca/calcuta-logotipo-negro.svg" alt="CALCUTA" />
-    <span>Harvey · Guía de uso</span>
+    <span>Imporbamas · Guía de uso</span>
   </div>
 
   <div class="cuerpo">
@@ -463,48 +479,43 @@
     <div class="grid2">
       <div class="tarjeta negra">
         <b>Panel</b>
-        <span>El resumen del día: cuántos compromisos tenés abiertos, cuáles
-        están vencidos, la próxima reunión y las últimas cerradas. Las cifras son
-        clickeables y llevan al listado ya filtrado.</span>
+        <span>Los cuatro accesos directos —anotar un tema, crear reunión, buscar
+        en minutas, última minuta—, la próxima reunión y tus tareas. Nada de otra
+        gente: para eso está el resto.</span>
       </div>
       <div class="tarjeta">
         <b>Reuniones</b>
-        <span>Todas las de la sala, con su estado. Desde acá se crea una nueva y
-        se entra a la que esté en curso. Cada reunión tiene adentro sus tres
-        fases.</span>
+        <span>Dos vistas: <strong>Próximas</strong>, con la que viene de cada
+        equipo, e <strong>Historial</strong>, con todas las cerradas y un
+        buscador que entra adentro de las minutas.</span>
       </div>
       <div class="tarjeta azul-card">
         <b>Temario</b>
-        <span>El banco de temas de la sala: cosas para tratar en algún momento,
-        todavía sin fecha. Se anotan acá apenas aparecen, sin esperar a que haya
-        una reunión armada.</span>
+        <span>Tu bloc de notas personal: temas para tratar en algún momento,
+        todavía sin fecha. <strong>Sólo los ves vos</strong> hasta que los
+        asignás a una reunión.</span>
       </div>
       <div class="tarjeta">
-        <b>Compromisos</b>
-        <span>Todo lo que quedó a cargo de alguien. Dos vistas: tablero, para
-        arrastrar entre estados, y lista, agrupable por responsable, reunión o
-        vencimiento.</span>
-      </div>
-      <div class="tarjeta">
-        <b>Correos</b>
-        <span>El registro de los avisos que salieron: el del temario cerrado y el
-        de la minuta. Se puede ver cómo quedó cada uno y volver a mandarlo.</span>
+        <b>Tareas</b>
+        <span>Todo lo que quedó a cargo de alguien. Abre con las tuyas; el socio
+        puede pasar a las del equipo. Dos vistas: tablero, para arrastrar entre
+        estados, y lista.</span>
       </div>
       <div class="tarjeta">
         <b>Salas</b>
-        <span>Todas las salas de las que formás parte. Desde acá se crea una
-        nueva, se gestiona el equipo de cada una, se resuelven los pedidos de
-        entrada y se sale de una sala.</span>
+        <span>Las salas de las que formás parte. Desde acá se entra a cada una,
+        se crea una reunión, se gestiona el equipo y se resuelven los pedidos de
+        entrada.</span>
       </div>
     </div>
 
     <h3>El temario, con más detalle</h3>
     <p>
-      Es lo que en la charla llamamos <em>«el banco de suplentes»</em>. Sirve
-      para lo que aparece en cualquier momento y no hay dónde anotarlo: se carga
-      ahí, queda sin fecha, y cuando se arma la próxima reunión el organizador
-      elige cuáles bajar a la agenda con
-      <span class="azul">Llevar a una reunión</span>.
+      Es un <strong>bloc de notas personal</strong>: lo que aparece en cualquier
+      momento y no hay dónde anotar se carga ahí, queda sin fecha y sin sala, y
+      <strong>nadie más lo ve</strong>. Cuando querés, lo mandás a cualquiera de
+      tus próximas reuniones con
+      <span class="azul">Asignar a una reunión</span> y sale del bloc.
     </p>
 
     <div class="seccion-titulo separado">
@@ -512,12 +523,13 @@
       <h2><em>Una reunión,</em> de punta a punta</h2>
     </div>
 
-    <h3>Pre-reunión — armar el temario</h3>
+    <h3>El temario — antes de la reunión</h3>
     <p>
-      El organizador crea la reunión con fecha, duración y lugar. Queda con la
-      <span class="chip g">Agenda abierta</span> y el equipo empieza a proponer
-      temas. Cada tema lleva tres cosas: su importancia, su objetivo y quién lo
-      propone.
+      Se crea la reunión con fecha, lugar —de una lista— y a quiénes se convoca,
+      que <strong>arrancan desmarcados</strong>: se marca quién va. Si se repite
+      todas las semanas, se elige ahí y la próxima se crea sola al cerrar cada
+      una. Queda con la <span class="chip g">Agenda abierta</span> y el equipo
+      propone temas, cada uno con su importancia y su objetivo.
     </p>
 
     <div class="semaforo">
@@ -537,7 +549,7 @@
 <div class="pagina">
   <div class="cabecera">
     <img src="marca/calcuta-logotipo-negro.svg" alt="CALCUTA" />
-    <span>Harvey · Guía de uso</span>
+    <span>Imporbamas · Guía de uso</span>
   </div>
 
   <div class="cuerpo">
@@ -550,67 +562,68 @@
     </table>
 
     <p>
-      El organizador aprueba los temas que entran, ordena la agenda arrastrando y
-      ajusta los tiempos: si la suma se pasa de lo previsto, avisa.
+      El socio aprueba los temas que entran y ordena la agenda arrastrando.
+      Arriba aparecen también <strong>los temas que no se llegaron a hablar</strong>
+      en reuniones anteriores, para incluirlos con un click.
     </p>
 
     <p>
-      El temario cierra <strong>por plazo</strong> —24 horas antes, o lo que se
-      configure— <strong>o a mano</strong>, cuando el organizador quiera. Al
-      cerrarlo sale el correo con los temas definitivos y la reunión pasa a
-      <span class="chip o">Agenda cerrada</span>.
+      <strong>El temario no cierra solo.</strong> Lo cierra el socio cuando
+      quiere, con una casilla para elegir si sale el correo con los temas
+      definitivos. Y si a alguien se le ocurre algo diez minutos antes, lo carga
+      igual: entra al final y el que modera decide si se llega a tratar.
     </p>
 
-    <h3>Reunión — el momento</h3>
+    <h3>La reunión — el momento</h3>
     <p>
-      Se aprieta <span class="azul">Iniciar</span> y la pantalla se concentra en
-      un tema por vez, con su cronómetro. Las pestañas de arriba muestran el
-      título de cada tema y se puede saltar al que se quiera: no hay obligación
-      de seguir el orden.
+      Se aprieta <span class="azul">Iniciar reunión</span> y lo primero que
+      aparece es el <strong>Seguimiento</strong>: las tareas que quedaron de las
+      reuniones anteriores, con su responsable, para marcar ahí mismo cómo viene
+      cada una. Lo que queda hecho no vuelve a aparecer la próxima vez.
     </p>
     <ul>
-      <li><strong>Modo foco:</strong> deja en pantalla sólo el tema, el reloj y
-      las notas.</li>
+      <li><strong>Un tema por vez</strong>, y se salta al que se quiera desde las
+      pestañas de arriba: no hay obligación de seguir el orden.</li>
+      <li><strong>Las tareas van adelante:</strong> lo importante mientras se
+      habla es registrar quién se lleva qué, con fecha.</li>
       <li><strong>Lo que se pide anotar cambia según el objetivo:</strong> si el
       tema era de Decisión pregunta qué se decidió; si era Informativa, qué se
       informó.</li>
-      <li><strong>Compromisos en el momento:</strong> se cargan con responsable y
-      fecha sin salir de la pantalla.</li>
-      <li><strong>Pendientes anteriores</strong> a un click, para repasar lo que
-      venía de antes.</li>
+      <li><strong>El reloj es un reloj:</strong> cuenta cuánto llevamos en el
+      tema, al costado, sin cortar a nadie.</li>
     </ul>
 
-    <h3>Post-reunión — la minuta</h3>
+    <h3>La minuta — después</h3>
     <p>
-      Al cerrar la reunión se arma la minuta con todo lo anotado, editable antes
-      de emitirla, y sale el correo con las conclusiones y los compromisos. El
-      <strong>PDF de la minuta</strong> respeta el formato que el equipo ya
-      usaba, y permite <strong>elegir uno por uno</strong> qué pendiente viejo se
-      suma.
+      <span class="azul">Cerrar y generar minuta</span> arma el borrador con todo
+      lo anotado. <strong>Mandarlo es otro paso</strong>: primero hay que
+      recorrer los cuatro apartados —conclusiones, temas, próximos pasos y
+      observaciones—, y recién ahí se habilitan descargar y enviar. Los temas que
+      no se llegaron a hablar vuelven al temario de quien los propuso.
     </p>
 
     <div class="seccion-titulo separado">
       <span class="num">(06)</span>
-      <h2>Compromisos</h2>
+      <h2>Tareas</h2>
     </div>
 
     <p class="intro">
-      Cada compromiso tiene <strong>responsable, fecha y estado</strong>. Es lo
-      que evita que algo se decida y después no pase nada.
+      Cada tarea tiene <strong>responsable, fecha y estado</strong>. Es lo que
+      evita que algo se decida y después no pase nada.
     </p>
 
     <table>
       <tr><th>Estado</th><th>Qué significa</th></tr>
-      <tr><td><span class="chip">Pendiente</span></td><td>Está anotado, todavía no arrancó.</td></tr>
-      <tr><td><span class="chip o">En curso</span></td><td>Alguien lo está haciendo. Se puede anotar el avance.</td></tr>
-      <tr><td><span class="chip r">Bloqueado</span></td><td>No puede avanzar por algo. Conviene que se vea.</td></tr>
-      <tr><td><span class="chip g">Hecho</span></td><td>Terminado, con la fecha en que se cerró.</td></tr>
+      <tr><td><span class="chip">Pendiente</span></td><td>Está anotada, todavía no arrancó.</td></tr>
+      <tr><td><span class="chip o">En curso</span></td><td>Alguien la está haciendo. Si está trabada, se cuenta en el avance.</td></tr>
+      <tr><td><span class="chip g">Hecha</span></td><td>Terminada, con la fecha en que se cerró.</td></tr>
     </table>
 
     <p>
-      Se mueven arrastrando en el tablero, y lo vencido se marca en rojo también
-      en el menú. Se pueden cargar compromisos <strong>sueltos</strong>, sin
-      reunión de origen, y hay un <strong>PDF con los pendientes de una
+      La sección abre con <strong>las tuyas</strong>; el socio puede pasar a
+      <span class="azul">Del equipo</span> cuando quiere mirar todo. Se mueven
+      arrastrando en el tablero, se pueden cargar tareas <strong>sueltas</strong>
+      —sin reunión de origen— y hay un <strong>PDF con las tareas de una
       persona</strong> para mandarle a cada uno lo suyo.
     </p>
   </div>
@@ -625,7 +638,7 @@
 <div class="pagina">
   <div class="cabecera">
     <img src="marca/calcuta-logotipo-negro.svg" alt="CALCUTA" />
-    <span>Harvey · Guía de uso</span>
+    <span>Imporbamas · Guía de uso</span>
   </div>
 
   <div class="cuerpo">
@@ -636,24 +649,24 @@
     </div>
 
     <div class="faq">
-    <h3>¿Puedo proponer un tema aunque no haya reunión armada?</h3>
-    <p>Sí, es justamente para eso el <span class="azul">Temario</span>. Queda ahí
-    hasta que se arme la próxima.</p>
+    <h3>¿Puedo anotar un tema aunque no haya reunión armada?</h3>
+    <p>Sí, es justamente para eso el <span class="azul">Temario</span>. Queda ahí,
+    y sólo lo ves vos, hasta que lo asignes a una reunión.</p>
 
-    <h3>¿Los demás ven mis compromisos?</h3>
-    <p>El organizador de la sala ve los de todo el equipo. Un miembro ve
-    únicamente los suyos.</p>
-
-    <h3>¿Puedo estar en más de una sala?</h3>
-    <p>Sí, y con roles distintos en cada una. Se cambia desde el desplegable de
-    arriba a la izquierda.</p>
-
-    <h3>Si me equivoqué al cerrar la reunión, ¿se puede volver atrás?</h3>
-    <p>Sí. El organizador puede reabrirla, corregir y volver a cerrarla.</p>
+    <h3>¿Los demás ven mis tareas?</h3>
+    <p>El socio de la sala puede ver las de todo el equipo. Un miembro ve
+    únicamente las suyas.</p>
 
     <h3>¿Qué pasa con los temas que no llegamos a tratar?</h3>
-    <p>Se pueden <strong>diferir</strong> —quedan para la próxima— o devolver al
-    banco de la sala.</p>
+    <p>Vuelven solos al temario de quien los propuso, y quedan a la vista para
+    incluirlos en la próxima reunión de esa sala.</p>
+
+    <h3>¿Puedo estar en más de una sala?</h3>
+    <p>Sí, y con perfiles distintos en cada una. Se cambia desde el desplegable
+    de arriba a la izquierda.</p>
+
+    <h3>Si me equivoqué al cerrar la reunión, ¿se puede volver atrás?</h3>
+    <p>Sí. El socio puede reabrirla, corregir y volver a cerrarla.</p>
 
     <h3>¿Hace falta instalar algo?</h3>
     <p>No. Se abre en el navegador, en la computadora o en el celular.</p>
@@ -662,8 +675,8 @@
     <div class="caja">
       <span class="label">Dos cosas para saber</span>
       <p>Al entrar con Google, la pantalla dice <em>«Ir a neon.tech»</em> en
-      lugar de Harvey. Funciona perfecto, es sólo estético, y se cambia cuando
-      quieran.</p>
+      lugar de Imporbamas. Funciona perfecto, es sólo estético, y se cambia
+      cuando quieran.</p>
       <p style="margin-top:2mm">Los correos automáticos ya se arman solos, pero
       todavía <strong>hay que conectar la casilla desde la que salen</strong>. Es
       una decisión pendiente: qué dirección usan.</p>
@@ -680,7 +693,7 @@
 
   <div class="pie">
     <span>CALCUTA® 2026</span>
-    <span>Harvey · Guía de uso</span>
+    <span>Imporbamas · Guía de uso</span>
   </div>
 </div>
 

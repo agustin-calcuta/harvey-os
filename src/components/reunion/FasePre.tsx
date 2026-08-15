@@ -154,13 +154,10 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
       {/* ── Sin tratar de reuniones anteriores ── */}
       {puedeOrganizar && sinTratar.length > 0 && (
         <section>
-          <h3 className="display mb-1 text-xl">
-            No se llegaron a hablar <span className="text-suave">{sinTratar.length}</span>
+          <h3 className="subtitulo">
+            No se llegaron a hablar en reuniones anteriores
+            <span className="cuenta">{sinTratar.length}</span>
           </h3>
-          <p className="mb-3 text-xs text-suave">
-            Quedaron fuera de una reunión anterior de esta sala. Incluí los que quieras tratar ahora;
-            el resto sigue esperando.
-          </p>
           <ul className="space-y-2">{sinTratar.map((t) => paraIncluir(t, 'sinTratar'))}</ul>
         </section>
       )}
@@ -168,12 +165,9 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
       {/* ── Mi temario ── */}
       {mios.length > 0 && (
         <section>
-          <h3 className="display mb-1 text-xl">
-            De mi temario <span className="text-suave">{mios.length}</span>
+          <h3 className="subtitulo">
+            De mi temario <span className="cuenta">{mios.length}</span>
           </h3>
-          <p className="mb-3 text-xs text-suave">
-            Lo que anotaste sin fecha. Sólo lo ves vos hasta que lo incluís en una reunión.
-          </p>
           <ul className="space-y-2">{mios.map((t) => paraIncluir(t, 'temario'))}</ul>
         </section>
       )}
@@ -181,14 +175,9 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
       {/* ── Por aprobar ── */}
       {propuestos.length > 0 && (
         <section>
-          <h3 className="display mb-1 text-xl">
-            Temas propuestos <span className="text-suave">{propuestos.length}</span>
+          <h3 className="subtitulo">
+            Esperando aprobación <span className="cuenta">{propuestos.length}</span>
           </h3>
-          <p className="mb-3 text-xs text-suave">
-            {puedeOrganizar
-              ? 'Decidí cuáles entran en esta reunión.'
-              : 'El organizador define cuáles entran en esta reunión.'}
-          </p>
 
           <ul className="space-y-2">
             {propuestos.map((t) => (
@@ -228,16 +217,16 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
 
       {/* ── Agenda ── */}
       <section>
-        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
-          <h3 className="display text-xl">
-            Agenda de la reunión <span className="text-suave">{agenda.length}</span>
-          </h3>
+        <h3 className="subtitulo justify-between">
+          <span>
+            Agenda de la reunión <span className="cuenta">{agenda.length}</span>
+          </span>
           {puedeOrganizar && agenda.length > 1 && (
-            <span className="flex items-center gap-1.5 border border-borde px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave">
+            <span className="flex items-center gap-1.5 text-[10px] text-tenue">
               <GripVertical size={11} /> Arrastrá para cambiar el orden
             </span>
           )}
-        </div>
+        </h3>
 
         {agenda.length === 0 ? (
           <Vacio
@@ -278,8 +267,8 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
       {/* ── Rechazados ── */}
       {fuera.length > 0 && (
         <section>
-          <h3 className="display mb-3 text-xl">
-            Fuera de esta reunión <span className="text-suave">{fuera.length}</span>
+          <h3 className="subtitulo">
+            Rechazados <span className="cuenta">{fuera.length}</span>
           </h3>
           <ul className="space-y-2">
             {fuera.map((t) => (

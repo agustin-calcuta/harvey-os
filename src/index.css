@@ -119,6 +119,20 @@
     @apply text-[10px] font-semibold uppercase tracking-[0.16em] text-suave;
   }
 
+  /*
+   * Encabezado de una sección interior.
+   *
+   * El `display` es para el título de la pantalla y nada más: puesto
+   * cinco veces en la misma página deja de ordenar y grita. Adentro
+   * alcanza con una línea de separación y un poco de peso.
+   */
+  .subtitulo {
+    @apply mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-borde pb-2 text-sm;
+  }
+  .subtitulo > .cuenta {
+    @apply text-xs text-tenue;
+  }
+
   .card {
     @apply bg-panel border border-borde;
   }

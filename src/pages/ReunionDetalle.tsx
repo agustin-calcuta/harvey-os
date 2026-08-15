@@ -112,7 +112,7 @@ export default function ReunionDetalle() {
               )}
             </div>
 
-            <h1 className="display text-3xl sm:text-4xl">{reunion.titulo}</h1>
+            <h1 className="display text-2xl sm:text-3xl">{reunion.titulo}</h1>
 
             <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-suave">
               <span>

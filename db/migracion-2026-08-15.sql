@@ -117,8 +117,10 @@ alter table public.compromisos
 
 /* ── Marca ───────────────────────────────────────────────── */
 
-alter table public.config alter column organizacion set default 'Impor Bamas';
-update public.config set organizacion = 'Impor Bamas' where organizacion = 'Harvey';
+-- Va todo junto: Imporbamas.
+alter table public.config alter column organizacion set default 'Imporbamas';
+update public.config set organizacion = 'Imporbamas'
+ where organizacion in ('Harvey', 'Impor Bamas');
 
 commit;
 

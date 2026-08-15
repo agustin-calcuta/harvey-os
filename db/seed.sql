@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────────────
--- Impor Bamas — datos de demostración
+-- Imporbamas — datos de demostración
 --
 -- Tres salas para que se entienda el modelo de un vistazo: la
 -- gerencial, donde los cuatro socios están a la par, y dos de
@@ -239,6 +239,6 @@ values
 
 /* ── Configuración ────────────────────────────────────────── */
 
-insert into public.config (id, organizacion) values ('global', 'Impor Bamas');
+insert into public.config (id, organizacion) values ('global', 'Imporbamas');
 
 commit;

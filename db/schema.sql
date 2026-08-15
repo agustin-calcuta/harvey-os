@@ -219,7 +219,7 @@ create table if not exists public.notificaciones (
 
 create table if not exists public.config (
   id              text primary key default 'global',
-  organizacion    text not null default 'Impor Bamas',
+  organizacion    text not null default 'Imporbamas',
   "emailsActivos" boolean not null default true
 );
 
