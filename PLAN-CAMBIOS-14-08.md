@@ -1,15 +1,17 @@
 # Los cambios que salieron de la reunión del 14 de agosto
 
-> **Estado al 15/08.** Está hecho todo salvo los puntos **19 (Google Calendar)**
-> y **40 (grabación con IA)**, que quedaron para después de la revisión del
-> martes. Anda en la vista previa; **falta correr la migración de la base**
-> —`db/migracion-2026-08-15.sql` y después `db/rls.sql`— y recién ahí publicar,
-> porque el código nuevo espera columnas que la base todavía no tiene.
+> **Estado al 15/08: hecho, migrado y publicado.** Está todo salvo los puntos
+> **19 (Google Calendar)** y **40 (grabación con IA)**, que quedaron para después
+> de la revisión del martes. La base se migró y la plataforma está en línea.
 >
-> Lo que se decidió sobre las cuatro dudas de más abajo: **(a)** el tiempo
-> estimado salió del formulario de proponer y quedó en la agenda, para el
-> organizador; **(b)** el temario personal se hizo completo; **(c)** y **(d)**
-> quedaron pendientes.
+> Sobre las cuatro dudas de más abajo: **(a)** el tiempo estimado salió del
+> formulario de proponer y quedó en la agenda, para el socio; **(b)** el temario
+> personal se hizo completo; **(c)** y **(d)** siguen pendientes.
+>
+> Después de aplicarlo salieron tres ajustes más, ya aplicados: los perfiles
+> pasaron a llamarse **socio** y **miembro**, con el borrado reservado al socio;
+> **Tareas abre siempre con las propias**; y se bajó el ruido visual de las
+> pantallas de reunión. La cuenta nuestra figura como **Superadmin**.
 
 **Reunión:** viernes 14/08/2026, con Ariel Berinstein, Denise Zaga y Francisco
 Lebermann. Ariel venía de mostrarle la plataforma a los cuatro socios de Harvey,

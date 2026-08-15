@@ -9,7 +9,12 @@
 ## Dónde estamos
 
 La plataforma está **funcionando y publicada**, con base de datos real y acceso
-con Google. Ya se les mostró a los socios y volvió con cambios.
+con Google. Los cambios que pidieron los socios el 14 de agosto **están
+aplicados, migrados y en línea** desde el 15.
+
+> **Lo que sigue:** el martes 18 a las 11:00, repaso interno con Ariel, Denise y
+> Fran. Después, presentación a Mati y Nanu el jueves 20 o viernes 21, que Fran
+> agenda por el grupo.
 
 Nace de la reunión del 5 de agosto con Francisco Lebermann: son cuatro socios,
 se reúnen seguido y las reuniones se dispersan. La respuesta es el ciclo de tres
@@ -33,8 +38,7 @@ Lo que cambia de fondo, y no sólo de nombre:
 - **El temario es personal.** Un tema anotado no pertenece a ninguna sala: sólo
   lo ve quien lo escribió, hasta que lo asigna a una reunión. Ahí toma la sala
   de esa reunión y pasa a ser del equipo.
-- **Se fue el plazo de cierre del temario.** Cierra el organizador cuando
-  quiere, y un tema de último momento entra igual.
+- **Se fue el plazo de cierre del temario.** Cierra el socio cuando quiere, y un tema de último momento entra igual.
 - **Los temas que no se llegan a hablar vuelven** al temario de quien los
   propuso, y quedan disponibles para incluirlos en la próxima.
 - **Toda reunión arranca por el seguimiento** de las tareas que quedaron de la
@@ -52,21 +56,23 @@ Lo que cambia de fondo, y no sólo de nombre:
 
 ---
 
-## Antes de publicar: hay que migrar la base
+## La migración de la base: ya corrida
 
-El código de ahora espera columnas que la base todavía no tiene. **Primero la
-migración, después el deploy**, o la aplicación publicada va a fallar al leer:
+El 15 de agosto se corrió sobre la base de producción, en este orden:
 
 ```bash
-export PGURL='postgresql://...'                    # connection string de Neon
-psql "$PGURL" -f db/migracion-2026-08-15.sql       # columnas nuevas y datos al día
-psql "$PGURL" -f db/rls.sql                        # las políticas cambiaron con ellas
+psql "$PGURL" -f db/migracion-2026-08-15.sql   # columnas nuevas y datos al día
+psql "$PGURL" -f db/rls.sql                    # las políticas cambiaron con ellas
 ```
 
-La migración es idempotente y no borra nada: agrega columnas, saca el estado
-«borrador» y el «bloqueado», y manda al temario personal los temas que estaban
-en el banco de cada sala. Deja marcados como habilitados para crear salas a los
-organizadores de la sala de socios y a las cuentas de superadmin.
+Es idempotente y no borra nada: agrega columnas, saca el estado «borrador» y el
+«bloqueado», y manda al temario personal los temas que estaban en el banco de
+cada sala. Deja habilitados para abrir salas a quienes conducen la de socios y a
+las cuentas de superadmin.
+
+**Si se vuelve a tocar `rls.sql`, hay que volver a correrlo**: las políticas no
+se aplican solas con el deploy. La última vez fue por el borrado de tareas, que
+pasó a ser exclusivo del socio.
 
 ---
 
@@ -74,9 +80,9 @@ organizadores de la sala de socios y a las cuentas de superadmin.
 
 Una sala es un equipo con sus reuniones y sus tareas.
 
-**El rol no es global: vive en cada sala.** La misma persona organiza la suya y
-es miembro en otra, que es tal cual lo planteó Fran: *"en la reunión de socios es
-un miembro más, pero si quiere armar la minuta con su equipo, ahí sí puede
+**El perfil no es global: vive en cada sala.** La misma persona conduce la suya
+y es miembro en otra, que es tal cual lo planteó Fran: *"en la reunión de socios
+es un miembro más, pero si quiere armar la minuta con su equipo, ahí sí puede
 aprobar"*.
 
 | | Qué puede hacer en esa sala |
@@ -93,7 +99,8 @@ Administración y lo cuida la base, igual que el alcance: nadie se lo da a sí
 mismo. Crear reuniones, en cambio, puede cualquiera de la sala.
 
 En la sala de socios los cuatro están a la par —todos proponen y todos
-aprueban—; en la de cada equipo, el socio organiza y su gente propone.
+aprueban— y no participa nadie más; en la de cada equipo, el socio conduce y su
+gente propone.
 
 **Cada quien ve sólo las salas de las que forma parte.** Eso lo garantizan las
 políticas de la base, no la interfaz: las empleadas no llegan a las minutas de
@@ -101,8 +108,7 @@ gerencia ni manipulando la aplicación desde el navegador.
 
 ### Sumar gente
 
-El organizador da de alta a alguien con nombre y correo sin salir de la
-pantalla. Cuando esa persona entra con Google con ese correo, **se engancha sola
+El socio da de alta a alguien con nombre y correo sin salir de la pantalla. Cuando esa persona entra con Google con ese correo, **se engancha sola
 con la ficha que ya existía** — no hace falta código ni enlace de invitación.
 
 ### Pedir entrar, y salir
@@ -110,8 +116,8 @@ con la ficha que ya existía** — no hace falta código ni enlace de invitació
 Al crear una sala, si el nombre **ya existe se avisa antes de crearla**, aunque
 sea de un equipo del que no formás parte: dice cómo se llama, quién la organiza
 y cuánta gente hay, y ofrece **pedir unirse** en vez de armar una segunda igual.
-El organizador ve los pedidos al entrar a Salas y los acepta o rechaza; aceptar
-suma a la persona en el acto. Si aun así se quiere una sala con el mismo nombre,
+El socio ve los pedidos al entrar a Salas y los acepta o rechaza; aceptar suma a
+la persona en el acto. Si aun así se quiere una sala con el mismo nombre,
 se puede, pero hay que confirmarlo.
 
 Eso exige saber que una sala existe sin poder verla. Lo resuelve la vista
@@ -135,8 +141,8 @@ ven quienes participan. Es el caso que trajo Fran —alguien que se junta con su
 jefe a hablar de un aumento— y lo cuida la política de lectura, no la interfaz.
 
 **Cualquiera puede salir de una sala** por su cuenta. Lo único que no se permite
-es que se vaya el último organizador y la sala quede sin quien arme la agenda:
-ahí avisa que primero hay que pasarle el rol a alguien. Lo cuida un disparador
+es que se vaya el último socio y la sala quede sin quien arme la agenda: ahí
+avisa que primero hay que pasarle el perfil a alguien. Lo cuida un disparador
 de la base, no la interfaz.
 
 ---
@@ -150,10 +156,10 @@ de la base, no la interfaz.
   cualquiera de las próximas reuniones, de la sala que sea, y ahí sale del bloc.
 - Cada tema lleva **importancia** (el semáforo rojo / amarillo / verde de Fran),
   **objetivo** (Decisión, Exploratoria, Comunicativa, Informativa) y quién lo
-  propuso. El tiempo estimado no se pide al proponer: lo ajusta el organizador
-  desde la agenda si quiere.
-- Cualquiera de la sala propone temas; el organizador decide cuáles entran.
-- **El temario cierra a mano**, cuando el organizador quiere. Cerrarlo es avisar
+  propuso. El tiempo estimado no se pide al proponer: lo ajusta el socio desde
+  la agenda si quiere.
+- Cualquiera de la sala propone temas; el socio decide cuáles entran.
+- **El temario cierra a mano**, cuando el socio quiere. Cerrarlo es avisar
   de qué se va a hablar, con una casilla para elegir si sale el correo. Un tema
   de último momento entra igual, hasta que la reunión se cierra.
 - Se ordena la agenda arrastrando y se ajusta el tiempo de cada tema.
@@ -220,17 +226,18 @@ Los **permisos viven en la base**. Verificado contra la base real:
   socios ni consultándola de frente.
 - Lucas ve sus dos salas, con el rol que le toca en cada una.
 - Quien pide para sí el alcance de superadmin queda como usuario normal.
-- El único organizador de una sala no puede salir y dejarla sin conducción.
+- El único socio de una sala no puede salir y dejarla sin conducción.
 - Un pedido de entrada lo ve quien lo hizo y quien organiza esa sala; nadie más.
 
-**Lo que cambió el 14/08 y todavía no se probó contra la base real** —está
-escrito y anda en la vista previa, pero hay que verificarlo con dos cuentas de
-verdad después de correr la migración:
+**Lo que cambió el 14/08 está migrado pero todavía no se probó con dos cuentas
+reales.** Anda en la vista previa y las políticas están escritas y aplicadas;
+falta verificarlo entrando de verdad, que es lo único que confirma un permiso:
 
 - El temario personal: que nadie vea los temas sueltos de otro.
 - La reunión privada: que no aparezca para el resto de la sala.
 - El invitado de afuera: que vea esa reunión y nada más del equipo.
 - Que sólo quien está marcado pueda abrir una sala.
+- Que borrar una tarea le funcione al socio y le falle al miembro.
 
 El esquema, las políticas y los datos de ejemplo están en `db/` y se pueden
 volver a aplicar en cualquier momento.
@@ -274,12 +281,23 @@ sirve para mostrar que Camila, que también es de Marketing, no la ve.
 > Los correos son **inventados** (`@harveywillys.com`). Cuando estén los reales,
 > se cambian desde la sala y entran directo con su rol.
 
-### Vistas por rol, sin iniciar sesión
+### Los tres perfiles
 
-La pantalla de acceso ofrece recorrer la plataforma como **organizador** o como
-**miembro**, con datos de ejemplo y sin tocar la base. La tercera, **superadmin**,
-es una cuenta nuestra: se ofrece para poder mostrarla, no porque el equipo la
-vaya a usar.
+| | Qué es |
+| --- | --- |
+| **Socio** | Abre salas, conduce la suya, aprueba temas, modera y borra. |
+| **Miembro** | Propone temas, crea reuniones, sigue sus tareas y pide entrar a las salas. |
+| **Superadmin** | La cuenta de Calcuta: ve todas las salas y puede intervenir. No pertenece a ningún equipo. |
+
+Socio y miembro viven **en cada sala**: la misma persona puede ser socia de la
+suya y miembro en la de al lado. Superadmin es de la cuenta, por encima de todo.
+
+### Vistas por perfil, sin iniciar sesión
+
+La pantalla de acceso ofrece recorrer la plataforma como **socio**, como
+**miembro** o como **superadmin**, con datos de ejemplo y sin tocar la base. La
+tercera es una cuenta nuestra: se ofrece para poder mostrarla, no porque el
+equipo la vaya a usar.
 
 ---
 
@@ -287,22 +305,23 @@ vaya a usar.
 
 **Nada de esto bloquea la revisión del martes: la plataforma funciona entera.**
 Son las cosas que faltan para que el equipo la use como herramienta propia, y
-las tres primeras dependen de que ellos definan algo.
+casi todas dependen de que ellos definan algo.
 
 De la reunión del 14 quedaron afuera a propósito **la grabación con IA** y **la
 invitación por Google Calendar**: las dos están explicadas, con sus caminos
 posibles y lo que cuesta cada uno, en
 [PLAN-CAMBIOS-14-08.md](PLAN-CAMBIOS-14-08.md).
 
-> Para llevar a la reunión: **[PEDIDOS-A-HARVEY.md](PEDIDOS-A-HARVEY.md)** tiene
-> esto convertido en preguntas concretas, y en `docs/` está la **guía de uso en
-> PDF** para mostrarle al equipo.
+> **Para pasarle al cliente:** `docs/Imporbamas - Que necesitamos de ustedes.docx`
+> son dos páginas con los cuatro pedidos y tablas para que completen. Y
+> `docs/Imporbamas - Guia de uso.pdf` es el manual para el equipo. Acá abajo está
+> lo mismo con el detalle técnico; [PEDIDOS-A-HARVEY.md](PEDIDOS-A-HARVEY.md)
+> tiene la versión larga.
 
-**El orden después del lunes:** conectar la casilla de correo (1) es lo que más
-cambia la experiencia, porque los dos avisos empiezan a salir solos y con eso se
-puede resolver la invitación (4). El logo (2) es media hora en cuanto lo manden.
-La pantalla de Google (3) conviene dejarla para cuando confirmen que la
-herramienta les sirve.
+**El orden:** conectar la casilla de correo (1) es lo que más cambia la
+experiencia, porque los dos avisos empiezan a salir solos y con eso se puede
+resolver la invitación (4). El logo (2) es media hora en cuanto lo manden. La
+pantalla de Google (3) conviene hacerla junto con lo de Calendar.
 
 ### 1. Conectar la casilla de correo
 
@@ -341,22 +360,26 @@ conviene hacer las dos juntas.
 
 Hoy se da de alta a alguien y hay que avisarle por otro medio que ya puede
 entrar. Cuando esté la casilla conectada, ese aviso puede salir solo. Lo mismo
-con los pedidos de entrada: hoy el organizador los ve al abrir Salas, y podría
+con los pedidos de entrada: hoy el socio los ve al abrir Salas, y podría
 además llegarle un correo.
 
 ### 5. Decisiones que dependen de ellos
 
-No son trabajo pendiente nuestro, son datos que faltan:
+No son trabajo pendiente nuestro, son datos que faltan. Están convertidos en
+pedidos concretos, con tablas para completar, en
+`docs/Imporbamas - Que necesitamos de ustedes.docx`:
 
-- **Los correos de Google** de quienes organizan cada sala. Sin eso no entran.
-- **Qué salas arrancan**, quién organiza cada una y **quiénes pueden abrir salas
-  nuevas** —quedó definido que son los cuatro socios, falta saber cuáles son sus
-  cuentas—.
-- Si además de que un tema vuelva al temario usan el rechazo.
-- Si cargamos las tareas que hoy tienen abiertas, para arrancar con su realidad
-  y no con datos de ejemplo.
-- **Cómo se escribe la marca**: en la minuta figura "Imporbamas" y "Impor
-  Bamas". Quedó *Imporbamas* y se cambia desde Administración.
+- **Quiénes entran**: nombre, apellido, el correo con el que inician sesión en
+  Google, y si es socio o miembro.
+- **Qué salas arrancan**, quién conduce cada una y a quiénes sumamos.
+- **Desde qué casilla** salen los dos avisos, y cinco minutos con esa contraseña
+  delante para conectarla.
+- **El logo** de Imporbamas en SVG o PNG.
+- Opcionales, que suman: los **lugares habituales** de reunión —para que el
+  desplegable venga cargado— y las **tareas que hoy tienen abiertas**, para
+  arrancar con su realidad y no con datos de ejemplo.
+
+Ya resuelto: la marca se escribe **Imporbamas**, todo junto.
 
 ---
 
@@ -386,6 +409,24 @@ No son trabajo pendiente nuestro, son datos que faltan:
 
 ---
 
+## Para retomar el martes
+
+Está todo publicado y andando. Al volver, en este orden:
+
+1. **Probar con dos cuentas reales** lo que la migración cambió y todavía no se
+   verificó de verdad: el temario personal, la reunión privada, el invitado de
+   afuera, quién abre salas y quién puede borrar una tarea. Es lo único que
+   confirma un permiso.
+2. **Llevar los dos documentos a la reunión**: el docx con lo que necesitamos de
+   ellos y el PDF de la guía de uso.
+3. Con lo que respondan, **cargar la realidad**: las personas con sus correos de
+   Google, las salas que arranquen y, si lo mandan, el logo.
+4. Recién después, lo que quedó afuera a propósito: **la grabación con IA** y
+   **el invite por Google Calendar**, que va junto con registrar la aplicación
+   propia en Google Cloud y saca el "neon.tech" de la pantalla de acceso.
+
+---
+
 ## Los documentos del proyecto
 
 | Archivo | Para qué |
@@ -394,6 +435,7 @@ No son trabajo pendiente nuestro, son datos que faltan:
 | `PLAN-CAMBIOS-14-08.md` | Los 62 puntos que salieron de la reunión del 14, con qué se hizo y qué quedó afuera. |
 | `db/migracion-2026-08-15.sql` | Lleva una base que ya está andando al esquema nuevo, sin perder lo cargado. |
 | `PEDIDOS-A-HARVEY.md` | Lo que hay que preguntarle al cliente, ordenado por urgencia. Para llevar a la reunión. |
+| `docs/Imporbamas - Que necesitamos de ustedes.docx` | Dos páginas para pasarle al cliente: quiénes entran, qué salas abrimos, desde qué casilla salen los avisos y el logo. Con tablas para que completen. |
 | `docs/Imporbamas - Guia de uso.pdf` | Manual de seis páginas para entregarle al cliente, con la identidad de **Calcuta**: Space Grotesk, la paleta del brandbook y el logotipo. Al día con los cambios del 14/08. |
 | `docs/guia-de-uso.html` | La fuente de ese PDF. Cada página está maquetada a medida fija —`position: fixed` no se repite de forma confiable al imprimir— así que al editar hay que revisar que el contenido siga entrando. Se regenera con Chromium: `--headless --no-pdf-header-footer --print-to-pdf`. En esta máquina no hay Chrome, pero Brave sirve igual. |
 | `docs/marca/` | Logotipo e isotipo de Calcuta recortados al contenido y en los tres colores que usa el manual. Derivados de `CalcutaDesign/Logos`. |
