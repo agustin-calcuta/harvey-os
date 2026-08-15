@@ -15,13 +15,13 @@ import {
 } from 'lucide-react'
 import { useApp } from '../store/AppContext'
 import {
-  bancoDe,
   claveNombre,
   dejariaSinOrganizador,
   fechaCorta,
   integrantes,
   nombreDe,
-  proximaReunion,
+  proximasReuniones,
+  puedeVerReunion,
   relativo,
   reunionesDe,
   rolEnSala,
@@ -59,6 +59,7 @@ export default function Salas() {
     misSalas,
     elegirSala,
     esSuperadmin,
+    puedeCrearSalas,
     salirDeSala,
     solicitudesPendientes,
     misSolicitudes,
@@ -96,37 +97,46 @@ export default function Salas() {
       {solicitudesPendientes.length > 0 && <Pedidos />}
 
       <Seccion
-        kicker="Tus espacios"
         titulo="Salas"
         acciones={
-          <Boton variante="solido" onClick={() => setCreando(true)}>
-            <Plus size={13} /> Nueva sala
-          </Boton>
+          /* Abrir salas es de los socios; reuniones crea cualquiera. */
+          puedeCrearSalas && (
+            <Boton variante="solido" onClick={() => setCreando(true)}>
+              <Plus size={13} /> Nueva sala
+            </Boton>
+          )
         }
       >
         <p className="mb-5 max-w-2xl text-sm leading-relaxed text-suave">
-          Cada sala es un equipo con sus reuniones, su banco de temas y sus compromisos. Sólo ves
-          las salas de las que formás parte, y tu rol puede ser distinto en cada una.
+          Cada sala es un equipo con sus reuniones y sus tareas. Sólo ves las salas de las que
+          formás parte, y tu rol puede ser distinto en cada una.
         </p>
 
         {misSalas.length === 0 ? (
           <Vacio
             titulo="Todavía no estás en ninguna sala"
-            texto="Creá la de tu equipo y sumá a los tuyos, o pedí entrar a una que ya exista."
+            texto={
+              puedeCrearSalas
+                ? 'Creá la de tu equipo y sumá a los tuyos, o pedí entrar a una que ya exista.'
+                : 'Las salas las abren los socios. Pedile a quien organiza tu equipo que te sume.'
+            }
             icono={<DoorOpen size={32} />}
             accion={
-              <Boton variante="solido" onClick={() => setCreando(true)}>
-                <Plus size={13} /> Crear la primera
-              </Boton>
+              puedeCrearSalas && (
+                <Boton variante="solido" onClick={() => setCreando(true)}>
+                  <Plus size={13} /> Crear la primera
+                </Boton>
+              )
             }
           />
         ) : (
           <div className="grid gap-3 lg:grid-cols-2">
             {misSalas.map((s) => {
               const gente = integrantes(estado, s.id)
-              const proxima = proximaReunion(estado, s.id)
-              const banco = bancoDe(estado, s.id).length
-              const total = reunionesDe(estado, s.id).length
+              // Filtradas por lo que me toca ver: las privadas ajenas no cuentan.
+              const visibles = reunionesDe(estado, s.id).filter((r) => puedeVerReunion(estado, r, yo))
+              const proxima = proximasReuniones(estado, yo, s.id)[0]
+              const total = visibles.length
               const miRol = esSuperadmin ? 'organizador' : rolEnSala(estado, s.id, yo?.id)
               const organizo = miRol === 'organizador'
               const pidiendo = solicitudesDe(estado, s.id).length
@@ -158,10 +168,17 @@ export default function Salas() {
                   </div>
 
                   <div className="mb-4 flex flex-wrap gap-x-5 gap-y-1 text-xs text-tenue">
-                    <span>{gente.length} personas</span>
-                    <span>{total} reuniones</span>
-                    {banco > 0 && <span className="text-cold">{banco} en el banco</span>}
-                    {proxima && <span>Próxima el {fechaCorta(proxima.fecha)}</span>}
+                    <span>
+                      {gente.length} {gente.length === 1 ? 'persona' : 'personas'}
+                    </span>
+                    <span>
+                      {total} {total === 1 ? 'reunión' : 'reuniones'}
+                    </span>
+                    {proxima ? (
+                      <span>Próxima el {fechaCorta(proxima.fecha)}</span>
+                    ) : (
+                      <span>Sin reuniones programadas</span>
+                    )}
                   </div>
 
                   <div className="mt-auto flex flex-wrap gap-2">
@@ -174,6 +191,16 @@ export default function Salas() {
                       }}
                     >
                       Entrar <ArrowRight size={12} />
+                    </Boton>
+                    {/* Crear reuniones puede cualquiera de la sala. */}
+                    <Boton
+                      tam="sm"
+                      onClick={() => {
+                        elegirSala(s.id)
+                        navegar('/reuniones?nueva=1')
+                      }}
+                    >
+                      <Plus size={12} /> Crear reunión
                     </Boton>
                     {organizo && (
                       <>
@@ -207,7 +234,7 @@ export default function Salas() {
 
       {/* Pedidos propios todavía sin respuesta. */}
       {misSolicitudes.length > 0 && (
-        <Seccion kicker="Esperando" titulo="Pedidos que enviaste">
+        <Seccion titulo="Esperando respuesta">
           <ul className="card divide-y divide-borde">
             {misSolicitudes.map((s) => (
               <li key={s.id} className="flex flex-wrap items-center gap-3 p-3.5">
@@ -245,7 +272,7 @@ export default function Salas() {
         texto={
           trabada
             ? `Sos el único organizador de «${porSalir?.nombre}». Pasale el rol a alguien del equipo y después salí.`
-            : `Dejás de ver «${porSalir?.nombre}», sus reuniones y su temario. Tus compromisos quedan registrados, y podés volver a pedir entrar cuando quieras.`
+            : `Dejás de ver «${porSalir?.nombre}», sus reuniones y su temario. Tus tareas quedan registradas, y podés volver a pedir entrar cuando quieras.`
         }
         textoBoton={trabada ? 'Entendido' : 'Salir de la sala'}
         peligro={!trabada}
@@ -265,7 +292,7 @@ function Pedidos() {
   const { estado, solicitudesPendientes, resolverSolicitud } = useApp()
 
   return (
-    <Seccion kicker="Piden entrar" titulo="Pedidos pendientes">
+    <Seccion titulo="Pendientes de autorización">
       <ul className="grid gap-3 lg:grid-cols-2">
         {solicitudesPendientes.map((s) => {
           const quien = estado.usuarios.find((u) => u.id === s.usuarioId)
@@ -322,9 +349,12 @@ function ModalSala({
   sala?: Sala
 }) {
   const {
+    estado,
+    yo,
     crearSala,
     actualizarSala,
     archivarSala,
+    sumarAlaSala,
     cargarDirectorio,
     pedirEntrar,
     misSolicitudes,
@@ -335,14 +365,19 @@ function ModalSala({
   const [nombre, setNombre] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [cadencia, setCadencia] = useState('')
-  const [lugar, setLugar] = useState('')
+  const [lugares, setLugares] = useState('')
   const [duracion, setDuracion] = useState(60)
   const [duracionTema, setDuracionTema] = useState(15)
-  const [horasCierre, setHorasCierre] = useState(24)
-  const [cierreManual, setCierreManual] = useState(false)
   const [porArchivar, setPorArchivar] = useState(false)
   const [directorio, setDirectorio] = useState<SalaAjena[]>([])
   const [insistir, setInsistir] = useState(false)
+  /* A quiénes sumar de entrada. En la edición se maneja desde Equipo. */
+  const [invitados, setInvitados] = useState<string[]>([])
+
+  /* Todo el mundo menos yo y menos las cuentas de soporte. */
+  const disponibles = estado.usuarios.filter(
+    (u) => u.activo && u.id !== yo?.id && u.alcance !== 'superadmin',
+  )
 
   /*
    * El directorio dice qué salas existen, incluidas las que no ves por
@@ -367,12 +402,11 @@ function ModalSala({
     setNombre(sala?.nombre ?? '')
     setDescripcion(sala?.descripcion ?? '')
     setCadencia(sala?.cadencia ?? '')
-    setLugar(sala?.lugarHabitual ?? '')
+    setLugares((sala?.lugares ?? []).join(', '))
     setDuracion(sala?.duracionReunionDefaultMin ?? 60)
     setDuracionTema(sala?.duracionTemaDefaultMin ?? 15)
-    setHorasCierre(sala?.horasCierreAgenda ?? 24)
-    setCierreManual(sala?.cierreManual ?? false)
     setInsistir(false)
+    setInvitados([])
   }
   if (!abierto && ultimo !== undefined) setUltimo(undefined)
 
@@ -397,31 +431,32 @@ function ModalSala({
       setInsistir(true)
       return
     }
+    const lista = lugares
+      .split(',')
+      .map((l) => l.trim())
+      .filter(Boolean)
     const datos = {
       nombre,
       descripcion: descripcion.trim() || undefined,
       cadencia: cadencia.trim() || undefined,
-      lugarHabitual: lugar.trim() || undefined,
+      lugares: lista,
+      lugarHabitual: lista[0],
       duracionReunionDefaultMin: duracion,
       duracionTemaDefaultMin: duracionTema,
-      horasCierreAgenda: horasCierre,
-      cierreManual,
     }
     if (sala) await actualizarSala(sala.id, datos)
     else {
       const nueva = await crearSala(datos)
-      if (nueva) navegar('/')
+      if (nueva) {
+        for (const id of invitados) await sumarAlaSala(nueva.id, id, 'miembro')
+        navegar('/')
+      }
     }
     onCerrar()
   }
 
   return (
-    <Modal
-      abierto={abierto}
-      onCerrar={onCerrar}
-      kicker={sala ? 'Ajustes' : 'Nuevo espacio'}
-      titulo={sala ? 'Editar sala' : 'Nueva sala'}
-    >
+    <Modal abierto={abierto} onCerrar={onCerrar} titulo={sala ? 'Editar sala' : 'Nueva sala'}>
       <form onSubmit={enviar} className="space-y-4">
         <Campo etiqueta="Nombre">
           <input
@@ -497,83 +532,94 @@ function ModalSala({
           />
         </Campo>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Campo etiqueta="Cadencia" ayuda="Se sugiere al crear una reunión.">
-            <input
-              className="w-full"
-              value={cadencia}
-              onChange={(e) => setCadencia(e.target.value)}
-              placeholder="Jueves 11:00"
-            />
-          </Campo>
-          <Campo etiqueta="Dónde se juntan">
-            <input
-              className="w-full"
-              value={lugar}
-              onChange={(e) => setLugar(e.target.value)}
-              placeholder="Showroom Palermo"
-            />
-          </Campo>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Campo etiqueta="Duración de la reunión (min)">
-            <input
-              type="number"
-              min={15}
-              step={5}
-              className="w-full"
-              value={duracion}
-              onChange={(e) => setDuracion(Number(e.target.value))}
-            />
-          </Campo>
-          <Campo etiqueta="Duración por tema (min)">
-            <input
-              type="number"
-              min={5}
-              step={5}
-              className="w-full"
-              value={duracionTema}
-              onChange={(e) => setDuracionTema(Number(e.target.value))}
-            />
-          </Campo>
-        </div>
-
-        <Campo
-          etiqueta="Cuándo se cierra el temario"
-          ayuda="Con cierre a mano no hay plazo: se aceptan temas hasta que el organizador lo cierre."
-        >
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              onClick={() => setCierreManual(true)}
-              className={
-                cierreManual
-                  ? 'border border-tinta bg-tinta px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-fondo'
-                  : 'border border-borde2 bg-panel px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
-              }
-            >
-              A mano
-            </button>
-            {[12, 24, 48].map((h) => (
-              <button
-                key={h}
-                type="button"
-                onClick={() => {
-                  setCierreManual(false)
-                  setHorasCierre(h)
-                }}
-                className={
-                  !cierreManual && horasCierre === h
-                    ? 'border border-tinta bg-tinta px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-fondo'
-                    : 'border border-borde2 bg-panel px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
-                }
-              >
-                {h} h antes
-              </button>
-            ))}
-          </div>
+        <Campo etiqueta="Cada cuánto se juntan" ayuda="Se sugiere al crear una reunión.">
+          <input
+            className="w-full"
+            value={cadencia}
+            onChange={(e) => setCadencia(e.target.value)}
+            placeholder="Jueves 11:00"
+          />
         </Campo>
+
+        {/* ── A quiénes sumar ──
+            Al crear la sala. Después se maneja desde Equipo. */}
+        {!sala && disponibles.length > 0 && (
+          <Campo
+            etiqueta={`A quiénes sumás (${invitados.length})`}
+            ayuda="Podés sumar más gente en cualquier momento."
+          >
+            <div className="grid max-h-52 gap-1.5 overflow-y-auto sm:grid-cols-2">
+              {disponibles.map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  aria-pressed={invitados.includes(u.id)}
+                  onClick={() =>
+                    setInvitados((v) =>
+                      v.includes(u.id) ? v.filter((x) => x !== u.id) : [...v, u.id],
+                    )
+                  }
+                  className={
+                    invitados.includes(u.id)
+                      ? 'flex items-center gap-2 border border-tinta/60 bg-hueco px-3 py-2 text-left text-xs'
+                      : 'flex items-center gap-2 border border-borde px-3 py-2 text-left text-xs text-suave transition-colors hover:border-suave'
+                  }
+                >
+                  <span
+                    className={
+                      invitados.includes(u.id)
+                        ? 'h-2 w-2 shrink-0 bg-signal'
+                        : 'h-2 w-2 shrink-0 border border-borde2'
+                    }
+                  />
+                  <span className="truncate">{u.nombre}</span>
+                </button>
+              ))}
+            </div>
+          </Campo>
+        )}
+
+        {/* ── Ajustes finos ──
+            No van en el alta: son valores por omisión de las reuniones
+            de esta sala y se tocan una vez cada tanto. */}
+        {sala && (
+          <>
+            <Campo
+              etiqueta="Lugares donde se juntan"
+              ayuda="Separados por coma. Son los que aparecen al crear una reunión."
+            >
+              <input
+                className="w-full"
+                value={lugares}
+                onChange={(e) => setLugares(e.target.value)}
+                placeholder="Fábrica, Local Palermo, Meet"
+              />
+            </Campo>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Campo etiqueta="Duración de la reunión (min)">
+                <input
+                  type="number"
+                  min={15}
+                  step={5}
+                  className="w-full"
+                  value={duracion}
+                  onChange={(e) => setDuracion(Number(e.target.value))}
+                />
+              </Campo>
+              <Campo etiqueta="Duración por tema (min)">
+                <input
+                  type="number"
+                  min={5}
+                  step={5}
+                  className="w-full"
+                  value={duracionTema}
+                  onChange={(e) => setDuracionTema(Number(e.target.value))}
+                />
+              </Campo>
+            </div>
+          </>
+        )}
 
         <div className="flex flex-wrap justify-end gap-2 pt-2">
           {sala && (
@@ -598,7 +644,7 @@ function ModalSala({
       <Confirmar
         abierto={porArchivar}
         titulo="Archivar la sala"
-        texto={`«${sala?.nombre}» deja de aparecer para todo el equipo. Las reuniones y los compromisos quedan guardados.`}
+        texto={`«${sala?.nombre}» deja de aparecer para todo el equipo. Las reuniones y las tareas quedan guardadas.`}
         textoBoton="Archivar"
         peligro
         onCancelar={() => setPorArchivar(false)}
@@ -744,7 +790,7 @@ function ModalEquipo({
 
         <p className="text-xs leading-relaxed text-tenue">
           El organizador arma la agenda, aprueba temas y gestiona quién entra. El miembro propone
-          temas, participa y sigue sus propios compromisos.
+          temas, participa y sigue sus propias tareas.
         </p>
       </div>
 
@@ -760,7 +806,7 @@ function ModalEquipo({
       <Confirmar
         abierto={!!porSacar}
         titulo="Sacar de la sala"
-        texto={`${porSacar?.nombre} deja de ver esta sala. Sus compromisos quedan registrados.`}
+        texto={`${porSacar?.nombre} deja de ver esta sala. Sus tareas quedan registradas.`}
         textoBoton="Sacar"
         peligro
         onCancelar={() => setPorSacar(undefined)}

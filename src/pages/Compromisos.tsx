@@ -44,12 +44,16 @@ import { generarPendientesPDF } from '../lib/pdf'
 import ModalCompromiso from '../components/reunion/ModalCompromiso'
 
 /* ─────────────────────────────────────────────────────────────
-   Todo lo que hay por hacer, en un solo lugar.
+   Tareas: todo lo que hay por hacer, en un solo lugar.
 
    Tablero y lista son dos maneras de mirar el mismo conjunto: el
    tablero sirve para mover cosas de estado, la lista para repasar
-   por responsable, por reunión o por vencimiento. Tenerlas en
-   secciones separadas obligaba a adivinar en cuál buscar.
+   por responsable, por reunión o por vencimiento.
+
+   Quien no organiza ve solamente lo suyo: "acá no debería existir
+   el filtro de todos los responsables; solo veo las mías". El
+   filtro por persona aparece únicamente para quien conduce el
+   equipo.
    ───────────────────────────────────────────────────────────── */
 
 type Vista = 'tablero' | 'lista'
@@ -136,7 +140,6 @@ export default function Compromisos() {
   }
 
   const vencidos = filtrados.filter((c) => estaVencido(c))
-  const mios = filtrados.filter((c) => c.responsableId === yo?.id && c.estado !== 'hecho')
 
   const botonFiltro = (activo: boolean) =>
     activo
@@ -146,8 +149,7 @@ export default function Compromisos() {
   return (
     <div className="space-y-6">
       <Seccion
-        kicker={puedeOrganizar ? "Todo lo que hay por hacer" : "Lo que tenés que hacer"}
-        titulo="Compromisos"
+        titulo="Tareas"
         acciones={
           <>
             <div className="flex border border-borde2">
@@ -171,22 +173,22 @@ export default function Compromisos() {
               ))}
             </div>
             <Boton variante="solido" onClick={() => setCreando(true)}>
-              <Plus size={13} /> Nuevo compromiso
+              <Plus size={13} /> Nueva tarea
             </Boton>
           </>
         }
       >
-        {/* Las cifras son de todo el equipo y sirven de atajo al filtro. */}
-        <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+        {/* Tres cifras, no cuatro: quien no organiza sólo ve las suyas,
+            así que "a tu nombre" sería lo mismo que "abiertas". */}
+        <div className="mb-5 grid grid-cols-3 gap-3">
           <Metrica
             valor={compromisosVisibles.filter((c) => c.estado !== 'hecho').length}
-            etiqueta="Abiertos del equipo"
+            etiqueta={puedeOrganizar ? 'Abiertas del equipo' : 'Tus tareas abiertas'}
             a="?filtro=abiertos"
           />
-          <Metrica valor={mios.length} etiqueta="A tu nombre" a="?filtro=mios" />
           <Metrica
             valor={compromisosVisibles.filter((c) => estaVencido(c)).length}
-            etiqueta="Vencidos del equipo"
+            etiqueta="Vencidas"
             tono={vencidos.length ? 'signal' : undefined}
             a="?filtro=vencidos"
           />
@@ -206,14 +208,21 @@ export default function Compromisos() {
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
           />
-          <select value={responsable} onChange={(e) => setResponsable(e.target.value)}>
-            <option value="todos">Todos los responsables</option>
-            {gente.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.nombre}
-              </option>
-            ))}
-          </select>
+          {/* Sólo para quien conduce el equipo: el resto ve lo suyo y punto. */}
+          {puedeOrganizar && (
+            <select
+              value={responsable}
+              onChange={(e) => setResponsable(e.target.value)}
+              aria-label="Filtrar por responsable"
+            >
+              <option value="todos">Todos los responsables</option>
+              {gente.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nombre}
+                </option>
+              ))}
+            </select>
+          )}
           <select
             value={importancia}
             onChange={(e) => setImportancia(e.target.value as Importancia | 'todas')}
@@ -245,12 +254,12 @@ export default function Compromisos() {
           >
             Vencen esta semana
           </button>
-          {yo && (
+          {yo && puedeOrganizar && (
             <button
               onClick={() => setResponsable(responsable === yo.id ? 'todos' : yo.id)}
               className={botonFiltro(responsable === yo.id)}
             >
-              Sólo míos
+              Sólo mías
             </button>
           )}
           <label className="col-span-2 flex cursor-pointer items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave sm:col-auto">
@@ -283,7 +292,7 @@ export default function Compromisos() {
         {vista === 'tablero' ? (
           <>
             <DndContext sensors={sensores} onDragStart={alEmpezar} onDragEnd={alSoltar}>
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-3 md:grid-cols-3">
                 {COLUMNAS_KANBAN.map((col) => (
                   <Columna
                     key={col}
@@ -304,10 +313,10 @@ export default function Compromisos() {
             </DndContext>
 
             <p className="mt-4 text-xs text-tenue">
-              <span className="hidden xl:inline">
+              <span className="hidden md:inline">
                 Arrastrá las tarjetas entre columnas para cambiar el estado
               </span>
-              <span className="xl:hidden">
+              <span className="md:hidden">
                 Tocá el estado en cada tarjeta para moverla, o arrastrala
               </span>
             </p>
@@ -365,7 +374,7 @@ function VistaLista({
   }, [lista, agrupar, estado])
 
   if (!grupos.length) {
-    return <Vacio titulo="No hay nada acá" texto="Ningún compromiso coincide con los filtros." />
+    return <Vacio titulo="No hay nada acá" texto="Ninguna tarea coincide con los filtros." />
   }
 
   return (
@@ -439,7 +448,7 @@ function VistaLista({
                     </div>
                   </div>
 
-                  <div className="grid w-full shrink-0 grid-cols-4 gap-1 sm:flex sm:w-auto sm:flex-wrap">
+                  <div className="grid w-full shrink-0 grid-cols-3 gap-1 sm:flex sm:w-auto sm:flex-wrap">
                     {COLUMNAS_KANBAN.map((s) => (
                       <button
                         key={s}
@@ -456,8 +465,8 @@ function VistaLista({
                     ))}
                     <button
                       onClick={() => onEditar(c)}
-                      className="col-span-4 border border-borde2 bg-panel p-1.5 text-suave transition-colors hover:border-tinta hover:text-tinta sm:col-auto"
-                      aria-label="Editar"
+                      className="col-span-3 border border-borde2 bg-panel p-1.5 text-suave transition-colors hover:border-tinta hover:text-tinta sm:col-auto"
+                      aria-label={`Editar «${c.accion}»`}
                     >
                       <Pencil size={11} className="mx-auto" />
                     </button>
@@ -500,7 +509,7 @@ function Columna({
     <div
       ref={setNodeRef}
       className={cx(
-        'flex flex-col border transition-colors xl:min-h-[240px]',
+        'flex flex-col border transition-colors md:min-h-[240px]',
         isOver ? 'border-signal bg-signal/5' : 'border-borde bg-hueco',
       )}
     >
@@ -516,7 +525,7 @@ function Columna({
 
       <div className="flex-1 space-y-2 p-2">
         {compromisos.length === 0 ? (
-          <div className="flex h-16 items-center justify-center text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-borde2 xl:h-24">
+          <div className="flex h-16 items-center justify-center text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-borde2 md:h-24">
             Vacío
           </div>
         ) : (
@@ -616,10 +625,10 @@ function Tarjeta({
 
       {/*
         Con las columnas apiladas, arrastrar entre ellas no es viable.
-        Debajo de xl la tarjeta trae sus propios botones de estado.
+        En pantalla chica la tarjeta trae sus propios botones de estado.
       */}
       {!superpuesta && (
-        <div className="mt-2.5 flex flex-wrap gap-1 border-t border-borde pt-2.5 xl:hidden">
+        <div className="mt-2.5 flex flex-wrap gap-1 border-t border-borde pt-2.5 md:hidden">
           {COLUMNAS_KANBAN.filter((s) => s !== c.estado).map((s) => (
             <button
               key={s}

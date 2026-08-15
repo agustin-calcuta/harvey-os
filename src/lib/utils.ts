@@ -174,7 +174,7 @@ export function dejariaSinOrganizador(e: Estado, salaId: string, usuarioId: stri
 /**
  * Momento en que se cierra la carga de temas.
  * Con cierre manual no hay plazo: sólo cierra cuando el organizador
- * aprieta el botón.
+ * aprieta el botón, que es como quedó por defecto.
  */
 export const deadlineAgenda = (r: Reunion): string | undefined =>
   r.cierreManual
@@ -186,9 +186,19 @@ export function agendaVencida(r: Reunion): boolean {
   return d ? Date.now() > new Date(d).getTime() : false
 }
 
-/** ¿Se pueden seguir proponiendo temas? */
-export const puedeProponerTemas = (r: Reunion): boolean =>
-  r.estado === 'agenda_abierta' && !agendaVencida(r)
+/**
+ * ¿Se puede seguir cargando temas?
+ *
+ * Hasta que la reunión se cierra, sí. Un tema que aparece diez minutos
+ * antes entra igual: *"si te olvidaste de cargarlo, decímelo igual un
+ * minuto antes, porque capaz el tema es pertinente"*. Con el temario
+ * ya cerrado se avisa que llega tarde, pero no se traba.
+ */
+export const puedeProponerTemas = (r: Reunion): boolean => r.estado !== 'cerrada'
+
+/** El temario ya se cerró y este tema entra igual, fuera de lo avisado. */
+export const llegaTarde = (r: Reunion): boolean =>
+  r.estado === 'agenda_cerrada' || r.estado === 'en_curso'
 
 export const estaVencido = (c: Compromiso): boolean =>
   c.estado !== 'hecho' && !!c.fechaLimite && new Date(c.fechaLimite).getTime() < Date.now()
@@ -223,10 +233,33 @@ export const iniciales = (nombre: string): string =>
 export const temasDe = (e: Estado, reunionId: string): Tema[] =>
   e.temas.filter((t) => t.reunionId === reunionId).sort((a, b) => a.orden - b.orden)
 
-/** El banco de la sala: temas anotados sin reunión asignada todavía. */
-export const bancoDe = (e: Estado, salaId: string): Tema[] =>
+/**
+ * Mi temario: el bloc de notas personal.
+ *
+ * *"Acá andá tirando todos los temas que quieras y después, cuando
+ * querés, los asignás a una reunión"*. No tiene sala: son míos hasta
+ * que decido a qué reunión los llevo.
+ */
+export const temarioDe = (e: Estado, usuarioId?: string): Tema[] =>
   e.temas
-    .filter((t) => t.salaId === salaId && t.estado === 'banco' && !t.reunionId)
+    .filter((t) => t.estado === 'banco' && t.propuestoPor === usuarioId && !t.reunionId)
+    .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn))
+
+/**
+ * Los que estuvieron en una agenda y no se llegaron a hablar.
+ *
+ * Conservan la sala: el organizador los vuelve a incluir en la próxima
+ * y, al mismo tiempo, le reaparecen en el temario a quien los propuso.
+ */
+export const temasSinTratar = (e: Estado, salaId?: string, usuarioId?: string): Tema[] =>
+  e.temas
+    .filter(
+      (t) =>
+        t.estado === 'diferido' &&
+        !t.reunionId &&
+        (salaId ? t.salaId === salaId : true) &&
+        (usuarioId ? t.propuestoPor === usuarioId : true),
+    )
     .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn))
 
 export const agendaDe = (e: Estado, reunionId: string): Tema[] =>
@@ -269,6 +302,115 @@ export const proximaReunion = (e: Estado, salaId?: string): Reunion | undefined 
 
 export const ordenarReuniones = (rs: Reunion[]): Reunion[] =>
   [...rs].sort((a, b) => b.fecha.localeCompare(a.fecha))
+
+/* ── Próximas, historial y búsqueda ───────────────────────── */
+
+/**
+ * ¿Esta reunión se lista para mí?
+ *
+ * Se ve si es de una sala mía, o si me sumaron a ella aunque no sea del
+ * equipo. Una privada no aparece para el resto de la sala: la ven
+ * quienes están en ella.
+ *
+ * En la base lo cuida una política; acá se repite para la vista previa,
+ * que corre sin base y tiene todo el conjunto de datos a mano.
+ */
+export function puedeVerReunion(e: Estado, r: Reunion, yo?: Usuario | null): boolean {
+  if (!yo) return false
+  if (yo.alcance === 'superadmin') return true
+  if (r.moderadorId === yo.id || r.participantesIds.includes(yo.id)) return true
+  if (r.privada) return false
+  return e.membresias.some((m) => m.salaId === r.salaId && m.usuarioId === yo.id)
+}
+
+/**
+ * Las que vienen, una por serie.
+ *
+ * *"No voy a proponer un tema para la reunión de socios 18 cuando
+ * todavía no tuve la 17"*: de una reunión que se repite se muestra
+ * sólo la primera, y cuando esa se cierra aparece la siguiente. Las
+ * de única vez se listan todas.
+ */
+export function proximasReuniones(e: Estado, yo?: Usuario | null, salaId?: string): Reunion[] {
+  const abiertas = e.reuniones
+    .filter((r) => (salaId ? r.salaId === salaId : true))
+    .filter((r) => r.estado !== 'cerrada')
+    .filter((r) => puedeVerReunion(e, r, yo))
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+
+  const vistas = new Set<string>()
+  return abiertas.filter((r) => {
+    const serie = r.serieId ?? r.id
+    if (vistas.has(serie)) return false
+    vistas.add(serie)
+    return true
+  })
+}
+
+/** Todo lo que ya pasó, de lo más nuevo a lo más viejo. */
+export function historialReuniones(e: Estado, yo?: Usuario | null, salaId?: string): Reunion[] {
+  return e.reuniones
+    .filter((r) => (salaId ? r.salaId === salaId : true))
+    .filter((r) => r.estado === 'cerrada')
+    .filter((r) => puedeVerReunion(e, r, yo))
+    .sort((a, b) => b.fecha.localeCompare(a.fecha))
+}
+
+export interface Coincidencia {
+  reunion: Reunion
+  /** Dónde apareció: el título del tema, "Conclusiones", una tarea… */
+  donde: string[]
+}
+
+/**
+ * Buscar una palabra en todas las minutas.
+ *
+ * *"No me acuerdo cuándo hablamos del balance: pongo balance y me
+ * trae todas las minutas que dicen esa palabra"*. Busca en el título
+ * de la reunión, en los temas y sus conclusiones, en las
+ * observaciones y en las tareas que salieron de ahí.
+ */
+export function buscarEnMinutas(
+  e: Estado,
+  texto: string,
+  yo?: Usuario | null,
+  salaId?: string,
+): Coincidencia[] {
+  const q = texto.trim().toLowerCase()
+  if (q.length < 2) return []
+  const tiene = (s?: string) => !!s && s.toLowerCase().includes(q)
+
+  return historialReuniones(e, yo, salaId)
+    .map((r) => {
+      const donde: string[] = []
+      if (tiene(r.titulo)) donde.push('En el título')
+      if (tiene(r.conclusionesGenerales)) donde.push('En las conclusiones')
+      if (tiene(r.observaciones)) donde.push('En las observaciones')
+      for (const t of temasDe(e, r.id)) {
+        if (tiene(t.titulo) || tiene(t.detalle) || tiene(t.conclusiones)) donde.push(t.titulo)
+      }
+      for (const c of compromisosDe(e, r.id)) {
+        if (tiene(c.accion) || tiene(c.detalle)) donde.push(`Tarea: ${c.accion}`)
+      }
+      return { reunion: r, donde }
+    })
+    .filter((x) => x.donde.length > 0)
+}
+
+/**
+ * Lo que ofrece el desplegable de lugar: lo configurado en la sala y,
+ * si no hay nada, lo que ya se usó en reuniones anteriores.
+ */
+export function lugaresDe(e: Estado, salaId?: string): string[] {
+  const s = sala(e, salaId)
+  const usados = e.reuniones
+    .filter((r) => r.salaId === salaId && r.lugar)
+    .map((r) => r.lugar!)
+  const todos = [...(s?.lugares ?? []), s?.lugarHabitual, ...usados].filter(
+    (x): x is string => !!x && x.trim().length > 0,
+  )
+  return [...new Set(todos.map((x) => x.trim()))]
+}
 
 /* ── Misc ─────────────────────────────────────────────────── */
 

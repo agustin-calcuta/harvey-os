@@ -16,65 +16,71 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import {
-  Archive,
-  Check,
-  Clock,
-  GripVertical,
-  Lock,
-  Pencil,
-  Plus,
-  Send,
-  Trash2,
-  Undo2,
-  X,
-} from 'lucide-react'
+import { Check, Clock, GripVertical, Pencil, Plus, Send, Trash2, Undo2, X } from 'lucide-react'
 import { useApp } from '../../store/AppContext'
 import {
-  agendaVencida,
-  bancoDe,
-  cuentaRegresiva,
-  deadlineAgenda,
-  fechaHora,
+  llegaTarde,
   minutosAgenda,
   nombreDe,
-  puedeProponerTemas,
   relativo,
+  temarioDe,
   temasDe,
+  temasSinTratar,
 } from '../../lib/utils'
 import { IMPORTANCIA, type Reunion, type Tema } from '../../types'
-import { Boton, Chip, ChipImportancia, ChipObjetivo, Confirmar, Etiqueta, Vacio } from '../ui'
+import {
+  BarraFlotante,
+  Boton,
+  Chip,
+  ChipImportancia,
+  ChipObjetivo,
+  Confirmar,
+  Vacio,
+} from '../ui'
 import ModalTema from './ModalTema'
+
+/* ─────────────────────────────────────────────────────────────
+   Antes de la reunión.
+
+   Se fue el plazo de cierre: el temario lo cierra el organizador
+   cuando quiere y un tema de último momento entra igual —"si te
+   olvidaste de cargarlo, decímelo igual un minuto antes"—. Cerrar
+   el temario es avisar de qué se va a hablar, no trabar nada, y
+   el botón quedó flotante para no perderlo al final de la página.
+   ───────────────────────────────────────────────────────────── */
 
 export default function FasePre({ reunion }: { reunion: Reunion }) {
   const {
     estado,
+    yo,
     puedeOrganizar,
     actualizarTema,
     borrarTema,
     reordenarTemas,
     cerrarAgenda,
-    bajarDelBanco,
-    devolverAlBanco,
+    asignarAReunion,
+    devolverAlTemario,
   } = useApp()
 
   const [creando, setCreando] = useState(false)
   const [editando, setEditando] = useState<Tema | undefined>()
   const [porBorrar, setPorBorrar] = useState<Tema | undefined>()
   const [confirmarCierre, setConfirmarCierre] = useState(false)
+  const [avisar, setAvisar] = useState(true)
 
   const todos = temasDe(estado, reunion.id)
   const agenda = todos.filter((t) => t.estado === 'aprobado')
   const propuestos = todos.filter((t) => t.estado === 'propuesto')
-  const fuera = todos.filter((t) => t.estado === 'rechazado' || t.estado === 'diferido')
-  const banco = bancoDe(estado, reunion.salaId)
+  const fuera = todos.filter((t) => t.estado === 'rechazado')
+
+  /* Mi bloc de notas, para bajar algo a esta reunión sin salir de acá. */
+  const mios = temarioDe(estado, yo?.id)
+  /* Los que quedaron sin tratar en esta sala, esperando que los incluyan. */
+  const sinTratar = temasSinTratar(estado, reunion.salaId)
 
   const total = minutosAgenda(agenda)
   const excedido = total > reunion.duracionPrevistaMin
-  const plazo = deadlineAgenda(reunion)
-  const cd = cuentaRegresiva(plazo)
-  const abierta = puedeProponerTemas(reunion)
-  const vencida = agendaVencida(reunion)
+  const tarde = llegaTarde(reunion)
 
   const sensores = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -91,120 +97,84 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
     void reordenarTemas(reunion.id, arrayMove(ids, from, to))
   }
 
-  return (
-    <div className="space-y-8">
-      {/* Una sola cifra: el tiempo asignado es el único número que
-          obliga a decidir algo. El plazo va en una línea al lado. */}
-      <div className="card">
-        <div className="flex flex-wrap items-center justify-between gap-4 p-5">
-          <div>
-            <Etiqueta className="mb-1.5">Tiempo asignado</Etiqueta>
-            <div className={excedido ? 'display text-3xl text-signal' : 'display text-3xl'}>
-              {total}
-              <span className="ml-1 text-base text-suave">
-                / {reunion.duracionPrevistaMin} min
-              </span>
-            </div>
-          </div>
-
-          <div className="text-right">
-            <Etiqueta className="mb-1.5">
-              {reunion.cierreManual ? 'Cierre del temario' : vencida ? 'La carga cerró' : 'La carga cierra'}
-            </Etiqueta>
-            <div className="flex items-center justify-end gap-2 text-sm">
-              {abierta ? (
-                <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-acid" />
-              ) : (
-                <Lock size={12} className="text-suave" />
-              )}
-              {reunion.cierreManual ? (
-                <span className="text-suave">
-                  {abierta ? 'Abierto hasta que lo cierres' : 'Cerrado'}
-                </span>
-              ) : (
-                <>
-                  <span>{fechaHora(plazo)}</span>
-                  {abierta && <span className="text-amber">· quedan {cd.texto}</span>}
-                </>
-              )}
-            </div>
+  const paraIncluir = (t: Tema, deDonde: 'temario' | 'sinTratar') => (
+    <li key={t.id} className="card border-cold/30 p-4">
+      <div className="flex flex-wrap items-start gap-3">
+        <span
+          className="mt-1 h-10 w-0.5 shrink-0"
+          style={{ background: IMPORTANCIA[t.importancia].hex }}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="text-sm leading-snug">{t.titulo}</div>
+          {t.detalle && <p className="mt-1 text-xs leading-relaxed text-suave">{t.detalle}</p>}
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <ChipImportancia valor={t.importancia} />
+            <ChipObjetivo valor={t.objetivo} />
+            <span className="ml-1 text-xs text-tenue">
+              {deDonde === 'sinTratar'
+                ? `${nombreDe(estado, t.propuestoPor)} · ${t.motivoRechazo ?? 'no se llegó a hablar'}`
+                : `anotado ${relativo(t.creadoEn)}`}
+            </span>
           </div>
         </div>
-
-        {excedido && (
-          <div className="border-t border-borde bg-signal/5 px-5 py-2.5 text-xs text-signal">
-            La agenda se pasa {total - reunion.duracionPrevistaMin} minutos de lo previsto.
-            Recortá tiempos o diferí algún tema.
-          </div>
-        )}
+        <Boton tam="sm" variante="solido" onClick={() => asignarAReunion(t.id, reunion.id)}>
+          <Check size={12} /> Incluir
+        </Boton>
       </div>
+    </li>
+  )
 
+  return (
+    <div className="space-y-8">
       {/* ── Acciones ── */}
       <div className="flex flex-wrap items-center gap-2">
-        <Boton
-          variante="solido"
-          onClick={() => setCreando(true)}
-          disabled={!abierta && !puedeOrganizar}
-          title={!abierta && !puedeOrganizar ? 'La carga de temas ya está cerrada.' : undefined}
-        >
+        <Boton variante="solido" onClick={() => setCreando(true)}>
           <Plus size={13} /> Proponer tema
         </Boton>
-
-        {puedeOrganizar && reunion.estado === 'agenda_abierta' && (
-          <Boton onClick={() => setConfirmarCierre(true)} disabled={agenda.length === 0}>
-            <Send size={13} /> Cerrar temario y notificar
-          </Boton>
-        )}
-
-        {!abierta && !puedeOrganizar && (
-          <span className="text-xs text-tenue">
-            La carga de temas ya está cerrada para esta reunión
-          </span>
-        )}
+        <span className="text-xs text-suave">
+          {agenda.length} {agenda.length === 1 ? 'tema' : 'temas'} en agenda
+          {puedeOrganizar && (
+            <>
+              {' · '}
+              <span className={excedido ? 'text-signal' : undefined}>
+                {total} de {reunion.duracionPrevistaMin} min asignados
+              </span>
+            </>
+          )}
+        </span>
       </div>
 
-      {/* ── Banco de la sala ──
-          Los temas que se fueron anotando sin fecha. El organizador
-          elige cuáles baja a esta reunión. */}
-      {puedeOrganizar && banco.length > 0 && (
+      {tarde && (
+        <p className="border border-borde bg-hueco p-3 text-xs leading-relaxed text-suave">
+          El temario ya se cerró y se avisó qué se iba a hablar. Igual se pueden sumar temas: entran
+          al final y el que modera decide si se llegan a tratar.
+        </p>
+      )}
+
+      {/* ── Sin tratar de reuniones anteriores ── */}
+      {puedeOrganizar && sinTratar.length > 0 && (
         <section>
           <h3 className="display mb-1 text-xl">
-            En el banco de {estado.salas.find((s) => s.id === reunion.salaId)?.nombre}{' '}
-            <span className="text-suave">{banco.length}</span>
+            No se llegaron a hablar <span className="text-suave">{sinTratar.length}</span>
           </h3>
           <p className="mb-3 text-xs text-suave">
-            Temas que el equipo dejó anotados sin fecha. Bajá los que quieras tratar ahora; el
-            resto sigue esperando para la próxima.
+            Quedaron fuera de una reunión anterior de esta sala. Incluí los que quieras tratar ahora;
+            el resto sigue esperando.
           </p>
+          <ul className="space-y-2">{sinTratar.map((t) => paraIncluir(t, 'sinTratar'))}</ul>
+        </section>
+      )}
 
-          <ul className="space-y-2">
-            {banco.map((t) => (
-              <li key={t.id} className="card border-cold/30 p-4">
-                <div className="flex flex-wrap items-start gap-3">
-                  <span
-                    className="mt-1 h-10 w-0.5 shrink-0"
-                    style={{ background: IMPORTANCIA[t.importancia].hex }}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm leading-snug">{t.titulo}</div>
-                    {t.detalle && (
-                      <p className="mt-1 text-xs leading-relaxed text-suave">{t.detalle}</p>
-                    )}
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                      <ChipImportancia valor={t.importancia} />
-                      <ChipObjetivo valor={t.objetivo} />
-                      <span className="ml-1 text-xs text-tenue">
-                        {nombreDe(estado, t.propuestoPor)} · anotado {relativo(t.creadoEn)}
-                      </span>
-                    </div>
-                  </div>
-                  <Boton tam="sm" variante="solido" onClick={() => bajarDelBanco(t.id, reunion.id)}>
-                    <Check size={12} /> Traer
-                  </Boton>
-                </div>
-              </li>
-            ))}
-          </ul>
+      {/* ── Mi temario ── */}
+      {mios.length > 0 && (
+        <section>
+          <h3 className="display mb-1 text-xl">
+            De mi temario <span className="text-suave">{mios.length}</span>
+          </h3>
+          <p className="mb-3 text-xs text-suave">
+            Lo que anotaste sin fecha. Sólo lo ves vos hasta que lo incluís en una reunión.
+          </p>
+          <ul className="space-y-2">{mios.map((t) => paraIncluir(t, 'temario'))}</ul>
         </section>
       )}
 
@@ -233,11 +203,13 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
                     >
                       <Check size={12} /> Aprobar
                     </Boton>
-                    <Boton tam="sm" onClick={() => actualizarTema(t.id, { estado: 'diferido' })}>
-                      <Clock size={12} /> Diferir
-                    </Boton>
-                    <Boton tam="sm" onClick={() => devolverAlBanco(t.id)}>
-                      <Archive size={12} /> Al banco
+                    <Boton
+                      tam="sm"
+                      onClick={() =>
+                        actualizarTema(t.id, { estado: 'diferido', reunionId: undefined })
+                      }
+                    >
+                      <Clock size={12} /> Dejar para más adelante
                     </Boton>
                     <Boton
                       tam="sm"
@@ -261,7 +233,9 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
             Agenda de la reunión <span className="text-suave">{agenda.length}</span>
           </h3>
           {puedeOrganizar && agenda.length > 1 && (
-            <span className="text-xs text-tenue">Arrastrá para reordenar</span>
+            <span className="flex items-center gap-1.5 border border-borde px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave">
+              <GripVertical size={11} /> Arrastrá para cambiar el orden
+            </span>
           )}
         </div>
 
@@ -288,8 +262,10 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
                     puedeOrganizar={puedeOrganizar}
                     onEditar={() => setEditando(t)}
                     onBorrar={() => setPorBorrar(t)}
-                    onDiferir={() => actualizarTema(t.id, { estado: 'diferido' })}
-                    onAlBanco={() => devolverAlBanco(t.id)}
+                    onDiferir={() =>
+                      actualizarTema(t.id, { estado: 'diferido', reunionId: undefined })
+                    }
+                    onAlTemario={() => devolverAlTemario(t.id)}
                     onTiempo={(min) => actualizarTema(t.id, { duracionMin: min })}
                   />
                 ))}
@@ -299,7 +275,7 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
         )}
       </section>
 
-      {/* ── Fuera de agenda ── */}
+      {/* ── Rechazados ── */}
       {fuera.length > 0 && (
         <section>
           <h3 className="display mb-3 text-xl">
@@ -311,9 +287,7 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
                 key={t.id}
                 className="card flex flex-wrap items-center gap-3 p-3 opacity-70 transition-opacity hover:opacity-100"
               >
-                <Chip tono={t.estado === 'diferido' ? 'amber' : 'signal'}>
-                  {t.estado === 'diferido' ? 'Diferido' : 'Rechazado'}
-                </Chip>
+                <Chip tono="signal">Rechazado</Chip>
                 <span className="min-w-0 flex-1 truncate text-sm">{t.titulo}</span>
                 <span className="text-xs text-tenue">{nombreDe(estado, t.propuestoPor)}</span>
                 {puedeOrganizar && (
@@ -321,8 +295,8 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
                     <Boton tam="sm" onClick={() => actualizarTema(t.id, { estado: 'aprobado' })}>
                       Recuperar
                     </Boton>
-                    <Boton tam="sm" variante="fantasma" onClick={() => devolverAlBanco(t.id)}>
-                      <Undo2 size={11} /> Al banco
+                    <Boton tam="sm" variante="fantasma" onClick={() => devolverAlTemario(t.id)}>
+                      <Undo2 size={11} /> Al temario
                     </Boton>
                   </div>
                 )}
@@ -330,6 +304,28 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
             ))}
           </ul>
         </section>
+      )}
+
+      {/* ── Cerrar el temario ──
+          Flotante: es el submit de esta pantalla y se perdía abajo de todo. */}
+      {puedeOrganizar && reunion.estado === 'agenda_abierta' && (
+        <BarraFlotante>
+          <label className="mr-auto flex items-center gap-2 text-xs text-suave">
+            <input
+              type="checkbox"
+              checked={avisar}
+              onChange={(e) => setAvisar(e.target.checked)}
+            />
+            Avisar por correo a los {reunion.participantesIds.length} participantes
+          </label>
+          <Boton
+            variante="solido"
+            onClick={() => setConfirmarCierre(true)}
+            disabled={agenda.length === 0}
+          >
+            <Send size={13} /> Cerrar temario {avisar ? 'y avisar' : ''}
+          </Boton>
+        </BarraFlotante>
       )}
 
       {/* ── Modales ── */}
@@ -350,7 +346,7 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
       <Confirmar
         abierto={!!porBorrar}
         titulo="Eliminar tema"
-        texto={`Se elimina «${porBorrar?.titulo}» de forma definitiva. Si querés guardarlo para más adelante, mandalo al banco en vez de borrarlo.`}
+        texto={`Se elimina «${porBorrar?.titulo}» de forma definitiva. Si querés guardarlo para más adelante, devolvelo al temario en vez de borrarlo.`}
         textoBoton="Eliminar"
         peligro
         onCancelar={() => setPorBorrar(undefined)}
@@ -362,11 +358,15 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
       <Confirmar
         abierto={confirmarCierre}
         titulo="Cerrar el temario"
-        texto={`Se congela la agenda con ${agenda.length} temas y sale un correo a los ${reunion.participantesIds.length} participantes con el detalle. Después de esto nadie más puede sumar temas.`}
-        textoBoton="Cerrar y notificar"
+        texto={
+          avisar
+            ? `Sale un correo a los ${reunion.participantesIds.length} participantes con los ${agenda.length} temas, para que lleguen sabiendo de qué se va a hablar. Si aparece algo de último momento, se puede sumar igual.`
+            : `Se cierra el temario con ${agenda.length} temas y no se avisa a nadie. Si aparece algo de último momento, se puede sumar igual.`
+        }
+        textoBoton={avisar ? 'Cerrar y avisar' : 'Cerrar sin avisar'}
         onCancelar={() => setConfirmarCierre(false)}
         onConfirmar={() => {
-          void cerrarAgenda(reunion.id)
+          void cerrarAgenda(reunion.id, avisar)
           setConfirmarCierre(false)
         }}
       />
@@ -400,9 +400,7 @@ function FilaTema({
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <ChipImportancia valor={tema.importancia} />
           <ChipObjetivo valor={tema.objetivo} />
-          <span className="ml-1 text-xs text-tenue">
-            {nombreDe(estado, tema.propuestoPor)} · {tema.duracionMin} min
-          </span>
+          <span className="ml-1 text-xs text-tenue">{nombreDe(estado, tema.propuestoPor)}</span>
         </div>
       </div>
       {(puedeOrganizar || propio) && (
@@ -410,14 +408,14 @@ function FilaTema({
           <button
             onClick={onEditar}
             className="border border-borde2 bg-panel p-1.5 text-suave transition-colors hover:border-tinta hover:text-tinta"
-            title="Editar"
+            aria-label={`Editar «${tema.titulo}»`}
           >
             <Pencil size={12} />
           </button>
           <button
             onClick={onBorrar}
             className="border border-borde2 bg-panel p-1.5 text-suave transition-colors hover:border-signal hover:text-signal"
-            title="Eliminar"
+            aria-label={`Eliminar «${tema.titulo}»`}
           >
             <Trash2 size={12} />
           </button>
@@ -437,7 +435,7 @@ function TemaOrdenable({
   onEditar,
   onBorrar,
   onDiferir,
-  onAlBanco,
+  onAlTemario,
   onTiempo,
 }: {
   tema: Tema
@@ -447,7 +445,7 @@ function TemaOrdenable({
   onEditar: () => void
   onBorrar: () => void
   onDiferir: () => void
-  onAlBanco: () => void
+  onAlTemario: () => void
   onTiempo: (min: number) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -471,7 +469,7 @@ function TemaOrdenable({
             {...attributes}
             {...listeners}
             className="mt-0.5 shrink-0 cursor-grab text-borde2 transition-colors hover:text-tinta active:cursor-grabbing"
-            aria-label="Reordenar"
+            aria-label={`Reordenar «${tema.titulo}»`}
           >
             <GripVertical size={16} />
           </button>
@@ -502,13 +500,13 @@ function TemaOrdenable({
                 onClick={onDiferir}
                 className="ml-auto py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:text-amber"
               >
-                Diferir
+                Para más adelante
               </button>
               <button
-                onClick={onAlBanco}
+                onClick={onAlTemario}
                 className="py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:text-cold"
               >
-                Al banco
+                Al temario
               </button>
             </div>
           )}

@@ -25,7 +25,7 @@ export default function Correos() {
 
   return (
     <div className="space-y-6">
-      <Seccion kicker="Automatizaciones" titulo="Correos">
+      <Seccion titulo="Correos emitidos">
         <p className="mb-5 max-w-2xl text-sm leading-relaxed text-suave">
           La plataforma emite dos correos por reunión: uno al cerrarse el temario y otro al
           cerrarse la sesión, con conclusiones y compromisos. Acá queda el registro de todos.

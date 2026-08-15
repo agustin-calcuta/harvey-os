@@ -18,6 +18,7 @@ import { entrarConGoogleNeon, neonConfigurado, salirDeNeon, sesionActual } from 
 import { correoAgendaCerrada, correoMinuta, enviarCorreo } from '../lib/email'
 import { ESTADO_INICIAL } from '../lib/seed'
 import { agendaDe, rolEnSala, salasDe, uid } from '../lib/utils'
+import { RECURRENCIAS } from '../types'
 import type {
   Compromiso,
   Config,
@@ -97,7 +98,9 @@ interface Ctx {
   miRol: RolSala | undefined
   puedeOrganizar: boolean
   puedeModerar(r: Reunion): boolean
-  /** El organizador ve los compromisos de todos; el miembro, sólo los suyos. */
+  /** Abrir salas es de los socios. Reuniones crea cualquiera. */
+  puedeCrearSalas: boolean
+  /** El organizador ve las tareas de todos; el miembro, sólo las suyas. */
   compromisosVisibles: Compromiso[]
 
   // reuniones
@@ -105,10 +108,17 @@ interface Ctx {
   actualizarReunion(id: string, cambios: Partial<Reunion>): Promise<void>
   borrarReunion(id: string): Promise<void>
   abrirAgenda(id: string): Promise<void>
-  cerrarAgenda(id: string): Promise<void>
+  /** Cierra el temario. Avisa por correo salvo que se pida lo contrario. */
+  cerrarAgenda(id: string, notificar?: boolean): Promise<void>
   iniciarReunion(id: string): Promise<void>
-  cerrarReunion(id: string): Promise<void>
+  cerrarReunion(id: string, notificar?: boolean): Promise<void>
   reabrirReunion(id: string): Promise<void>
+  /** Manda la minuta ya revisada. Es el último paso, después de recorrerla entera. */
+  enviarMinuta(id: string): Promise<void>
+  /** Suma a alguien que no es de la sala: entra a esta reunión y a nada más. */
+  sumarInvitado(reunionId: string, nombre: string, email: string): Promise<void>
+  /** Busca a alguien por correo y, si no está, lo da de alta. */
+  asegurarPersona(nombre: string, email: string): Promise<Usuario | undefined>
 
   // temas
   proponerTema(
@@ -120,10 +130,10 @@ interface Ctx {
   actualizarTema(id: string, cambios: Partial<Tema>): Promise<void>
   borrarTema(id: string): Promise<void>
   reordenarTemas(reunionId: string, idsEnOrden: string[]): Promise<void>
-  /** Saca un tema del banco y lo mete en una reunión. */
-  bajarDelBanco(temaId: string, reunionId: string): Promise<void>
-  /** Devuelve un tema al banco de la sala. */
-  devolverAlBanco(temaId: string): Promise<void>
+  /** Lleva un tema del temario personal —o uno que quedó sin tratar— a una reunión. */
+  asignarAReunion(temaId: string, reunionId: string): Promise<void>
+  /** Lo devuelve al temario de quien lo propuso. */
+  devolverAlTemario(temaId: string): Promise<void>
 
   // compromisos
   crearCompromiso(datos: Omit<Compromiso, 'id' | 'creadoEn' | 'salaId'>): Promise<void>
@@ -364,6 +374,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   )
 
   /*
+   * Abrir una sala quedó en manos de los socios: "una persona no puede
+   * crear una sala; puede crear una reunión". Lo cuida una política de
+   * la base; acá se replica para no mostrar un botón que va a fallar.
+   */
+  const puedeCrearSalas = esSuperadmin || yo?.puedeCrearSalas === true
+
+  /*
    * Un miembro ve sólo lo suyo. Lo pidió Fran mirando la pantalla:
    * "si yo entro, soy un empleado, debería haber sólo mis pendientes".
    */
@@ -377,16 +394,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const crearSala = useCallback(
     async (datos: Partial<Sala>) => {
       if (!yo) return undefined
+      if (!puedeCrearSalas) {
+        avisar('Las salas las abren los socios. Vos podés crear reuniones en las tuyas.', 'info')
+        return undefined
+      }
       const s: Sala = {
         id: uid('sala'),
         nombre: datos.nombre?.trim() || 'Sala sin nombre',
         descripcion: datos.descripcion,
         cadencia: datos.cadencia,
         horasCierreAgenda: datos.horasCierreAgenda ?? 24,
-        cierreManual: datos.cierreManual ?? false,
+        // El temario lo cierra el organizador cuando quiere.
+        cierreManual: datos.cierreManual ?? true,
         duracionReunionDefaultMin: datos.duracionReunionDefaultMin ?? 60,
         duracionTemaDefaultMin: datos.duracionTemaDefaultMin ?? 15,
         lugarHabitual: datos.lugarHabitual,
+        lugares: datos.lugares ?? [],
         creadaPor: yo.id,
         creadaEn: new Date().toISOString(),
         archivada: false,
@@ -406,7 +429,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       avisar(`Sala «${s.nombre}» creada. Ya podés sumar a tu equipo.`)
       return s
     },
-    [yo, persistir, elegirSala, avisar],
+    [yo, puedeCrearSalas, persistir, elegirSala, avisar],
   )
 
   const actualizarSala = useCallback(
@@ -622,11 +645,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   /* ── Reuniones ──────────────────────────────────────────── */
 
+  /*
+   * Los participantes ya no vienen todos marcados: el organizador
+   * elige quiénes van. Ariel cargó una reunión creyendo lo contrario y
+   * le quedó con cero participantes, así que por omisión queda sólo
+   * quien la arma.
+   */
   const crearReunion = useCallback(
     async (datos: Partial<Reunion>) => {
       const sId = datos.salaId ?? salaId
       const s = ref.current.salas.find((x) => x.id === sId)
       if (!sId || !s) return undefined
+      const moderadorId = datos.moderadorId ?? yo?.id ?? ''
+      const participantes = datos.participantesIds ?? (yo ? [yo.id] : [])
       const r: Reunion = {
         id: uid('r'),
         salaId: sId,
@@ -634,11 +665,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         fecha: datos.fecha ?? new Date(Date.now() + 7 * 86400000).toISOString(),
         duracionPrevistaMin: datos.duracionPrevistaMin ?? s.duracionReunionDefaultMin,
         lugar: datos.lugar ?? s.lugarHabitual,
-        moderadorId: datos.moderadorId ?? yo?.id ?? '',
-        participantesIds:
-          datos.participantesIds ??
-          ref.current.membresias.filter((m) => m.salaId === sId).map((m) => m.usuarioId),
+        moderadorId,
+        // Quien modera siempre está en la reunión que modera.
+        participantesIds: participantes.includes(moderadorId)
+          ? participantes
+          : [moderadorId, ...participantes].filter(Boolean),
         estado: datos.estado ?? 'agenda_abierta',
+        privada: datos.privada ?? false,
+        recurrencia: datos.recurrencia ?? 'unica',
+        // La primera de una serie la encabeza: las siguientes heredan su id.
+        serieId:
+          datos.serieId ?? (datos.recurrencia && datos.recurrencia !== 'unica' ? uid('serie') : undefined),
         horasCierreAgenda: datos.horasCierreAgenda ?? s.horasCierreAgenda,
         cierreManual: datos.cierreManual ?? s.cierreManual,
         proximaReunionFecha: datos.proximaReunionFecha,
@@ -646,10 +683,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
         creadoEn: new Date().toISOString(),
       }
       await persistir('reuniones', r)
-      avisar('Reunión creada. Ya se pueden proponer temas.')
+      avisar('Reunión creada. Ya se pueden cargar temas.')
       return r
     },
     [salaId, persistir, yo, avisar],
+  )
+
+  /*
+   * Sumar a alguien de afuera: entra a esta reunión y a nada más.
+   *
+   * "Si soy de diseño y me sumo a una reunión de marketing, no me sumo
+   * a la sala de marketing y tengo acceso a todas sus minutas". Si la
+   * persona no existe todavía, se da de alta con su correo y se
+   * engancha sola cuando entre con Google.
+   */
+  const asegurarPersona = useCallback(
+    async (nombre: string, email: string) => {
+      const correo = email.trim().toLowerCase()
+      if (!correo) return undefined
+      const existente = ref.current.usuarios.find((u) => u.email.toLowerCase() === correo)
+      if (existente) return existente
+      const nueva: Usuario = {
+        id: uid('u'),
+        nombre: nombre.trim() || correo,
+        email: correo,
+        alcance: 'usuario',
+        activo: true,
+        creadoEn: new Date().toISOString(),
+      }
+      await persistir('usuarios', nueva)
+      return nueva
+    },
+    [persistir],
+  )
+
+  const sumarInvitado = useCallback(
+    async (reunionId: string, nombre: string, email: string) => {
+      const r = ref.current.reuniones.find((x) => x.id === reunionId)
+      if (!r) return
+      const persona = await asegurarPersona(nombre, email)
+      if (!persona) return
+      if (r.participantesIds.includes(persona.id)) {
+        avisar('Esa persona ya está en la reunión.', 'info')
+        return
+      }
+      await persistir('reuniones', {
+        ...r,
+        participantesIds: [...r.participantesIds, persona.id],
+      })
+      avisar(`${persona.nombre} queda invitada a esta reunión, sin entrar a la sala.`)
+    },
+    [asegurarPersona, persistir, avisar],
   )
 
   const actualizarReunion = useCallback(
@@ -663,14 +747,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const borrarReunion = useCallback(
     async (id: string) => {
-      // Los temas del banco no se pierden: vuelven a quedar sueltos.
+      // Los temas no se pierden: vuelven al temario de quien los escribió.
       for (const t of ref.current.temas.filter((t) => t.reunionId === id)) {
-        await eliminar('temas', t.id)
+        await persistir('temas', {
+          ...t,
+          reunionId: undefined,
+          salaId: undefined,
+          estado: 'banco',
+          orden: 0,
+        })
       }
       await eliminar('reuniones', id)
-      avisar('Reunión eliminada.', 'info')
+      avisar('Reunión eliminada. Los temas volvieron al temario de cada uno.', 'info')
     },
-    [eliminar, avisar],
+    [eliminar, persistir, avisar],
   )
 
   const abrirAgenda = useCallback(
@@ -681,8 +771,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [actualizarReunion, avisar],
   )
 
+  /*
+   * Cerrar el temario es avisar de qué se va a hablar, no trabar la
+   * carga: se pueden seguir sumando temas hasta que la reunión se
+   * cierre. El aviso es opcional, con una casilla en el botón.
+   */
   const cerrarAgenda = useCallback(
-    async (id: string) => {
+    async (id: string, notificar = true) => {
       const r = ref.current.reuniones.find((x) => x.id === id)
       if (!r) return
       const actualizada: Reunion = {
@@ -691,6 +786,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         agendaCerradaEn: new Date().toISOString(),
       }
       await persistir('reuniones', actualizada)
+      if (!notificar) {
+        avisar('Temario cerrado. No se avisó a nadie.', 'info')
+        return
+      }
       const n = await registrarCorreo(
         'agenda_cerrada',
         actualizada,
@@ -698,7 +797,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       )
       avisar(
         n.estado === 'enviado'
-          ? `Temario cerrado y notificado a ${n.destinatarios.length} personas.`
+          ? `Temario cerrado y avisado a ${n.destinatarios.length} personas.`
           : `Temario cerrado. El correo quedó listo para ${n.destinatarios.length} destinatarios.`,
       )
     },
@@ -712,25 +811,87 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [actualizarReunion],
   )
 
+  /*
+   * Cerrar y generar minuta.
+   *
+   * Lo que se habló queda tratado. Lo que no se llegó a hablar no se
+   * pierde: vuelve como "sin tratar" al temario de quien lo propuso y
+   * queda disponible para incluirlo en la próxima —"que le vuelva a la
+   * persona que lo propuso, para que no se olvide"—.
+   *
+   * Si la reunión se repite, la siguiente se crea sola: así en
+   * «Próximas» siempre hay una y nadie tiene que acordarse de armarla.
+   */
   const cerrarReunion = useCallback(
-    async (id: string) => {
+    async (id: string, notificar = true) => {
       const r = ref.current.reuniones.find((x) => x.id === id)
       if (!r) return
+
+      let sinTratar = 0
       for (const t of agendaDe(ref.current, id)) {
-        if (t.estado === 'aprobado') await persistir('temas', { ...t, estado: 'tratado' })
+        if (t.estado !== 'aprobado') continue
+        const seHablo = !!t.conclusiones?.trim() || (t.duracionRealSeg ?? 0) > 0
+        if (seHablo) {
+          await persistir('temas', { ...t, estado: 'tratado' })
+        } else {
+          sinTratar++
+          await persistir('temas', {
+            ...t,
+            estado: 'diferido',
+            reunionId: undefined,
+            orden: 0,
+          })
+        }
       }
+
       const actualizada: Reunion = {
         ...r,
         estado: 'cerrada',
         cerradaEn: new Date().toISOString(),
       }
       await persistir('reuniones', actualizada)
-      const n = await registrarCorreo('minuta', actualizada, correoMinuta(ref.current, actualizada))
-      avisar(
-        n.estado === 'enviado'
-          ? `Minuta enviada a ${n.destinatarios.length} personas.`
-          : `Reunión cerrada. La minuta quedó lista para ${n.destinatarios.length} destinatarios.`,
-      )
+
+      if (r.recurrencia && r.recurrencia !== 'unica') {
+        const dias = RECURRENCIAS[r.recurrencia].dias
+        const siguiente: Reunion = {
+          ...r,
+          id: uid('r'),
+          serieId: r.serieId ?? r.id,
+          fecha: new Date(new Date(r.fecha).getTime() + dias * 86400000).toISOString(),
+          estado: 'agenda_abierta',
+          conclusionesGenerales: undefined,
+          observaciones: undefined,
+          agendaCerradaEn: undefined,
+          iniciadaEn: undefined,
+          cerradaEn: undefined,
+          creadoEn: new Date().toISOString(),
+        }
+        await persistir('reuniones', siguiente)
+      }
+
+      if (notificar) {
+        const n = await registrarCorreo(
+          'minuta',
+          actualizada,
+          correoMinuta(ref.current, actualizada),
+        )
+        avisar(
+          n.estado === 'enviado'
+            ? `Minuta enviada a ${n.destinatarios.length} personas.`
+            : `Minuta generada. Quedó lista para ${n.destinatarios.length} destinatarios.`,
+        )
+      } else {
+        avisar('Minuta generada. No se avisó a nadie.', 'info')
+      }
+
+      if (sinTratar > 0) {
+        avisar(
+          sinTratar === 1
+            ? 'Un tema no se llegó a hablar: volvió al temario de quien lo propuso.'
+            : `${sinTratar} temas no se llegaron a hablar: volvieron al temario de cada uno.`,
+          'info',
+        )
+      }
     },
     [persistir, registrarCorreo, avisar],
   )
@@ -743,8 +904,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [actualizarReunion, avisar],
   )
 
+  /*
+   * La minuta sale cuando el organizador terminó de revisarla, no al
+   * cerrar la reunión: cerrar es generar el borrador, y recién después
+   * de recorrerlo entero se manda.
+   */
+  const enviarMinuta = useCallback(
+    async (id: string) => {
+      const r = ref.current.reuniones.find((x) => x.id === id)
+      if (!r) return
+      const n = await registrarCorreo('minuta', r, correoMinuta(ref.current, r))
+      avisar(
+        n.estado === 'enviado'
+          ? `Minuta enviada a ${n.destinatarios.length} personas.`
+          : `Minuta lista para ${n.destinatarios.length} destinatarios. Falta conectar la casilla de correo.`,
+        n.estado === 'enviado' ? 'ok' : 'info',
+      )
+    },
+    [registrarCorreo, avisar],
+  )
+
   /* ── Temas ──────────────────────────────────────────────── */
 
+  /*
+   * Un tema sin reunión va al temario personal: sin sala, y sólo lo ve
+   * quien lo escribió. Uno con reunión toma la sala de esa reunión.
+   */
   const proponerTema = useCallback(
     async (
       datos: Omit<Tema, 'id' | 'creadoEn' | 'orden' | 'estado' | 'salaId'> & {
@@ -752,26 +937,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
         salaId?: string
       },
     ) => {
-      const sId = datos.salaId ?? salaId
-      if (!sId) return
+      const estado = datos.estado ?? (datos.reunionId ? 'propuesto' : 'banco')
+      const deLaReunion = ref.current.reuniones.find((r) => r.id === datos.reunionId)
+      const sId =
+        estado === 'banco'
+          ? undefined
+          : (deLaReunion?.salaId ?? datos.salaId ?? salaId ?? undefined)
+      if (estado !== 'banco' && !sId) return
       const hermanos = datos.reunionId
         ? ref.current.temas.filter((t) => t.reunionId === datos.reunionId)
         : []
       const t: Tema = {
         ...datos,
         salaId: sId,
+        reunionId: estado === 'banco' ? undefined : datos.reunionId,
         id: uid('t'),
-        estado: datos.estado ?? (datos.reunionId ? 'propuesto' : 'banco'),
+        estado,
         orden: hermanos.length,
         creadoEn: new Date().toISOString(),
       }
       await persistir('temas', t)
       avisar(
         t.estado === 'banco'
-          ? 'Tema guardado en el banco. Va a aparecer cuando se arme la próxima reunión.'
+          ? 'Anotado en tu temario. Lo asignás a la reunión que quieras cuando quieras.'
           : t.estado === 'aprobado'
             ? 'Tema agregado a la agenda.'
-            : 'Tema propuesto. Queda esperando aprobación del organizador.',
+            : 'Tema propuesto. Queda esperando que el organizador lo apruebe.',
       )
     },
     [salaId, persistir, avisar],
@@ -802,28 +993,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const bajarDelBanco = useCallback(
+  /*
+   * Llevar un tema a una reunión: sale del temario y toma la sala de
+   * esa reunión. "Lo saqué de mi mente y lo pasé formalmente a una
+   * reunión" — si se quedara en las dos partes, el bloc no terminaría
+   * nunca de crecer.
+   */
+  const asignarAReunion = useCallback(
     async (temaId: string, reunionId: string) => {
       const t = ref.current.temas.find((x) => x.id === temaId)
-      if (!t) return
+      const r = ref.current.reuniones.find((x) => x.id === reunionId)
+      if (!t || !r) return
       const hermanos = ref.current.temas.filter((x) => x.reunionId === reunionId)
       await persistir('temas', {
         ...t,
+        salaId: r.salaId,
         reunionId,
         estado: 'aprobado',
         orden: hermanos.length,
       })
-      avisar('Tema agregado a la agenda.')
+      avisar(`Tema incluido en «${r.titulo}».`)
     },
     [persistir, avisar],
   )
 
-  const devolverAlBanco = useCallback(
+  const devolverAlTemario = useCallback(
     async (temaId: string) => {
       const t = ref.current.temas.find((x) => x.id === temaId)
       if (!t) return
-      await persistir('temas', { ...t, reunionId: undefined, estado: 'banco', orden: 0 })
-      avisar('Tema devuelto al banco de la sala.', 'info')
+      await persistir('temas', {
+        ...t,
+        reunionId: undefined,
+        salaId: undefined,
+        estado: 'banco',
+        orden: 0,
+      })
+      avisar('Tema devuelto al temario de quien lo propuso.', 'info')
     },
     [persistir, avisar],
   )
@@ -839,7 +1044,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         id: uid('c'),
         creadoEn: new Date().toISOString(),
       })
-      avisar('Compromiso registrado.')
+      avisar('Tarea registrada.')
     },
     [salaId, persistir, avisar],
   )
@@ -983,11 +1188,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       sumarAlaSala, cambiarRolEnSala, sacarDeLaSala, salirDeSala,
       cargarDirectorio, pedirEntrar, retirarSolicitud, resolverSolicitud,
       solicitudesPendientes, misSolicitudes,
-      esSuperadmin, miRol, puedeOrganizar, puedeModerar, compromisosVisibles,
+      esSuperadmin, miRol, puedeOrganizar, puedeModerar, puedeCrearSalas, compromisosVisibles,
       crearReunion, actualizarReunion, borrarReunion,
       abrirAgenda, cerrarAgenda, iniciarReunion, cerrarReunion, reabrirReunion,
+      sumarInvitado, asegurarPersona, enviarMinuta,
       proponerTema, actualizarTema, borrarTema, reordenarTemas,
-      bajarDelBanco, devolverAlBanco,
+      asignarAReunion, devolverAlTemario,
       crearCompromiso, actualizarCompromiso, borrarCompromiso, moverCompromiso,
       guardarUsuario, borrarUsuario, actualizarConfig,
       reenviarNotificacion, restablecerDemo,
@@ -995,14 +1201,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }),
     [
       yo, cargando, vistaPrevia, estado, misSalas, salaActiva, esSuperadmin, miRol,
-      puedeOrganizar, puedeModerar, compromisosVisibles, avisos,
+      puedeOrganizar, puedeModerar, puedeCrearSalas, compromisosVisibles, avisos,
       entrarComoDemo, entrarConGoogle, salir, elegirSala,
       crearSala, actualizarSala, archivarSala, sumarAlaSala, cambiarRolEnSala, sacarDeLaSala,
       salirDeSala, cargarDirectorio, pedirEntrar, retirarSolicitud, resolverSolicitud,
       solicitudesPendientes, misSolicitudes,
       crearReunion, actualizarReunion, borrarReunion, abrirAgenda, cerrarAgenda,
-      iniciarReunion, cerrarReunion, reabrirReunion,
-      proponerTema, actualizarTema, borrarTema, reordenarTemas, bajarDelBanco, devolverAlBanco,
+      iniciarReunion, cerrarReunion, reabrirReunion, enviarMinuta,
+      sumarInvitado, asegurarPersona,
+      proponerTema, actualizarTema, borrarTema, reordenarTemas, asignarAReunion, devolverAlTemario,
       crearCompromiso, actualizarCompromiso, borrarCompromiso, moverCompromiso,
       guardarUsuario, borrarUsuario, actualizarConfig, reenviarNotificacion,
       restablecerDemo, avisar, descartarAviso,

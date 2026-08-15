@@ -17,7 +17,7 @@ import {
    Minuta en PDF.
    Replica el documento que Francisco venía armando a mano:
    participantes / fecha / moderador / próxima reunión, temas con
-   objetivo y proponente, conclusiones, compromisos y observaciones.
+   objetivo y proponente, conclusiones, tareas y observaciones.
    ───────────────────────────────────────────────────────────── */
 
 const NEGRO: [number, number, number] = [10, 10, 10]
@@ -53,7 +53,7 @@ export function construirMinuta(
   doc.setTextColor(255, 255, 255)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(30)
-  doc.text('HARVEY', M, 52)
+  doc.text((estado.config.organizacion || 'Impor Bamas').toUpperCase(), M, 52)
 
   doc.setFillColor(...ROJO)
   doc.rect(M, 62, 30, 3, 'F')
@@ -183,9 +183,9 @@ export function construirMinuta(
     y += 4
   }
 
-  /* ── Próximos compromisos ── */
+  /* ── Próximos pasos ── */
   y = salto(doc, y, 95)
-  y = titulo(doc, 'PRÓXIMOS COMPROMISOS', y)
+  y = titulo(doc, 'PRÓXIMOS PASOS', y)
   if (compromisos.length) {
     autoTable(doc, {
       startY: y,
@@ -205,7 +205,7 @@ export function construirMinuta(
         2: { cellWidth: 74, halign: 'center' },
         3: { cellWidth: 68, halign: 'center' },
       },
-      head: [['ACCIÓN / COMPROMISO', 'RESPONSABLE', 'FECHA LÍMITE', 'ESTADO']],
+      head: [['TAREA', 'RESPONSABLE', 'FECHA LÍMITE', 'ESTADO']],
       body: compromisos.map((c) => [
         c.detalle ? `${c.accion}\n${c.detalle}` : c.accion,
         nombreDe(estado, c.responsableId),
@@ -234,14 +234,14 @@ export function construirMinuta(
     doc.setFont('helvetica', 'italic')
     doc.setFontSize(9)
     doc.setTextColor(...GRIS)
-    doc.text('No se registraron compromisos en esta reunión.', M, y)
+    doc.text('No se registraron tareas en esta reunión.', M, y)
     y += 28
   }
 
   /* ── Arrastre de reuniones anteriores ── */
   if (arrastrados.length) {
     y = salto(doc, y, 95)
-    y = titulo(doc, 'PENDIENTES DE REUNIONES ANTERIORES', y)
+    y = titulo(doc, 'TAREAS QUE SIGUEN ABIERTAS DE ANTES', y)
     autoTable(doc, {
       startY: y,
       margin: { left: M, right: M },
@@ -260,7 +260,7 @@ export function construirMinuta(
         2: { cellWidth: 74, halign: 'center' },
         3: { cellWidth: 68, halign: 'center' },
       },
-      head: [['ACCIÓN / COMPROMISO', 'RESPONSABLE', 'FECHA LÍMITE', 'ESTADO']],
+      head: [['TAREA', 'RESPONSABLE', 'FECHA LÍMITE', 'ESTADO']],
       body: arrastrados.map((c) => [
         c.accion,
         nombreDe(estado, c.responsableId),
@@ -289,7 +289,11 @@ export function construirMinuta(
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7)
     doc.setTextColor(...GRIS)
-    doc.text('HARVEY  ·  MINUTA GENERADA AUTOMÁTICAMENTE', M, alto - 28)
+    doc.text(
+      `${(estado.config.organizacion || 'Impor Bamas').toUpperCase()}  ·  MINUTA GENERADA AUTOMÁTICAMENTE`,
+      M,
+      alto - 28,
+    )
     doc.text(`${i} / ${paginas}`, ancho - M, alto - 28, { align: 'right' })
   }
 
@@ -309,7 +313,7 @@ export function generarMinutaPDF(
    Pendientes de una persona.
 
    Fran lo pidió mirando la pantalla: "quiero que cada uno de mi
-   equipo tenga un listadito de sus pendientes para que lo tengan a
+   equipo tenga el listado de sus tareas para tenerlo a
    mano", porque hay gente que no abre el correo y sí el WhatsApp.
    ───────────────────────────────────────────────────────────── */
 
@@ -332,7 +336,7 @@ export function construirPendientes(
   doc.setTextColor(255, 255, 255)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(30)
-  doc.text('HARVEY', M, 50)
+  doc.text((estado.config.organizacion || 'Impor Bamas').toUpperCase(), M, 50)
 
   doc.setFillColor(...ROJO)
   doc.rect(M, 60, 30, 3, 'F')
@@ -340,7 +344,7 @@ export function construirPendientes(
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(170, 170, 170)
-  doc.text('TUS PENDIENTES', M, 80)
+  doc.text('TUS TAREAS', M, 80)
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(13)
@@ -442,7 +446,11 @@ export function construirPendientes(
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7)
     doc.setTextColor(...GRIS)
-    doc.text('HARVEY  ·  LISTADO GENERADO AUTOMÁTICAMENTE', M, alto - 28)
+    doc.text(
+      `${(estado.config.organizacion || 'Impor Bamas').toUpperCase()}  ·  LISTADO GENERADO AUTOMÁTICAMENTE`,
+      M,
+      alto - 28,
+    )
     doc.text(`${i} / ${paginas}`, ancho - M, alto - 28, { align: 'right' })
   }
 

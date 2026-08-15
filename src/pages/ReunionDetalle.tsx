@@ -1,30 +1,33 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Pencil, Play, Trash2, Unlock } from 'lucide-react'
+import { ArrowLeft, Lock, Pencil, Play, Trash2, UserPlus } from 'lucide-react'
 import { useApp } from '../store/AppContext'
+import { fechaLarga, hora, integrantes, lugaresDe, nombreDe, paraInputDateTime } from '../lib/utils'
 import {
-  fechaLarga,
-  hora,
-  nombreDe,
-  paraInputDateTime,
-} from '../lib/utils'
-import { ESTADO_REUNION, type EstadoReunion, type Reunion } from '../types'
+  ESTADO_REUNION,
+  RECURRENCIAS,
+  type EstadoReunion,
+  type Recurrencia,
+  type Reunion,
+} from '../types'
 import { Avatares, Boton, Campo, Chip, Confirmar, Modal, Vacio } from '../components/ui'
 import FasePre from '../components/reunion/FasePre'
 import FaseVivo from '../components/reunion/FaseVivo'
 import FasePost from '../components/reunion/FasePost'
 
+/** Valor del desplegable de lugar para escribir uno a mano. */
+const OTRO = '__otro__'
+
 type Fase = 'pre' | 'vivo' | 'post'
 
 const FASES: { id: Fase; num: string; texto: string }[] = [
-  { id: 'pre', num: '01', texto: 'Pre-reunión' },
+  { id: 'pre', num: '01', texto: 'Temario' },
   { id: 'vivo', num: '02', texto: 'Reunión' },
-  { id: 'post', num: '03', texto: 'Post-reunión' },
+  { id: 'post', num: '03', texto: 'Minuta' },
 ]
 
 /** Fase que corresponde según el estado de la reunión. */
 function faseSugerida(e: EstadoReunion): Fase {
-  if (e === 'borrador' || e === 'agenda_abierta') return 'pre'
   if (e === 'en_curso') return 'vivo'
   if (e === 'cerrada') return 'post'
   return 'pre'
@@ -33,14 +36,7 @@ function faseSugerida(e: EstadoReunion): Fase {
 export default function ReunionDetalle() {
   const { id } = useParams<{ id: string }>()
   const navegar = useNavigate()
-  const {
-    estado,
-    puedeModerar,
-    puedeOrganizar,
-    iniciarReunion,
-    abrirAgenda,
-    borrarReunion,
-  } = useApp()
+  const { estado, puedeModerar, puedeOrganizar, iniciarReunion, borrarReunion } = useApp()
 
   const reunion = estado.reuniones.find((r) => r.id === id)
   const [fase, setFase] = useState<Fase>(() =>
@@ -109,6 +105,11 @@ export default function ReunionDetalle() {
                 )}
                 {est.nombre}
               </Chip>
+              {reunion.privada && (
+                <Chip title="Sólo la ven quienes participan">
+                  <Lock size={9} /> Privada
+                </Chip>
+              )}
             </div>
 
             <h1 className="display text-3xl sm:text-4xl">{reunion.titulo}</h1>
@@ -131,29 +132,37 @@ export default function ReunionDetalle() {
                 .map((u) => ({ nombre: u!.nombre, url: u!.avatarUrl }))}
             />
             <div className="flex flex-wrap justify-end gap-2">
-              {reunion.estado === 'borrador' && puedeOrganizar && (
-                <Boton tam="sm" variante="solido" onClick={() => abrirAgenda(reunion.id)}>
-                  <Unlock size={12} /> Abrir agenda
-                </Boton>
-              )}
-              {reunion.estado === 'agenda_cerrada' && moderador && (
-                <Boton
-                  tam="sm"
-                  variante="solido"
-                  onClick={() => {
-                    void iniciarReunion(reunion.id)
-                    setFase('vivo')
-                  }}
-                >
-                  <Play size={12} /> Iniciar reunión
-                </Boton>
-              )}
+              {/* Se puede empezar sin haber cerrado el temario: cerrarlo es
+                  avisar de qué se va a hablar, no un requisito. */}
+              {(reunion.estado === 'agenda_cerrada' || reunion.estado === 'agenda_abierta') &&
+                moderador && (
+                  <Boton
+                    tam="sm"
+                    variante="solido"
+                    onClick={() => {
+                      void iniciarReunion(reunion.id)
+                      setFase('vivo')
+                    }}
+                  >
+                    <Play size={12} /> Iniciar reunión
+                  </Boton>
+                )}
               {puedeOrganizar && (
                 <>
-                  <Boton tam="sm" variante="fantasma" onClick={() => setEditando(true)}>
+                  <Boton
+                    tam="sm"
+                    variante="fantasma"
+                    onClick={() => setEditando(true)}
+                    aria-label="Editar la reunión"
+                  >
                     <Pencil size={12} />
                   </Boton>
-                  <Boton tam="sm" variante="fantasma" onClick={() => setPorBorrar(true)}>
+                  <Boton
+                    tam="sm"
+                    variante="fantasma"
+                    onClick={() => setPorBorrar(true)}
+                    aria-label="Eliminar la reunión"
+                  >
                     <Trash2 size={12} />
                   </Boton>
                 </>
@@ -194,24 +203,38 @@ export default function ReunionDetalle() {
       <div className="animate-in">
         {fase === 'pre' && <FasePre reunion={reunion} />}
         {fase === 'vivo' &&
-          (reunion.estado === 'borrador' || reunion.estado === 'agenda_abierta' ? (
+          (reunion.estado === 'en_curso' || reunion.estado === 'cerrada' ? (
+            <FaseVivo reunion={reunion} />
+          ) : (
             <Vacio
               titulo="La reunión todavía no empezó"
-              texto="Cerrá el temario en la pre-reunión y después iniciá la sesión."
-              accion={<Boton onClick={() => setFase('pre')}>Ir a pre-reunión</Boton>}
+              texto="Cuando estén todos, iniciala y arrancás por el seguimiento de lo que quedó de la vez pasada."
+              accion={
+                moderador ? (
+                  <Boton
+                    variante="solido"
+                    onClick={() => {
+                      void iniciarReunion(reunion.id)
+                      setFase('vivo')
+                    }}
+                  >
+                    <Play size={13} /> Iniciar reunión
+                  </Boton>
+                ) : (
+                  <Boton onClick={() => setFase('pre')}>Ver el temario</Boton>
+                )
+              }
             />
-          ) : (
-            <FaseVivo reunion={reunion} />
           ))}
         {fase === 'post' &&
-          (reunion.estado === 'borrador' || reunion.estado === 'agenda_abierta' ? (
+          (reunion.estado === 'en_curso' || reunion.estado === 'cerrada' ? (
+            <FasePost reunion={reunion} />
+          ) : (
             <Vacio
               titulo="Todavía no hay minuta"
               texto="La minuta se arma con lo que se registre durante la reunión."
-              accion={<Boton onClick={() => setFase('pre')}>Ir a pre-reunión</Boton>}
+              accion={<Boton onClick={() => setFase('pre')}>Ver el temario</Boton>}
             />
-          ) : (
-            <FasePost reunion={reunion} />
           ))}
       </div>
 
@@ -224,7 +247,7 @@ export default function ReunionDetalle() {
       <Confirmar
         abierto={porBorrar}
         titulo="Eliminar reunión"
-        texto={`Se elimina “${reunion.titulo}” junto con todos sus temas. Los compromisos quedan en el historial.`}
+        texto={`Se elimina “${reunion.titulo}” junto con todos sus temas. Las tareas quedan en el historial.`}
         textoBoton="Eliminar"
         peligro
         onCancelar={() => setPorBorrar(false)}
@@ -248,15 +271,29 @@ function ModalEditarReunion({
   onCerrar: () => void
   reunion: Reunion
 }) {
-  const { estado, actualizarReunion } = useApp()
+  const { estado, actualizarReunion, sumarInvitado } = useApp()
+  const gente = integrantes(estado, reunion.salaId)
+  const lugares = lugaresDe(estado, reunion.salaId)
+
   const [titulo, setTitulo] = useState(reunion.titulo)
   const [fecha, setFecha] = useState(paraInputDateTime(reunion.fecha))
   const [duracion, setDuracion] = useState(reunion.duracionPrevistaMin)
-  const [lugar, setLugar] = useState(reunion.lugar ?? '')
+  const [lugar, setLugar] = useState(reunion.lugar ?? lugares[0] ?? OTRO)
+  const [otroLugar, setOtroLugar] = useState(
+    reunion.lugar && !lugares.includes(reunion.lugar) ? reunion.lugar : '',
+  )
   const [moderadorId, setModeradorId] = useState(reunion.moderadorId)
-  const [horasCierre, setHorasCierre] = useState(reunion.horasCierreAgenda)
+  const [recurrencia, setRecurrencia] = useState<Recurrencia>(reunion.recurrencia ?? 'unica')
+  const [privada, setPrivada] = useState(reunion.privada ?? false)
   const [participantes, setParticipantes] = useState<string[]>(reunion.participantesIds)
   const [est, setEst] = useState<EstadoReunion>(reunion.estado)
+  const [nuevoNombre, setNuevoNombre] = useState('')
+  const [nuevoEmail, setNuevoEmail] = useState('')
+
+  /* Los de afuera ya están en la reunión aunque no sean de la sala. */
+  const externos = estado.usuarios.filter(
+    (u) => reunion.participantesIds.includes(u.id) && !gente.some((g) => g.id === u.id),
+  )
 
   const alternar = (id: string) =>
     setParticipantes((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
@@ -267,9 +304,10 @@ function ModalEditarReunion({
       titulo,
       fecha: new Date(fecha).toISOString(),
       duracionPrevistaMin: duracion,
-      lugar: lugar || undefined,
+      lugar: (lugar === OTRO ? otroLugar.trim() : lugar) || undefined,
       moderadorId,
-      horasCierreAgenda: horasCierre,
+      recurrencia,
+      privada,
       participantesIds: participantes,
       estado: est,
     })
@@ -277,7 +315,7 @@ function ModalEditarReunion({
   }
 
   return (
-    <Modal abierto={abierto} onCerrar={onCerrar} kicker="Ajustes" titulo="Editar reunión">
+    <Modal abierto={abierto} onCerrar={onCerrar} titulo="Editar reunión">
       <form onSubmit={enviar} className="space-y-4">
         <Campo etiqueta="Título">
           <input className="w-full" value={titulo} onChange={(e) => setTitulo(e.target.value)} />
@@ -306,7 +344,23 @@ function ModalEditarReunion({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Campo etiqueta="Lugar">
-            <input className="w-full" value={lugar} onChange={(e) => setLugar(e.target.value)} />
+            <select className="w-full" value={lugar} onChange={(e) => setLugar(e.target.value)}>
+              {lugares.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+              <option value={OTRO}>Otro…</option>
+            </select>
+            {lugar === OTRO && (
+              <input
+                className="mt-2 w-full"
+                placeholder="¿Dónde se juntan?"
+                aria-label="Otro lugar"
+                value={otroLugar}
+                onChange={(e) => setOtroLugar(e.target.value)}
+              />
+            )}
           </Campo>
           <Campo etiqueta="Modera">
             <select
@@ -314,7 +368,7 @@ function ModalEditarReunion({
               value={moderadorId}
               onChange={(e) => setModeradorId(e.target.value)}
             >
-              {estado.usuarios.filter((u) => u.activo).map((u) => (
+              {gente.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.nombre}
                 </option>
@@ -324,16 +378,20 @@ function ModalEditarReunion({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Campo etiqueta="El temario cierra (h antes)">
-            <input
-              type="number"
-              min={1}
+          <Campo etiqueta="Se repite">
+            <select
               className="w-full"
-              value={horasCierre}
-              onChange={(e) => setHorasCierre(Number(e.target.value))}
-            />
+              value={recurrencia}
+              onChange={(e) => setRecurrencia(e.target.value as Recurrencia)}
+            >
+              {(Object.keys(RECURRENCIAS) as Recurrencia[]).map((r) => (
+                <option key={r} value={r}>
+                  {RECURRENCIAS[r].nombre}
+                </option>
+              ))}
+            </select>
           </Campo>
-          <Campo etiqueta="Estado" ayuda="Sirve para volver atrás en la demo.">
+          <Campo etiqueta="Estado" ayuda="Sirve para volver atrás si algo se adelantó de más.">
             <select
               className="w-full"
               value={est}
@@ -348,33 +406,85 @@ function ModalEditarReunion({
           </Campo>
         </div>
 
-        <Campo etiqueta={`Participantes (${participantes.length})`}>
+        <Campo etiqueta={`Quiénes participan (${participantes.length})`}>
           <div className="grid gap-1.5 sm:grid-cols-2">
-            {estado.usuarios
-              .filter((u) => u.activo)
-              .map((u) => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => alternar(u.id)}
+            {[...gente, ...externos].map((u) => (
+              <button
+                key={u.id}
+                type="button"
+                aria-pressed={participantes.includes(u.id)}
+                onClick={() => alternar(u.id)}
+                className={
+                  participantes.includes(u.id)
+                    ? 'flex items-center gap-2 border border-tinta/60 bg-hueco px-3 py-2 text-left text-xs'
+                    : 'flex items-center gap-2 border border-borde px-3 py-2 text-left text-xs text-suave transition-colors hover:border-suave'
+                }
+              >
+                <span
                   className={
                     participantes.includes(u.id)
-                      ? 'flex items-center gap-2 border border-tinta/60 bg-hueco px-3 py-2 text-left text-xs'
-                      : 'flex items-center gap-2 border border-borde px-3 py-2 text-left text-xs text-suave transition-colors hover:border-suave'
+                      ? 'h-2 w-2 shrink-0 bg-signal'
+                      : 'h-2 w-2 shrink-0 border border-borde2'
                   }
-                >
-                  <span
-                    className={
-                      participantes.includes(u.id)
-                        ? 'h-2 w-2 shrink-0 bg-signal'
-                        : 'h-2 w-2 shrink-0 border border-borde2'
-                    }
-                  />
-                  <span className="truncate">{u.nombre}</span>
-                </button>
-              ))}
+                />
+                <span className="truncate">
+                  {u.nombre}
+                  {externos.some((x) => x.id === u.id) && ' · de afuera'}
+                </span>
+              </button>
+            ))}
           </div>
         </Campo>
+
+        <Campo
+          etiqueta="Sumar a alguien de afuera"
+          ayuda="Entra sólo a esta reunión: no ve el resto de las minutas de la sala."
+        >
+          <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+            <input
+              className="w-full"
+              placeholder="Nombre"
+              aria-label="Nombre de la persona invitada"
+              value={nuevoNombre}
+              onChange={(e) => setNuevoNombre(e.target.value)}
+            />
+            <input
+              type="email"
+              className="w-full"
+              placeholder="Correo"
+              aria-label="Correo de la persona invitada"
+              value={nuevoEmail}
+              onChange={(e) => setNuevoEmail(e.target.value)}
+            />
+            <Boton
+              type="button"
+              onClick={async () => {
+                if (!nuevoEmail.trim()) return
+                await sumarInvitado(reunion.id, nuevoNombre, nuevoEmail)
+                setNuevoNombre('')
+                setNuevoEmail('')
+                onCerrar()
+              }}
+            >
+              <UserPlus size={12} /> Sumar
+            </Boton>
+          </div>
+        </Campo>
+
+        <label className="flex items-start gap-2.5 border border-borde p-3 text-xs">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={privada}
+            onChange={(e) => setPrivada(e.target.checked)}
+          />
+          <span>
+            <span className="block text-tinta">Reunión privada</span>
+            <span className="mt-0.5 block text-tenue">
+              No se lista para el resto de la sala: la ven sólo quienes participan.
+            </span>
+          </span>
+        </label>
 
         <div className="flex justify-end gap-2 pt-2">
           <Boton type="button" variante="fantasma" onClick={onCerrar}>

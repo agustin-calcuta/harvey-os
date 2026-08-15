@@ -13,28 +13,24 @@ import {
   LayoutDashboard,
   ListChecks,
   LogOut,
-  Mail,
   Menu,
   Settings,
   X,
 } from 'lucide-react'
 import { useApp } from '../store/AppContext'
-import {
-  bancoDe,
-  cx,
-  cuentaRegresiva,
-  deadlineAgenda,
-  estaVencido,
-  proximaReunion,
-} from '../lib/utils'
-import { ROLES_SALA } from '../types'
+import { cx, estaVencido, proximasReuniones, temarioDe, temasSinTratar } from '../lib/utils'
+import { ESTADO_REUNION, ROLES_SALA } from '../types'
 
+/*
+ * «Correos» salió del menú: mostraba vistas previas de mensajes sin
+ * configurar y confundía más de lo que ayudaba. El registro sigue
+ * existiendo, en Administración, para cuando haga falta revisarlo.
+ */
 const NAV = [
   { a: '/', icono: LayoutDashboard, texto: 'Panel', exacto: true },
   { a: '/reuniones', icono: CalendarDays, texto: 'Reuniones' },
   { a: '/temario', icono: Inbox, texto: 'Temario' },
-  { a: '/compromisos', icono: ListChecks, texto: 'Compromisos' },
-  { a: '/correos', icono: Mail, texto: 'Correos' },
+  { a: '/compromisos', icono: ListChecks, texto: 'Tareas' },
   { a: '/salas', icono: DoorOpen, texto: 'Salas' },
 ]
 
@@ -73,12 +69,19 @@ export default function Layout() {
     (c) => c.responsableId === yo?.id && c.estado !== 'hecho',
   )
   const vencidos = compromisosVisibles.filter((c) => estaVencido(c))
-  const proxima = salaActiva ? proximaReunion(estado, salaActiva.id) : undefined
-  const enBanco = salaActiva ? bancoDe(estado, salaActiva.id).length : 0
+  // Por `proximasReuniones` y no por la primera de la sala: una reunión
+  // privada no tiene que asomar acá para quien no participa.
+  const proxima = salaActiva ? proximasReuniones(estado, yo, salaActiva.id)[0] : undefined
+  // El temario es personal: cuenta lo mío, no lo de la sala.
+  const enTemario =
+    temarioDe(estado, yo?.id).length + temasSinTratar(estado, undefined, yo?.id).length
 
   const enlaces = esSuperadmin
     ? [...NAV, { a: '/admin', icono: Settings, texto: 'Administración' }]
     : NAV
+
+  // La marca sale de la configuración: la usan para todas sus sociedades.
+  const marca = estado.config.organizacion || 'Impor Bamas'
 
   return (
     <div className="flex min-h-screen">
@@ -93,8 +96,8 @@ export default function Layout() {
       >
         <div className="flex items-center justify-between px-5 py-5">
           <button onClick={() => navegar('/')} className="text-left">
-            <div className="display text-2xl leading-none">Harvey</div>
-            <div className="label mt-1">Sistema de reuniones</div>
+            <div className="display text-2xl leading-none">{marca}</div>
+            <div className="label mt-1">Reuniones y minutas</div>
           </button>
           <button
             className="text-white/50 lg:hidden"
@@ -189,12 +192,12 @@ export default function Layout() {
                     </span>
                   )
                 ))}
-              {n.a === '/temario' && enBanco > 0 && (
+              {n.a === '/temario' && enTemario > 0 && (
                 <span
                   className="bg-white/15 px-1.5 py-0.5 text-[9px] text-white"
-                  title={`${enBanco} en el banco`}
+                  title={`${enTemario} temas anotados`}
                 >
-                  {enBanco}
+                  {enTemario}
                 </span>
               )}
               {/* Alguien esperando entrar a una sala que organizo. */}
@@ -220,16 +223,9 @@ export default function Layout() {
           >
             <div className="label mb-1.5">Próxima reunión</div>
             <div className="mb-2 text-xs leading-snug text-white/85">{proxima.titulo}</div>
-            {proxima.estado === 'agenda_abierta' && !proxima.cierreManual ? (
-              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[#E8A33D]">
-                <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-[#E8A33D]" />
-                Cierra en {cuentaRegresiva(deadlineAgenda(proxima)).texto}
-              </div>
-            ) : (
-              <span className="inline-flex border border-white/25 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-white/60">
-                {proxima.estado.replace('_', ' ')}
-              </span>
-            )}
+            <span className="inline-flex border border-white/25 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-white/60">
+              {ESTADO_REUNION[proxima.estado].nombre}
+            </span>
           </button>
         )}
 
@@ -273,7 +269,7 @@ export default function Layout() {
             <Menu size={20} />
           </button>
           <button onClick={() => navegar('/')} className="display text-lg">
-            Harvey
+            {marca}
           </button>
           <span className="ml-auto truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-suave">
             {salaActiva?.nombre ?? ''}
@@ -302,7 +298,7 @@ export default function Layout() {
 
         <footer className="border-t border-borde px-6 py-4">
           <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-tenue">
-            <span>Harvey · vista previa</span>
+            <span>{marca} · reuniones y minutas</span>
             <span>Desarrollado por Calcuta</span>
           </div>
         </footer>

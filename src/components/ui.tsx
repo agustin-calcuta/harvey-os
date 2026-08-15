@@ -415,6 +415,65 @@ export function Metrica({
   )
 }
 
+/**
+ * Acceso directo del panel.
+ *
+ * Lo primero que se ve al entrar: *"tenés botones de acción, apenas
+ * entrás a tu home tenés todos los shortcuts, porque eso es lo más
+ * importante"*.
+ */
+export function Atajo({
+  a,
+  icono,
+  titulo,
+  detalle,
+}: {
+  a: string
+  icono: ReactNode
+  titulo: string
+  detalle: string
+}) {
+  return (
+    <Link
+      to={a}
+      className="card group flex items-start gap-3 p-4 transition-colors hover:border-signal"
+    >
+      <span className="mt-0.5 shrink-0 text-suave transition-colors group-hover:text-signal">
+        {icono}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm transition-colors group-hover:text-signal">{titulo}</span>
+        <span className="mt-0.5 block text-xs leading-snug text-tenue">{detalle}</span>
+      </span>
+    </Link>
+  )
+}
+
+/**
+ * Barra pegada al pie con la acción que cierra la pantalla.
+ *
+ * *"Tiene que estar flotante siempre, es el típico submit"*: se venía
+ * perdiendo al final de una página larga y nadie la encontraba.
+ */
+export function BarraFlotante({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <div
+      className={cx(
+        'sticky bottom-0 z-20 -mx-4 mt-6 border-t border-borde bg-fondo/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6',
+        className,
+      )}
+    >
+      <div className="flex flex-wrap items-center justify-end gap-3">{children}</div>
+    </div>
+  )
+}
+
 /* ── Confirmación ─────────────────────────────────────────── */
 
 export function Confirmar({

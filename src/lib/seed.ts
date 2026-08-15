@@ -53,21 +53,24 @@ const socio = (
   nombre: string,
   email: string,
   cargo: string,
+  puedeCrearSalas = false,
 ): Usuario => ({
   id,
   nombre,
   email,
   alcance: 'usuario',
+  puedeCrearSalas,
   cargo,
   activo: true,
   creadoEn: en(-120),
 })
 
 export const USUARIOS: Usuario[] = [
-  socio('u_matias', 'Matías Harvey', 'matias@harveywillys.com', 'Socio · Operaciones'),
-  socio('u_tomas', 'Tomás Harvey', 'tomas@harveywillys.com', 'Socio · Producto y diseño'),
-  socio('u_nico', 'Nicolás Harvey', 'nicolas@harveywillys.com', 'Socio · Comercial y retail'),
-  socio('u_lucas', 'Lucas Harvey', 'lucas@harveywillys.com', 'Socio · Marketing y comunidad'),
+  // Abrir salas es de los socios; el resto crea reuniones en las suyas.
+  socio('u_matias', 'Matías Harvey', 'matias@harveywillys.com', 'Socio · Operaciones', true),
+  socio('u_tomas', 'Tomás Harvey', 'tomas@harveywillys.com', 'Socio · Producto y diseño', true),
+  socio('u_nico', 'Nicolás Harvey', 'nicolas@harveywillys.com', 'Socio · Comercial y retail', true),
+  socio('u_lucas', 'Lucas Harvey', 'lucas@harveywillys.com', 'Socio · Marketing y comunidad', true),
 
   // Gente de los equipos, que en su sala son miembros.
   socio('u_renata', 'Renata Sosa', 'renata@harveywillys.com', 'Diseño · Moldería'),
@@ -95,10 +98,11 @@ export const SALAS: Sala[] = [
     descripcion: 'La reunión semanal de los cuatro. Acá están todos a la par.',
     cadencia: 'Lunes 10:00',
     horasCierreAgenda: 24,
-    cierreManual: false,
+    cierreManual: true,
     duracionReunionDefaultMin: 60,
     duracionTemaDefaultMin: 15,
     lugarHabitual: 'Showroom Palermo',
+    lugares: ['Showroom Palermo', 'Fábrica', 'Meet'],
     creadaPor: 'u_matias',
     creadaEn: en(-130),
     archivada: false,
@@ -109,10 +113,11 @@ export const SALAS: Sala[] = [
     descripcion: 'Tomás con el equipo de producto y moldería.',
     cadencia: 'Miércoles 15:00',
     horasCierreAgenda: 12,
-    cierreManual: false,
+    cierreManual: true,
     duracionReunionDefaultMin: 45,
     duracionTemaDefaultMin: 15,
     lugarHabitual: 'Taller',
+    lugares: ['Taller', 'Fábrica', 'Meet'],
     creadaPor: 'u_tomas',
     creadaEn: en(-60),
     archivada: false,
@@ -123,10 +128,11 @@ export const SALAS: Sala[] = [
     descripcion: 'Lucas con el equipo de contenido y comunidad.',
     cadencia: 'Jueves 11:00',
     horasCierreAgenda: 24,
-    // Equipo chico: el temario lo cierra Lucas cuando quiere.
+    // El temario lo cierra Lucas cuando quiere, como en todas.
     cierreManual: true,
     duracionReunionDefaultMin: 45,
     duracionTemaDefaultMin: 10,
+    lugares: ['Meet', 'Showroom Palermo'],
     creadaPor: 'u_lucas',
     creadaEn: en(-45),
     archivada: false,
@@ -163,9 +169,16 @@ const R_ANTERIOR = 'r_s12'
 const R_PASADA = 'r_s13'
 const R_HOY = 'r_s14'
 const R_PROXIMA = 'r_s15'
-const R_SIGUIENTE = 'r_s16'
 const R_DISENO = 'r_d01'
 const R_MKT = 'r_m01'
+const R_PRIVADA = 'r_m02'
+
+/*
+ * Las de socios son una misma serie semanal: en «Próximas» se ve sólo
+ * la primera —"no voy a proponer un tema para la 18 cuando todavía no
+ * tuve la 17"— y la siguiente se crea sola al cerrar cada una.
+ */
+const SERIE_SOCIOS = 'serie_socios'
 
 export const REUNIONES: Reunion[] = [
   {
@@ -178,8 +191,10 @@ export const REUNIONES: Reunion[] = [
     moderadorId: 'u_matias',
     participantesIds: SOCIOS,
     estado: 'cerrada',
+    recurrencia: 'semanal',
+    serieId: SERIE_SOCIOS,
     horasCierreAgenda: 24,
-    cierreManual: false,
+    cierreManual: true,
     conclusionesGenerales:
       'Se aprobó el presupuesto de la campaña de invierno y se definió adelantar el drop cápsula a la primera semana de agosto. Queda pendiente cerrar el proveedor de denim: el taller actual viene con dos semanas de atraso sostenido.',
     observaciones:
@@ -201,8 +216,10 @@ export const REUNIONES: Reunion[] = [
     moderadorId: 'u_matias',
     participantesIds: SOCIOS,
     estado: 'cerrada',
+    recurrencia: 'semanal',
+    serieId: SERIE_SOCIOS,
     horasCierreAgenda: 24,
-    cierreManual: false,
+    cierreManual: true,
     conclusionesGenerales:
       'Se cerró la lista de precios de primavera/verano con un ajuste promedio del 18%. Nicolás presentó los números del local de Córdoba: el punto de equilibrio se alcanza recién en el cuarto mes, se decide seguir adelante igual. El equipo acordó que las reuniones pasen a tener temario cargado con 24 h de anticipación.',
     observaciones:
@@ -224,8 +241,10 @@ export const REUNIONES: Reunion[] = [
     moderadorId: 'u_matias',
     participantesIds: SOCIOS,
     estado: 'agenda_cerrada',
+    recurrencia: 'semanal',
+    serieId: SERIE_SOCIOS,
     horasCierreAgenda: 24,
-    cierreManual: false,
+    cierreManual: true,
     proximaReunionFecha: proximoLunes(),
     agendaCerradaEn: en(-1),
     creadoPor: 'u_matias',
@@ -241,26 +260,13 @@ export const REUNIONES: Reunion[] = [
     moderadorId: 'u_matias',
     participantesIds: SOCIOS,
     estado: 'agenda_abierta',
+    recurrencia: 'semanal',
+    serieId: SERIE_SOCIOS,
     horasCierreAgenda: 24,
-    cierreManual: false,
+    cierreManual: true,
     proximaReunionFecha: proximoLunes(1),
     creadoPor: 'u_matias',
     creadoEn: en(-2),
-  },
-  {
-    id: R_SIGUIENTE,
-    salaId: S_GERENCIAL,
-    titulo: 'Reunión semanal de socios · #16',
-    fecha: proximoLunes(1),
-    duracionPrevistaMin: 60,
-    lugar: 'Showroom Palermo',
-    moderadorId: 'u_matias',
-    participantesIds: SOCIOS,
-    estado: 'borrador',
-    horasCierreAgenda: 24,
-    cierreManual: false,
-    creadoPor: 'u_matias',
-    creadoEn: en(-1),
   },
 
   {
@@ -274,7 +280,7 @@ export const REUNIONES: Reunion[] = [
     participantesIds: ['u_tomas', 'u_renata', 'u_juli'],
     estado: 'agenda_abierta',
     horasCierreAgenda: 12,
-    cierreManual: false,
+    cierreManual: true,
     creadoPor: 'u_tomas',
     creadoEn: en(-3),
   },
@@ -297,6 +303,27 @@ export const REUNIONES: Reunion[] = [
     cerradaEn: en(-4, 12, 0),
     creadoPor: 'u_lucas',
     creadoEn: en(-8),
+  },
+  /*
+   * Privada: el caso que trajo Fran —"¿por qué tiene que enterarse la
+   * otra persona de la sala?"—. No se lista para el resto de
+   * Marketing: la ven Lucas y Pedro, y nadie más.
+   */
+  {
+    id: R_PRIVADA,
+    salaId: S_MARKETING,
+    titulo: 'Seguimiento individual · Pedro',
+    fecha: en(2, 9, 30),
+    duracionPrevistaMin: 30,
+    lugar: 'Meet',
+    moderadorId: 'u_lucas',
+    participantesIds: ['u_lucas', 'u_pedro'],
+    estado: 'agenda_abierta',
+    privada: true,
+    horasCierreAgenda: 24,
+    cierreManual: true,
+    creadoPor: 'u_lucas',
+    creadoEn: en(-1),
   },
 ]
 
@@ -375,7 +402,7 @@ export const TEMAS: Tema[] = [
   },
   {
     id: 't_8', salaId: S_GERENCIAL, reunionId: R_HOY,
-    titulo: 'Repaso de compromisos abiertos',
+    titulo: 'Repaso de tareas abiertas',
     detalle: 'Bloque fijo al inicio: se abre el tablero y se repasa lo que quedó de antes.',
     importancia: 'media', objetivo: 'informativa', propuestoPor: 'u_matias',
     duracionMin: 10, estado: 'aprobado', orden: 1, creadoEn: en(-5),
@@ -394,13 +421,18 @@ export const TEMAS: Tema[] = [
     importancia: 'baja', objetivo: 'informativa', propuestoPor: 'u_nico',
     duracionMin: 10, estado: 'aprobado', orden: 3, creadoEn: en(-4),
   },
+  /*
+   * Quedó fuera de la #14 y no se perdió: conserva la sala, así el
+   * organizador lo puede incluir en la próxima, y a Tomás le vuelve a
+   * aparecer en su temario como "sin tratar".
+   */
   {
-    id: 't_11', salaId: S_GERENCIAL, reunionId: R_HOY,
+    id: 't_11', salaId: S_GERENCIAL,
     titulo: 'Rediseño del packaging',
     detalle: 'Tomás trajo tres opciones de bolsa.',
     importancia: 'baja', objetivo: 'exploratoria', propuestoPor: 'u_tomas',
-    duracionMin: 10, estado: 'diferido', orden: 4,
-    motivoRechazo: 'No entra en los 60 minutos. Pasa a la próxima.',
+    duracionMin: 10, estado: 'diferido', orden: 0,
+    motivoRechazo: 'No entró en los 60 minutos de la #14.',
     creadoEn: en(-4),
   },
 
@@ -421,13 +453,6 @@ export const TEMAS: Tema[] = [
     duracionMin: 15, estado: 'aprobado', orden: 1, creadoEn: en(-2),
   },
   {
-    id: 't_14', salaId: S_GERENCIAL, reunionId: R_PROXIMA,
-    titulo: 'Rediseño del packaging',
-    detalle: 'Viene diferido de la #14. Tres opciones de bolsa para elegir.',
-    importancia: 'baja', objetivo: 'decision', propuestoPor: 'u_tomas',
-    duracionMin: 10, estado: 'propuesto', orden: 2, creadoEn: en(-1),
-  },
-  {
     id: 't_15', salaId: S_GERENCIAL, reunionId: R_PROXIMA,
     titulo: 'Cambiar el proveedor de envíos',
     detalle: 'Vienen mal las entregas del interior, hay muchos reclamos.',
@@ -435,24 +460,25 @@ export const TEMAS: Tema[] = [
     duracionMin: 15, estado: 'propuesto', orden: 3, creadoEn: en(0, 9, 30),
   },
 
-  /* ── Banco de la sala de socios ──
-     Temas anotados sin reunión: lo que Fran llamó "banco de suplentes". */
+  /* ── Temarios personales ──
+     El bloc de notas de cada uno: sin sala y sin reunión, y sólo lo ve
+     quien lo escribió. Después decide a qué reunión lo lleva. */
   {
-    id: 't_b1', salaId: S_GERENCIAL,
+    id: 't_b1',
     titulo: 'Revisar el seguro del showroom',
     detalle: 'Vence en octubre y nunca lo comparamos con otras aseguradoras.',
     importancia: 'baja', objetivo: 'informativa', propuestoPor: 'u_nico',
     duracionMin: 10, estado: 'banco', orden: 0, creadoEn: en(-9),
   },
   {
-    id: 't_b2', salaId: S_GERENCIAL,
+    id: 't_b2',
     titulo: 'Sistema de talles: sumar XXL',
     detalle: 'Nos lo piden mucho por Instagram. Impacta en moldería y en costos de tela.',
     importancia: 'media', objetivo: 'exploratoria', propuestoPor: 'u_lucas',
     duracionMin: 15, estado: 'banco', orden: 0, creadoEn: en(-6),
   },
   {
-    id: 't_b3', salaId: S_GERENCIAL,
+    id: 't_b3',
     titulo: 'Vacaciones de enero: quién cubre qué',
     importancia: 'media', objetivo: 'decision', propuestoPor: 'u_matias',
     duracionMin: 15, estado: 'banco', orden: 0, creadoEn: en(-2),
@@ -474,7 +500,7 @@ export const TEMAS: Tema[] = [
     duracionMin: 15, estado: 'propuesto', orden: 1, creadoEn: en(-1),
   },
   {
-    id: 't_d3', salaId: S_DISENO,
+    id: 't_d3',
     titulo: 'Probar el proveedor de avíos nuevo',
     detalle: 'Mandaron muestras de cierres y botones. Verlas antes de la próxima temporada.',
     importancia: 'baja', objetivo: 'exploratoria', propuestoPor: 'u_renata',
@@ -502,7 +528,7 @@ export const TEMAS: Tema[] = [
   },
 ]
 
-/* ── Compromisos ──────────────────────────────────────────── */
+/* ── Tareas ──────────────────────────────────────────── */
 
 export const COMPROMISOS: Compromiso[] = [
   {
@@ -531,7 +557,7 @@ export const COMPROMISOS: Compromiso[] = [
   {
     id: 'c_4', salaId: S_GERENCIAL, reunionId: R_ANTERIOR, temaId: 't_3',
     accion: 'Armar el calendario de contenido del drop cápsula',
-    responsableId: 'u_lucas', fechaLimite: en(-9), importancia: 'media', estado: 'bloqueado',
+    responsableId: 'u_lucas', fechaLimite: en(-9), importancia: 'media', estado: 'en_curso',
     avance: 'Frenado hasta tener las fotos del shooting. El fotógrafo reprogramó dos veces.',
     creadoEn: en(-25),
   },
@@ -615,7 +641,7 @@ export const COMPROMISOS: Compromiso[] = [
   {
     id: 'c_m3', salaId: S_MARKETING, reunionId: R_MKT, temaId: 't_m2',
     accion: 'Confirmar fecha nueva con el fotógrafo',
-    responsableId: 'u_lucas', fechaLimite: en(-2), importancia: 'alta', estado: 'bloqueado',
+    responsableId: 'u_lucas', fechaLimite: en(-2), importancia: 'alta', estado: 'en_curso',
     avance: 'No contesta desde el martes.', creadoEn: en(-4),
   },
 ]
@@ -663,7 +689,7 @@ export const ESTADO_INICIAL: Estado = {
   compromisos: COMPROMISOS,
   notificaciones: NOTIFICACIONES,
   config: {
-    organizacion: 'Harvey',
+    organizacion: 'Impor Bamas',
     emailsActivos: true,
   },
 }

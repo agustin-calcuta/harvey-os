@@ -50,7 +50,8 @@ con al menos dos o tres definidas y creadas en el momento.
 
 **Recordar:** el organizador de una sala aprueba temas, asigna tiempos, cierra el
 temario, modera y decide quién entra. El miembro propone temas, participa y sigue
-sus propios compromisos.
+sus propias tareas. **Abrir salas nuevas es de los socios**; crear reuniones,
+de cualquiera.
 
 ---
 
@@ -85,8 +86,9 @@ alguien de Calcuta).
 
 ### 3.1 El logo
 
-El monograma que usan de foto en Instagram, en **SVG o PNG con fondo
-transparente**. Instagram no deja descargarlo en calidad usable.
+Ahora es el de **Impor Bamas**, no el de Harvey: la van a usar para todas sus
+sociedades. Hace falta en **SVG o PNG con fondo transparente**, y confirmar cómo
+se escribe —en la minuta figura "Imporbamas" y "Impor Bamas"—.
 
 Va en la barra lateral, en la pestaña del navegador y en la cabecera del PDF de
 la minuta.
@@ -108,13 +110,12 @@ para confirmar, no para trabar nada.
 | Día y hora fijos | Lunes 10:00 | |
 | Cuánto duran | 60 minutos | |
 | Cuánto dura cada tema | 15 minutos | |
-| Cuándo cierra el temario | 24 h antes | |
+
 | Dónde se hacen | Showroom Palermo | |
 
-Sobre el cierre del temario: Fran propuso 24 h para que todos lleguen habiendo
-leído. Ahora también se puede **cerrar a mano**, sin plazo, y cada sala lo elige
-por separado. Vale preguntar qué prefieren para cada equipo — la de socios con
-plazo y las de equipo a mano suele funcionar mejor.
+Sobre el cierre del temario: el plazo automático se sacó en la reunión del 14.
+Lo cierra el organizador cuando quiere, y un tema de último momento entra igual
+—*"si te olvidaste de cargarlo, decímelo igual un minuto antes"*—.
 
 ---
 
@@ -131,8 +132,10 @@ recuperar para la próxima.
 
 ### 5.2 ¿Qué pasa con lo que no se trata?
 
-Hoy el organizador puede **diferir** (queda para la próxima) o **rechazar** (sale
-de la lista). Preguntar si usan las dos o alcanza con diferir.
+Lo que no se llega a hablar **vuelve solo al temario de quien lo propuso** y
+queda disponible para incluirlo en la próxima. El organizador además puede
+**rechazar** un tema, que lo saca de la lista. Preguntar si usan el rechazo o
+alcanza con que vuelva.
 
 ---
 
@@ -140,8 +143,8 @@ de la lista). Preguntar si usan las dos o alcanza con diferir.
 
 ### 6.1 ¿Cargamos lo que ya tienen abierto?
 
-Lo más útil para que lo usen desde el día uno: que traigan **los compromisos que
-hoy están dando vueltas** — quién quedó a cargo de qué y para cuándo. Se cargan
+Lo más útil para que lo usen desde el día uno: que traigan **las tareas que hoy
+están dando vueltas** — quién quedó a cargo de qué y para cuándo. Se cargan
 antes de la primera reunión y arrancan viendo su propia realidad, no datos de
 ejemplo.
 
@@ -157,7 +160,7 @@ Y cuándo la van a hacer. Conviene acompañar esa primera para que no se traben.
 
 ### 7.1 La pantalla de Google dice "neon.tech"
 
-Al entrar con Google aparece *"Ir a neon.tech"* en lugar de *"Harvey"*. Funciona
+Al entrar con Google aparece *"Ir a neon.tech"* en lugar del nombre de ellos. Funciona
 perfecto, es sólo estético. Se arregla registrando una aplicación propia: media
 hora de trabajo.
 
@@ -180,8 +183,9 @@ momento si quedan así o pasan a nombre de ellos.
 **Lo mínimo indispensable, todo lo demás puede esperar:**
 
 1. **Los correos de Google** de quienes organizan cada sala.
-2. **Qué salas arrancan** y quién organiza cada una.
+2. **Qué salas arrancan**, quién organiza cada una y **quiénes pueden abrir
+   salas nuevas** (quedó definido que son los cuatro socios).
 3. **Desde qué casilla** salen los correos automáticos.
-4. **El logo** en SVG o PNG.
+4. **El logo de Impor Bamas** en SVG o PNG.
 
 Con esas cuatro cosas el tablero queda andando en el día.

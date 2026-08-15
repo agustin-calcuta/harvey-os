@@ -46,6 +46,22 @@ language sql stable security definer set search_path = public as $$
   )
 $$;
 
+/**
+ * Quién puede abrir una sala nueva.
+ *
+ * Se decidió que sean sólo los socios: el resto crea reuniones dentro
+ * de las salas que ya existen. Se marca persona por persona desde
+ * Administración y el trigger de abajo impide que alguien se lo dé a
+ * sí mismo.
+ */
+create or replace function public.puedo_crear_salas() returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce(
+    (select "puedeCrearSalas" from public.usuarios where id = public.mi_usuario_id()),
+    false
+  ) or public.soy_superadmin()
+$$;
+
 /* ── Pertenencia a salas ─────────────────────────────────── */
 
 create or replace function public.soy_de_la_sala(sala text) returns boolean
@@ -62,6 +78,27 @@ language sql stable security definer set search_path = public as $$
     select 1 from public.membresias m
     where m."salaId" = sala and m."usuarioId" = public.mi_usuario_id()
       and m.rol = 'organizador'
+  )
+$$;
+
+/**
+ * ¿Me sumaron a esta reunión?
+ *
+ * Es lo que hace posible sumarse a una reunión sin entrar a la sala:
+ * *"si soy de diseño y me quiero sumar a una reunión de marketing, no
+ * me sumo a la sala de marketing y tengo acceso a todas sus minutas;
+ * me sumo a esa reunión"*. Da acceso a esa reunión y a lo que cuelga
+ * de ella, nada más.
+ */
+create or replace function public.participo_de_la_reunion(reunion text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.reuniones r
+    where r.id = reunion
+      and (
+        public.mi_usuario_id() = any (r."participantesIds")
+        or r."moderadorId" = public.mi_usuario_id()
+      )
   )
 $$;
 
@@ -119,7 +156,8 @@ where not s.archivada;
 /*
  * Nadie se auto-asciende ni se vuelve superadmin solo. Al crear o
  * modificar la propia ficha, el alcance queda congelado salvo que
- * quien escribe ya sea superadmin.
+ * quien escribe ya sea superadmin. Lo mismo con el permiso de crear
+ * salas: se otorga, no se toma.
  *
  * El trigger sólo actúa sobre escrituras con JWT, es decir las que
  * llegan por la Data API. Una carga administrativa por SQL directo
@@ -142,6 +180,8 @@ begin
   end if;
 
   new.alcance := case when tg_op = 'INSERT' then 'usuario' else old.alcance end;
+  new."puedeCrearSalas" :=
+    case when tg_op = 'INSERT' then false else old."puedeCrearSalas" end;
   return new;
 end;
 $$;
@@ -231,6 +271,7 @@ alter default privileges in schema public
 
 grant execute on function public.mi_usuario_id, public.mi_email, public.soy_superadmin,
                           public.soy_de_la_sala, public.organizo_la_sala,
+                          public.puedo_crear_salas, public.participo_de_la_reunion,
                           public.mis_salas, public.clave_nombre to authenticated;
 
 -- El directorio es de sólo lectura. El `grant on all tables` de arriba lo
@@ -267,6 +308,13 @@ create policy usuarios_leer on public.usuarios
       where mios."usuarioId" = public.mi_usuario_id()
         and suyas."usuarioId" = public.usuarios.id
         and mios."salaId" = suyas."salaId"
+    )
+    -- Un invitado de afuera tiene que poder ver con quiénes se reúne,
+    -- y el equipo tiene que poder verlo a él.
+    or exists (
+      select 1 from public.reuniones r
+      where public.mi_usuario_id() = any (r."participantesIds")
+        and public.usuarios.id = any (r."participantesIds")
     )
   );
 
@@ -326,9 +374,10 @@ drop policy if exists salas_borrar on public.salas;
 create policy salas_leer on public.salas
   for select to authenticated using (public.soy_de_la_sala(id));
 
--- Cualquiera puede armar la sala de su equipo; queda como organizador.
+-- Abrir una sala es de los socios. Quien la crea queda como su
+-- organizador. Todos los demás crean reuniones dentro de las que hay.
 create policy salas_alta on public.salas
-  for insert to authenticated with check (true);
+  for insert to authenticated with check (public.puedo_crear_salas());
 
 create policy salas_editar on public.salas
   for update to authenticated
@@ -400,7 +449,11 @@ create policy solicitudes_borrar on public.solicitudes
     or public.organizo_la_sala("salaId")
   );
 
-/* reuniones ─ las minutas se ven por sala, no por asistencia */
+/*
+ * reuniones ─ las minutas se ven por sala, salvo dos excepciones:
+ * la reunión privada, que sólo ven quienes están en ella, y el
+ * invitado de afuera, que ve esa reunión y nada más de la sala.
+ */
 
 drop policy if exists reuniones_leer   on public.reuniones;
 drop policy if exists reuniones_alta   on public.reuniones;
@@ -408,10 +461,17 @@ drop policy if exists reuniones_editar on public.reuniones;
 drop policy if exists reuniones_borrar on public.reuniones;
 
 create policy reuniones_leer on public.reuniones
-  for select to authenticated using (public.soy_de_la_sala("salaId"));
+  for select to authenticated
+  using (
+    public.soy_superadmin()
+    or (not privada and public.soy_de_la_sala("salaId"))
+    or public.mi_usuario_id() = any ("participantesIds")
+    or "moderadorId" = public.mi_usuario_id()
+  );
 
+-- Crear reuniones puede cualquiera de la sala; crear salas, no.
 create policy reuniones_alta on public.reuniones
-  for insert to authenticated with check (public.organizo_la_sala("salaId"));
+  for insert to authenticated with check (public.soy_de_la_sala("salaId"));
 
 -- Modera quien organiza la sala, o quien esté designado moderador.
 create policy reuniones_editar on public.reuniones
@@ -422,7 +482,14 @@ create policy reuniones_editar on public.reuniones
 create policy reuniones_borrar on public.reuniones
   for delete to authenticated using (public.organizo_la_sala("salaId"));
 
-/* temas ─ cualquiera de la sala propone, el organizador dispone */
+/*
+ * temas ─ el temario es privado; en una reunión, el equipo lo ve.
+ *
+ * Mientras el tema está en el bloc de notas personal no tiene sala y
+ * sólo lo ve quien lo escribió: *"a vos no te interesa ver el temario
+ * que yo quiero cargar"*. En cuanto se asigna a una reunión toma la
+ * sala de esa reunión y pasa a ser del equipo.
+ */
 
 drop policy if exists temas_leer   on public.temas;
 drop policy if exists temas_alta   on public.temas;
@@ -430,10 +497,20 @@ drop policy if exists temas_editar on public.temas;
 drop policy if exists temas_borrar on public.temas;
 
 create policy temas_leer on public.temas
-  for select to authenticated using (public.soy_de_la_sala("salaId"));
+  for select to authenticated
+  using (
+    ("salaId" is null and "propuestoPor" = public.mi_usuario_id())
+    or public.soy_de_la_sala("salaId")
+    or public.participo_de_la_reunion("reunionId")
+  );
 
 create policy temas_alta on public.temas
-  for insert to authenticated with check (public.soy_de_la_sala("salaId"));
+  for insert to authenticated
+  with check (
+    ("salaId" is null and "propuestoPor" = public.mi_usuario_id())
+    or public.soy_de_la_sala("salaId")
+    or public.participo_de_la_reunion("reunionId")
+  );
 
 create policy temas_editar on public.temas
   for update to authenticated
@@ -452,10 +529,19 @@ drop policy if exists compromisos_editar on public.compromisos;
 drop policy if exists compromisos_borrar on public.compromisos;
 
 create policy compromisos_leer on public.compromisos
-  for select to authenticated using (public.soy_de_la_sala("salaId"));
+  for select to authenticated
+  using (
+    public.soy_de_la_sala("salaId")
+    or "responsableId" = public.mi_usuario_id()
+    or public.participo_de_la_reunion("reunionId")
+  );
 
 create policy compromisos_alta on public.compromisos
-  for insert to authenticated with check (public.soy_de_la_sala("salaId"));
+  for insert to authenticated
+  with check (
+    public.soy_de_la_sala("salaId")
+    or public.participo_de_la_reunion("reunionId")
+  );
 
 create policy compromisos_editar on public.compromisos
   for update to authenticated

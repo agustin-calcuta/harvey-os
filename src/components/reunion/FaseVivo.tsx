@@ -3,7 +3,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  History,
+  ListChecks,
   Pause,
   Play,
   Plus,
@@ -12,33 +12,55 @@ import {
 } from 'lucide-react'
 import { useApp } from '../../store/AppContext'
 import {
+  agendaDe,
   compromisosArrastrados,
   compromisosDe,
-  agendaDe,
   estaVencido,
   fechaCorta,
   mmss,
   nombreDe,
+  temasSinTratar,
 } from '../../lib/utils'
-import { IMPORTANCIA, OBJETIVOS, type Reunion } from '../../types'
-import { Boton, Capa, Confirmar, Etiqueta, Vacio } from '../ui'
+import {
+  COLUMNAS_KANBAN,
+  ESTADO_COMPROMISO,
+  IMPORTANCIA,
+  OBJETIVOS,
+  type Reunion,
+} from '../../types'
+import { Boton, Chip, Confirmar, Etiqueta, Vacio } from '../ui'
 import ModalCompromiso from './ModalCompromiso'
+
+/* ─────────────────────────────────────────────────────────────
+   La reunión, en vivo.
+
+   Arranca por el seguimiento: "el primer tema debería ser
+   seguimiento" — se repasan las tareas que quedaron de las
+   reuniones anteriores, se actualizan ahí mismo, y recién después
+   se entra en los temas del día.
+
+   El cronómetro quedó reducido a un reloj al costado y el botón de
+   tareas pasó al frente: lo importante mientras se habla es
+   registrar quién se lleva qué.
+   ───────────────────────────────────────────────────────────── */
+
+/** El seguimiento es el paso cero; los temas van del 0 en adelante. */
+const SEGUIMIENTO = -1
 
 export default function FaseVivo({ reunion }: { reunion: Reunion }) {
   const { estado, actualizarTema, cerrarReunion, puedeModerar } = useApp()
   const agenda = agendaDe(estado, reunion.id)
 
-  const [indice, setIndice] = useState(0)
+  const [indice, setIndice] = useState(SEGUIMIENTO)
   const [corriendo, setCorriendo] = useState(false)
   const [seg, setSeg] = useState(0)
   const [notas, setNotas] = useState('')
-  const [nuevoCompromiso, setNuevoCompromiso] = useState(false)
-  const [verPendientes, setVerPendientes] = useState(false)
+  const [nuevaTarea, setNuevaTarea] = useState(false)
   const [confirmarCierre, setConfirmarCierre] = useState(false)
 
-  const tema = agenda[indice]
+  const tema = indice >= 0 ? agenda[indice] : undefined
   const moderador = puedeModerar(reunion)
-  const arrastrados = useMemo(
+  const arrastradas = useMemo(
     () => compromisosArrastrados(estado, reunion.id),
     [estado, reunion.id],
   )
@@ -54,7 +76,7 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
     return () => window.clearInterval(intervalo.current)
   }, [corriendo])
 
-  /* Al cambiar de tema: guardamos lo anterior y cargamos lo nuevo */
+  /* Al cambiar de tema: guardamos lo anterior y cargamos lo nuevo. */
   const guardarYSaltar = (nuevo: number) => {
     if (tema) {
       void actualizarTema(tema.id, {
@@ -63,21 +85,13 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
       })
     }
     setIndice(nuevo)
-    const siguiente = agenda[nuevo]
+    const siguiente = nuevo >= 0 ? agenda[nuevo] : undefined
     setNotas(siguiente?.conclusiones ?? '')
     setSeg(siguiente?.duracionRealSeg ?? 0)
     setCorriendo(false)
   }
 
-  useEffect(() => {
-    const t = agenda[indice]
-    setNotas(t?.conclusiones ?? '')
-    setSeg(t?.duracionRealSeg ?? 0)
-    // Sólo al montar: después se maneja desde guardarYSaltar.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  /* Autoguardado de las notas mientras se escribe */
+  /* Autoguardado de las notas mientras se escribe. */
   useEffect(() => {
     if (!tema) return
     const id = window.setTimeout(() => {
@@ -88,19 +102,9 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
     return () => window.clearTimeout(id)
   }, [notas, tema, actualizarTema])
 
-  if (!agenda.length) {
-    return (
-      <Vacio
-        titulo="No hay temas en la agenda"
-        texto="Volvé a la pre-reunión y aprobá al menos un tema para poder empezar."
-      />
-    )
-  }
-
   const asignado = (tema?.duracionMin ?? 0) * 60
-  const progreso = asignado ? Math.min(100, (seg / asignado) * 100) : 0
   const excedido = seg > asignado && asignado > 0
-  const restante = asignado - seg
+  const conNotas = agenda.filter((t) => t.conclusiones?.trim()).length
 
   return (
     <div className="space-y-5">
@@ -112,27 +116,33 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
             Reunión en curso
           </span>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Boton tam="sm" onClick={() => setVerPendientes(true)}>
-            <History size={12} /> Pendientes anteriores
-            {arrastrados.length > 0 && (
-              <span className="ml-1 bg-signal px-1.5 text-[9px] text-tinta">
-                {arrastrados.length}
-              </span>
-            )}
+        {moderador && (
+          <Boton tam="sm" variante="solido" onClick={() => setConfirmarCierre(true)}>
+            <Square size={11} /> Cerrar y generar minuta
           </Boton>
-          {moderador && (
-            <Boton tam="sm" variante="solido" onClick={() => setConfirmarCierre(true)}>
-              <Square size={11} /> Cerrar reunión
-            </Boton>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* ── Recorrido de temas ──
-          Con el título a la vista: un número suelto no dice a cuál se
-          está saltando, y los temas se tocan en el orden que salga. */}
+      {/* ── Recorrido ──
+          El seguimiento primero, después los temas con su título a la
+          vista: se salta al que se quiera, en el orden que salga. */}
       <div className="flex gap-1 overflow-x-auto no-scrollbar">
+        <button
+          onClick={() => guardarYSaltar(SEGUIMIENTO)}
+          className={
+            indice === SEGUIMIENTO
+              ? 'flex shrink-0 items-center gap-2 border border-tinta bg-tinta px-3 py-2 text-[11px] text-fondo'
+              : 'flex shrink-0 items-center gap-2 border border-borde bg-panel px-3 py-2 text-[11px] text-suave transition-colors hover:border-suave hover:text-tinta'
+          }
+        >
+          <ListChecks size={12} className="shrink-0" />
+          Seguimiento
+          {arrastradas.length > 0 && (
+            <span className={indice === SEGUIMIENTO ? 'text-fondo/60' : 'text-tenue'}>
+              {arrastradas.length}
+            </span>
+          )}
+        </button>
         {agenda.map((t, i) => (
           <button
             key={t.id}
@@ -159,166 +169,164 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
         ))}
       </div>
 
-      {/*
-        Modo foco: mientras la reunión corre, en pantalla sólo está el
-        tema, el reloj y las notas. Todo lo demás se abre a un click.
-      */}
-      <div className="mx-auto w-full max-w-3xl">
-        <div className="space-y-5">
-          <div className="card">
-            <div className="border-b border-borde p-5">
-              <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-suave">
-                <span>
-                  Tema {indice + 1} de {agenda.length}
-                </span>
-                <span className="text-borde2">·</span>
-                <span style={{ color: IMPORTANCIA[tema.importancia].hex }}>
-                  Importancia {IMPORTANCIA[tema.importancia].nombre.toLowerCase()}
-                </span>
-                <span className="text-borde2">·</span>
-                <span title={OBJETIVOS[tema.objetivo].desc}>
-                  {OBJETIVOS[tema.objetivo].nombre}
-                </span>
-                <span className="text-borde2">·</span>
-                <span>Propuso {nombreDe(estado, tema.propuestoPor)}</span>
-              </div>
-              <h2 className="display text-2xl sm:text-3xl lg:text-4xl">{tema.titulo}</h2>
-              {tema.detalle && (
-                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-suave">
-                  {tema.detalle}
-                </p>
-              )}
-            </div>
+      <div className="mx-auto w-full max-w-3xl space-y-5">
+        {indice === SEGUIMIENTO ? (
+          <Seguimiento reunion={reunion} />
+        ) : !tema ? (
+          <Vacio
+            titulo="No hay temas en la agenda"
+            texto="Volvé a la pre-reunión y aprobá al menos un tema."
+          />
+        ) : (
+          <>
+            <div className="card">
+              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-borde p-5">
+                <div className="min-w-0">
+                  <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-suave">
+                    <span>
+                      Tema {indice + 1} de {agenda.length}
+                    </span>
+                    <span className="text-borde2">·</span>
+                    <span style={{ color: IMPORTANCIA[tema.importancia].hex }}>
+                      Importancia {IMPORTANCIA[tema.importancia].nombre.toLowerCase()}
+                    </span>
+                    <span className="text-borde2">·</span>
+                    <span title={OBJETIVOS[tema.objetivo].desc}>
+                      {OBJETIVOS[tema.objetivo].nombre}
+                    </span>
+                    <span className="text-borde2">·</span>
+                    <span>Propuso {nombreDe(estado, tema.propuestoPor)}</span>
+                  </div>
+                  <h2 className="display text-2xl sm:text-3xl">{tema.titulo}</h2>
+                  {tema.detalle && (
+                    <p className="mt-3 max-w-2xl text-sm leading-relaxed text-suave">
+                      {tema.detalle}
+                    </p>
+                  )}
+                </div>
 
-            {/* Cronómetro */}
-            <div className="p-5">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-baseline gap-3">
+                {/* El reloj, al costado: cuenta cuánto llevamos, no manda. */}
+                <div className="flex shrink-0 items-center gap-2">
                   <span
                     className={
                       excedido
-                        ? 'display text-4xl text-signal sm:text-5xl'
-                        : 'display text-4xl sm:text-5xl'
+                        ? 'font-semibold text-lg tabular-nums text-signal'
+                        : 'font-semibold text-lg tabular-nums text-suave'
+                    }
+                    title={
+                      excedido
+                        ? `Pasado ${mmss(seg - asignado)} de los ${tema.duracionMin} min previstos`
+                        : `De ${tema.duracionMin} min previstos`
                     }
                   >
                     {mmss(seg)}
                   </span>
-                  <span className="font-semibold text-xs text-suave">
-                    / {tema.duracionMin}:00
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <Boton tam="sm" onClick={() => setCorriendo((c) => !c)}>
-                    {corriendo ? <Pause size={12} /> : <Play size={12} />}
-                    {corriendo ? 'Pausar' : seg > 0 ? 'Seguir' : 'Arrancar'}
-                  </Boton>
-                  <Boton
-                    tam="sm"
-                    variante="fantasma"
+                  <button
+                    onClick={() => setCorriendo((c) => !c)}
+                    className="border border-borde2 bg-panel p-2 text-suave transition-colors hover:border-tinta hover:text-tinta"
+                    aria-label={corriendo ? 'Pausar el reloj' : 'Iniciar el reloj'}
+                  >
+                    {corriendo ? <Pause size={13} /> : <Play size={13} />}
+                  </button>
+                  <button
                     onClick={() => {
                       setSeg(0)
                       setCorriendo(false)
                     }}
-                    title="Reiniciar"
+                    className="border border-borde2 bg-panel p-2 text-suave transition-colors hover:border-tinta hover:text-tinta"
+                    aria-label="Reiniciar el reloj"
                   >
-                    <RotateCcw size={12} />
-                  </Boton>
+                    <RotateCcw size={13} />
+                  </button>
                 </div>
               </div>
 
-              <div className="h-1.5 w-full bg-hueco">
-                <div
-                  className={excedido ? 'h-full bg-signal' : 'h-full bg-acid transition-all'}
-                  style={{ width: `${excedido ? 100 : progreso}%` }}
-                />
-              </div>
-              <div className="mt-2 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
-                {excedido
-                  ? `Pasado ${mmss(seg - asignado)} del tiempo asignado`
-                  : `Quedan ${mmss(restante)}`}
+              {/* ── Tareas del tema ──
+                  Adelante de las conclusiones: lo importante es registrar
+                  quién se lleva qué. */}
+              <div className="p-5">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <Etiqueta>Tareas que salen de este tema</Etiqueta>
+                  <Boton variante="solido" onClick={() => setNuevaTarea(true)}>
+                    <Plus size={13} /> Registrar tarea
+                  </Boton>
+                </div>
+
+                {delTema.length === 0 ? (
+                  <p className="text-xs text-tenue">
+                    Todavía no hay ninguna. ¿Quién queda a cargo de qué?
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-borde border-t border-borde">
+                    {delTema.map((c) => (
+                      <li key={c.id} className="flex flex-wrap items-center gap-2 py-2.5 text-xs">
+                        <span
+                          className="h-4 w-0.5 shrink-0"
+                          style={{ background: IMPORTANCIA[c.importancia].hex }}
+                        />
+                        <span className="min-w-0 flex-1">{c.accion}</span>
+                        <span className="text-suave">{nombreDe(estado, c.responsableId)}</span>
+                        <span className="text-tenue">{fechaCorta(c.fechaLimite)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
-          </div>
 
-          {/* Notas */}
-          <div className="card p-5">
-            {/* Lo que se pide anotar cambia según para qué se trató el
-                tema: no es lo mismo cerrar una decisión que informar. */}
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <Etiqueta>{OBJETIVOS[tema.objetivo].pideConclusion}</Etiqueta>
-              <Boton tam="sm" onClick={() => setNuevoCompromiso(true)}>
-                <Plus size={11} /> Compromiso
-                {delTema.length > 0 && <span className="ml-1 text-tenue">{delTema.length}</span>}
+            {/* Notas: lo que se pide anotar cambia según el objetivo. */}
+            <div className="card p-5">
+              <Etiqueta className="mb-3">{OBJETIVOS[tema.objetivo].pideConclusion}</Etiqueta>
+              <textarea
+                className="w-full resize-y font-sans text-sm leading-relaxed"
+                rows={6}
+                value={notas}
+                onChange={(e) => setNotas(e.target.value)}
+                placeholder={OBJETIVOS[tema.objetivo].ejemploConclusion}
+              />
+              <div className="mt-2 text-xs text-tenue">Se guarda solo mientras escribís</div>
+            </div>
+
+            {/* Navegación */}
+            <div className="flex items-center justify-between gap-3">
+              <Boton onClick={() => guardarYSaltar(indice - 1)} disabled={indice < 0}>
+                <ChevronLeft size={13} /> Anterior
+              </Boton>
+              <span className="text-xs text-tenue">
+                {conNotas} de {agenda.length} con notas ·{' '}
+                {compromisosDe(estado, reunion.id).length} tareas
+              </span>
+              <Boton
+                variante={indice === agenda.length - 1 ? 'linea' : 'solido'}
+                onClick={() => guardarYSaltar(Math.min(agenda.length - 1, indice + 1))}
+                disabled={indice === agenda.length - 1}
+              >
+                Siguiente <ChevronRight size={13} />
               </Boton>
             </div>
-            <textarea
-              className="w-full resize-y font-sans text-sm leading-relaxed"
-              rows={7}
-              value={notas}
-              onChange={(e) => setNotas(e.target.value)}
-              placeholder={OBJETIVOS[tema.objetivo].ejemploConclusion}
-            />
-            <div className="mt-2 text-xs text-tenue">Se guarda solo mientras escribís</div>
-
-            {delTema.length > 0 && (
-              <ul className="mt-4 divide-y divide-borde border-t border-borde">
-                {delTema.map((c) => (
-                  <li key={c.id} className="flex flex-wrap items-center gap-2 py-2.5 text-xs">
-                    <span
-                      className="h-4 w-0.5 shrink-0"
-                      style={{ background: IMPORTANCIA[c.importancia].hex }}
-                    />
-                    <span className="min-w-0 flex-1">{c.accion}</span>
-                    <span className="text-suave">{nombreDe(estado, c.responsableId)}</span>
-                    <span className="text-tenue">{fechaCorta(c.fechaLimite)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* Navegación */}
-          <div className="flex items-center justify-between gap-3">
-            <Boton
-              onClick={() => guardarYSaltar(Math.max(0, indice - 1))}
-              disabled={indice === 0}
-            >
-              <ChevronLeft size={13} /> Anterior
-            </Boton>
-            <span className="text-xs text-tenue">
-              {agenda.filter((t) => t.conclusiones?.trim()).length} de {agenda.length} con notas ·{' '}
-              {compromisosDe(estado, reunion.id).length} compromisos
-            </span>
-            <Boton
-              variante={indice === agenda.length - 1 ? 'linea' : 'solido'}
-              onClick={() => guardarYSaltar(Math.min(agenda.length - 1, indice + 1))}
-              disabled={indice === agenda.length - 1}
-            >
-              Siguiente <ChevronRight size={13} />
-            </Boton>
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
       {/* ── Modales ── */}
-      <ModalCompromiso
-        abierto={nuevoCompromiso}
-        onCerrar={() => setNuevoCompromiso(false)}
-        reunionId={reunion.id}
-        temaId={tema.id}
-      />
-
-      <PanelPendientes
-        abierto={verPendientes}
-        onCerrar={() => setVerPendientes(false)}
-        reunionId={reunion.id}
-      />
+      {tema && (
+        <ModalCompromiso
+          abierto={nuevaTarea}
+          onCerrar={() => setNuevaTarea(false)}
+          reunionId={reunion.id}
+          temaId={tema.id}
+        />
+      )}
 
       <Confirmar
         abierto={confirmarCierre}
-        titulo="Cerrar la reunión"
-        texto={`Se emite la minuta con ${agenda.length} temas y ${compromisosDe(estado, reunion.id).length} compromisos, y sale por correo a los ${reunion.participantesIds.length} participantes.`}
-        textoBoton="Cerrar y enviar minuta"
+        titulo="Cerrar y generar minuta"
+        texto={`Se arma el borrador de la minuta con ${agenda.length} temas y ${compromisosDe(estado, reunion.id).length} tareas. Vas a poder revisarlo entero antes de mandarlo.${
+          agenda.length - conNotas > 0
+            ? ` Los ${agenda.length - conNotas} temas sin notas vuelven al temario de quien los propuso.`
+            : ''
+        }`}
+        textoBoton="Cerrar y generar"
         onCancelar={() => setConfirmarCierre(false)}
         onConfirmar={() => {
           if (tema) {
@@ -327,7 +335,8 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
               duracionRealSeg: seg > 0 ? seg : tema.duracionRealSeg,
             })
           }
-          void cerrarReunion(reunion.id)
+          // Sin correo: la minuta se manda al final, ya revisada.
+          void cerrarReunion(reunion.id, false)
           setConfirmarCierre(false)
         }}
       />
@@ -336,94 +345,102 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Panel de pendientes de reuniones anteriores.
-   Es lo que pidió Fran: repasarlos con un click, sin que
-   inflen la minuta del día.
+   Seguimiento: el primer paso de toda reunión.
+
+   "Tené la minuta de la reunión anterior para ver si la gente hizo
+   lo que tenía que hacer." Se repasa tarea por tarea y se marca el
+   estado en el momento; lo que queda hecho no vuelve a aparecer la
+   próxima vez. Abajo, los temas que quedaron sin hablar, para
+   incluirlos si hoy hay lugar.
    ───────────────────────────────────────────────────────────── */
 
-function PanelPendientes({
-  abierto,
-  onCerrar,
-  reunionId,
-}: {
-  abierto: boolean
-  onCerrar: () => void
-  reunionId: string
-}) {
-  const { estado, moverCompromiso } = useApp()
-  const lista = compromisosArrastrados(estado, reunionId)
-
-  if (!abierto) return null
+function Seguimiento({ reunion }: { reunion: Reunion }) {
+  const { estado, moverCompromiso, asignarAReunion, puedeOrganizar } = useApp()
+  const tareas = compromisosArrastrados(estado, reunion.id)
+  const sinTratar = temasSinTratar(estado, reunion.salaId)
 
   return (
-    <Capa onCerrar={onCerrar} alinear="end">
-      <div className="flex w-full max-w-lg flex-col border-l border-borde bg-fondo">
-        <div className="flex items-start justify-between gap-3 border-b border-borde p-5">
-          <div>
-            <Etiqueta className="bracket mb-2">Vienen de atrás</Etiqueta>
-            <h3 className="display text-2xl">Pendientes anteriores</h3>
-            <p className="mt-2 text-xs text-suave">
-              {lista.length} compromisos abiertos de reuniones previas.
-            </p>
-          </div>
-          <Boton tam="sm" variante="fantasma" onClick={onCerrar}>
-            Cerrar
-          </Boton>
-        </div>
-
-        <div className="flex-1 overflow-y-auto">
-          {lista.length === 0 ? (
-            <div className="p-8 text-center text-sm text-suave">
-              No quedó nada abierto de reuniones anteriores.
-            </div>
-          ) : (
-            <ul className="divide-y divide-borde">
-              {lista.map((c) => {
-                const reunion = estado.reuniones.find((r) => r.id === c.reunionId)
-                return (
-                  <li key={c.id} className="p-4">
-                    <div className="flex items-start gap-3">
-                      <span
-                        className="mt-1 h-8 w-0.5 shrink-0"
-                        style={{ background: IMPORTANCIA[c.importancia].hex }}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm leading-snug">{c.accion}</div>
-                        {c.avance && (
-                          <p className="mt-1 text-xs text-suave">{c.avance}</p>
-                        )}
-                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
-                          <span>{nombreDe(estado, c.responsableId)}</span>
-                          <span className={estaVencido(c) ? 'text-signal' : ''}>
-                            {estaVencido(c) ? 'Vencido ' : 'Vence '}
-                            {fechaCorta(c.fechaLimite)}
-                          </span>
-                          {reunion && <span className="truncate">{reunion.titulo}</span>}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-1.5 pl-[14px]">
-                      {(['pendiente', 'en_curso', 'bloqueado', 'hecho'] as const).map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => moverCompromiso(c.id, s)}
-                          className={
-                            c.estado === s
-                              ? 'border border-tinta bg-tinta px-2.5 py-1 font-semibold text-[9px] uppercase tracking-[0.12em] text-fondo'
-                              : 'border border-borde2 px-2.5 py-1 font-semibold text-[9px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
-                          }
-                        >
-                          {s.replace('_', ' ')}
-                        </button>
-                      ))}
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </div>
+    <div className="space-y-5">
+      <div className="card p-5">
+        <Etiqueta className="mb-1">Seguimiento</Etiqueta>
+        <h2 className="display text-2xl">Lo que quedó de antes</h2>
+        <p className="mt-2 text-sm text-suave">
+          {tareas.length === 0
+            ? 'No quedó ninguna tarea abierta de reuniones anteriores.'
+            : `${tareas.length} ${tareas.length === 1 ? 'tarea abierta' : 'tareas abiertas'}. Repasalas una por una y marcá cómo viene cada una.`}
+        </p>
       </div>
-    </Capa>
+
+      {tareas.length > 0 && (
+        <ul className="card divide-y divide-borde">
+          {tareas.map((c) => {
+            const deDonde = estado.reuniones.find((r) => r.id === c.reunionId)
+            return (
+              <li key={c.id} className="p-4">
+                <div className="flex items-start gap-3">
+                  <span
+                    className="mt-1 h-8 w-0.5 shrink-0"
+                    style={{ background: IMPORTANCIA[c.importancia].hex }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm leading-snug">{c.accion}</div>
+                    {c.avance && <p className="mt-1 text-xs text-suave">{c.avance}</p>}
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
+                      <span className="text-tinta">{nombreDe(estado, c.responsableId)}</span>
+                      <span className={estaVencido(c) ? 'text-signal' : ''}>
+                        {estaVencido(c) ? 'Vencía ' : 'Vence '}
+                        {fechaCorta(c.fechaLimite)}
+                      </span>
+                      {deDonde && <span className="truncate">{deDonde.titulo}</span>}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5 pl-[14px]">
+                  {COLUMNAS_KANBAN.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => moverCompromiso(c.id, s)}
+                      aria-pressed={c.estado === s}
+                      className={
+                        c.estado === s
+                          ? 'border border-tinta bg-tinta px-3 py-1.5 font-semibold text-[10px] uppercase tracking-[0.12em] text-fondo'
+                          : 'border border-borde2 px-3 py-1.5 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
+                      }
+                    >
+                      {ESTADO_COMPROMISO[s].nombre}
+                    </button>
+                  ))}
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      {sinTratar.length > 0 && (
+        <section>
+          <h3 className="display mb-1 text-xl">
+            Temas que quedaron sin hablar <span className="text-suave">{sinTratar.length}</span>
+          </h3>
+          <p className="mb-3 text-xs text-suave">
+            Vienen de reuniones anteriores de esta sala. Si hoy hay lugar, incluilos.
+          </p>
+          <ul className="card divide-y divide-borde">
+            {sinTratar.map((t) => (
+              <li key={t.id} className="flex flex-wrap items-center gap-3 p-4">
+                <Chip tono="amber">Sin tratar</Chip>
+                <span className="min-w-0 flex-1 text-sm">{t.titulo}</span>
+                <span className="text-xs text-tenue">{nombreDe(estado, t.propuestoPor)}</span>
+                {puedeOrganizar && (
+                  <Boton tam="sm" onClick={() => asignarAReunion(t.id, reunion.id)}>
+                    <Plus size={11} /> Incluir
+                  </Boton>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
   )
 }

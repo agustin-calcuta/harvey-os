@@ -6,7 +6,7 @@ import { ESTADO_INICIAL, S_GERENCIAL, S_MARKETING } from '../lib/seed'
 import { ROLES_SALA } from '../types'
 
 const CINTA =
-  'PRE-REUNIÓN · TEMARIO 24 H ANTES · REUNIÓN · MINUTA EN VIVO · POST-REUNIÓN · COMPROMISOS CON RESPONSABLE Y FECHA · '
+  'TEMARIO · REUNIÓN · MINUTA EN VIVO · SEGUIMIENTO · TAREAS CON RESPONSABLE Y FECHA · '
 
 /*
  * Dos recorridos, uno por rol. El de soporte no se ofrece: es una
@@ -17,13 +17,13 @@ const VISTAS = [
     id: 'u_matias',
     sala: S_GERENCIAL,
     rol: 'organizador' as const,
-    que: 'Arma la agenda, aprueba temas, asigna tiempos y modera. Ve los compromisos de todo el equipo.',
+    que: 'Arma la agenda, aprueba temas, asigna tiempos y modera. Ve las tareas de todo el equipo.',
   },
   {
     id: 'u_pedro',
     sala: S_MARKETING,
     rol: 'miembro' as const,
-    que: 'Propone temas y sigue sus propios compromisos. Ve sólo la sala de su equipo.',
+    que: 'Propone temas y sigue sus propias tareas. Ve sólo la sala de su equipo.',
   },
 ]
 
@@ -53,18 +53,18 @@ export default function Login() {
             }}
           />
           <div className="relative">
-            <div className="label bracket">Calcuta para Harvey</div>
+            <div className="label bracket">Calcuta para Impor Bamas</div>
           </div>
 
           <div className="relative py-12">
-            <h1 className="display text-[clamp(3.5rem,11vw,7.5rem)]">Harvey</h1>
+            <h1 className="display text-[clamp(3rem,9vw,6rem)]">Impor Bamas</h1>
             <p className="mt-6 max-w-md text-sm leading-relaxed text-suave">
               Las reuniones dejan de perderse. Cada equipo tiene su sala, con el temario cargado
-              con anticipación, tiempos asignados, minuta que se arma sola y compromisos con
+              con anticipación, tiempos asignados, minuta que se arma sola y tareas con
               nombre y fecha.
             </p>
             <div className="mt-8 flex flex-wrap gap-2">
-              {['Pre-reunión', 'Reunión', 'Post-reunión'].map((f, i) => (
+              {['Temario', 'Reunión', 'Minuta'].map((f, i) => (
                 <div
                   key={f}
                   className="flex items-center gap-2 border border-borde2 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em]"

@@ -1,6 +1,6 @@
-# Estado del proyecto — Harvey
+# Estado del proyecto — Impor Bamas (ex Harvey)
 
-**Última actualización:** 7 de agosto de 2026
+**Última actualización:** 15 de agosto de 2026
 **Plataforma en línea:** https://agustin-calcuta.github.io/harvey-os/
 **Repositorio:** https://github.com/agustin-calcuta/harvey-os
 
@@ -9,23 +9,70 @@
 ## Dónde estamos
 
 La plataforma está **funcionando y publicada**, con base de datos real y acceso
-con Google. Se presenta a los socios de Harvey el lunes 10 a las 10:00.
+con Google. Ya se les mostró a los socios y volvió con cambios.
 
 Nace de la reunión del 5 de agosto con Francisco Lebermann: son cuatro socios,
 se reúnen seguido y las reuniones se dispersan. La respuesta es el ciclo de tres
-fases que él mismo propuso —**pre-reunión → reunión → post-reunión**— con el
-temario cargado con anticipación, cada minuto asignado y cada compromiso con
-responsable y fecha.
+fases que él mismo propuso —**temario → reunión → minuta**— con el temario
+cargado con anticipación y cada tarea con responsable y fecha.
 
 En la reunión del 7 de agosto con Francisco y Ariel el alcance creció: la
 herramienta deja de ser el tablero de los socios y pasa a servir a **cualquier
 equipo de la empresa**, cada uno con su espacio.
 
+### Lo que cambió el 14 de agosto
+
+Ariel la mostró a los cuatro socios y volvió con una lista larga, casi toda de
+uso: *"tenemos que hacer sistemas acorde a lo que necesitan"*. Está aplicada
+entera —salvo la grabación con IA y Google Calendar, que quedaron para después—
+y el detalle punto por punto está en
+**[PLAN-CAMBIOS-14-08.md](PLAN-CAMBIOS-14-08.md)**.
+
+Lo que cambia de fondo, y no sólo de nombre:
+
+- **El temario es personal.** Un tema anotado no pertenece a ninguna sala: sólo
+  lo ve quien lo escribió, hasta que lo asigna a una reunión. Ahí toma la sala
+  de esa reunión y pasa a ser del equipo.
+- **Se fue el plazo de cierre del temario.** Cierra el organizador cuando
+  quiere, y un tema de último momento entra igual.
+- **Los temas que no se llegan a hablar vuelven** al temario de quien los
+  propuso, y quedan disponibles para incluirlos en la próxima.
+- **Toda reunión arranca por el seguimiento** de las tareas que quedaron de la
+  vez pasada, con el estado editable ahí mismo.
+- **La minuta se genera y después se manda**, y hay que recorrer los cuatro
+  apartados antes de poder descargarla o enviarla.
+- **Una reunión puede repetirse**: al cerrarse, la siguiente se crea sola.
+- **Se puede sumar a alguien de afuera** a una reunión puntual sin darle acceso
+  a la sala, y hay **reuniones privadas** que no se listan para el resto.
+- **Abrir salas quedó en manos de los socios.** Crear reuniones, de cualquiera.
+- **«Compromiso» pasó a llamarse «tarea»** en toda la interfaz, y quedan tres
+  estados: pendiente, en curso, hecha.
+- **Salió la solapa de Correos** de la vista del equipo.
+- La marca pasa a **Impor Bamas**: la usan para todas sus sociedades.
+
+---
+
+## Antes de publicar: hay que migrar la base
+
+El código de ahora espera columnas que la base todavía no tiene. **Primero la
+migración, después el deploy**, o la aplicación publicada va a fallar al leer:
+
+```bash
+export PGURL='postgresql://...'                    # connection string de Neon
+psql "$PGURL" -f db/migracion-2026-08-15.sql       # columnas nuevas y datos al día
+psql "$PGURL" -f db/rls.sql                        # las políticas cambiaron con ellas
+```
+
+La migración es idempotente y no borra nada: agrega columnas, saca el estado
+«borrador» y el «bloqueado», y manda al temario personal los temas que estaban
+en el banco de cada sala. Deja marcados como habilitados para crear salas a los
+organizadores de la sala de socios y a las cuentas de soporte.
+
 ---
 
 ## Salas: la unidad de trabajo
 
-Una sala es un equipo con sus reuniones, su banco de temas y sus compromisos.
+Una sala es un equipo con sus reuniones y sus tareas.
 
 **El rol no es global: vive en cada sala.** La misma persona organiza la suya y
 es miembro en otra, que es tal cual lo planteó Fran: *"en la reunión de socios es
@@ -34,8 +81,12 @@ aprobar"*.
 
 | | Qué puede hacer en esa sala |
 | --- | --- |
-| **Organizador** | Arma la agenda, aprueba temas, asigna tiempos, modera, y decide quién entra a la sala y con qué rol. Ve los compromisos de todo el equipo. |
-| **Miembro** | Propone temas, participa y sigue sus propios compromisos. |
+| **Organizador** | Arma la agenda, aprueba temas, asigna tiempos, modera, y decide quién entra a la sala y con qué rol. Ve las tareas de todo el equipo. |
+| **Miembro** | Propone temas, participa y sigue sus propias tareas. |
+
+**Abrir salas es de los socios.** Se marca persona por persona desde
+Administración y lo cuida la base, igual que el alcance: nadie se lo da a sí
+mismo. Crear reuniones, en cambio, puede cualquiera de la sala.
 
 En la sala de socios los cuatro están a la par —todos proponen y todos
 aprueban—; en la de cada equipo, el socio organiza y su gente propone.
@@ -61,8 +112,23 @@ se puede, pero hay que confirmarlo.
 
 Eso exige saber que una sala existe sin poder verla. Lo resuelve la vista
 `directorio_salas`, que atraviesa las políticas pero **sólo expone nombre,
-organizador y cantidad de integrantes** — nada de reuniones, temas ni
-compromisos— y es de sólo lectura.
+organizador y cantidad de integrantes** — nada de reuniones, temas ni tareas— y
+es de sólo lectura.
+
+### Sumarse a una reunión sin entrar a la sala
+
+*"Si soy de diseño y me quiero sumar a una reunión de marketing, no me sumo a la
+sala de marketing y tengo acceso a todas sus minutas: me sumo a esa reunión."*
+Al crear o editar una reunión se puede sumar a alguien de afuera con nombre y
+correo: entra a esa reunión, ve sus temas y sus tareas, y nada más del equipo.
+Si esa persona todavía no existe, se da de alta y se engancha sola cuando entre
+con Google.
+
+### Reuniones privadas
+
+Una reunión marcada como privada **no se lista para el resto de la sala**: la
+ven quienes participan. Es el caso que trajo Fran —alguien que se junta con su
+jefe a hablar de un aumento— y lo cuida la política de lectura, no la interfaz.
 
 **Cualquiera puede salir de una sala** por su cuenta. Lo único que no se permite
 es que se vaya el último organizador y la sala quede sin quien arme la agenda:
@@ -73,54 +139,63 @@ de la base, no la interfaz.
 
 ## Lo que hace
 
-### Pre-reunión
+### El temario, antes de la reunión
 
-- Cualquiera de la sala propone temas; el organizador decide cuáles entran.
+- **Mi temario** es un bloc de notas personal: se anota un tema sin que exista
+  ninguna reunión y **sólo lo ve quien lo escribió**. Después se asigna a
+  cualquiera de las próximas reuniones, de la sala que sea, y ahí sale del bloc.
 - Cada tema lleva **importancia** (el semáforo rojo / amarillo / verde de Fran),
   **objetivo** (Decisión, Exploratoria, Comunicativa, Informativa) y quién lo
-  propuso. El organizador puede cargarlo a nombre de otra persona.
-- **Banco de temas**: el *"banco de suplentes"* que pidió Fran, con sección
-  propia (**Temario**) en el menú. Se anota un tema sin que exista ninguna
-  reunión —no hace falta que haya una armada— y queda ahí, sin fecha, hasta que
-  el organizador lo baja a la agenda de la que elija.
-- El temario cierra por plazo (24 h antes, configurable) **o a mano**, cuando el
-  organizador quiera.
-- Se ordena la agenda arrastrando y se ajusta el tiempo de cada tema. Avisa si la
-  suma se pasa de lo previsto.
-- Al cerrar el temario se emite el correo con los temas definitivos.
+  propuso. El tiempo estimado no se pide al proponer: lo ajusta el organizador
+  desde la agenda si quiere.
+- Cualquiera de la sala propone temas; el organizador decide cuáles entran.
+- **El temario cierra a mano**, cuando el organizador quiere. Cerrarlo es avisar
+  de qué se va a hablar, con una casilla para elegir si sale el correo. Un tema
+  de último momento entra igual, hasta que la reunión se cierra.
+- Se ordena la agenda arrastrando y se ajusta el tiempo de cada tema.
+- Arriba aparecen los **temas que no se llegaron a hablar** en reuniones
+  anteriores de la sala, para incluirlos con un click.
 
-### Reunión
+### La reunión
 
-- **Modo foco**: en pantalla quedan sólo el tema, el cronómetro y las notas.
-- Las pestañas muestran el **título de cada tema**, y se salta al que se quiera:
-  los temas se tocan en el orden que salga.
-- Cronómetro por tema, con alerta al pasarse.
+- **Arranca por el seguimiento**: las tareas que quedaron de las reuniones
+  anteriores, con su responsable, y el estado se cambia ahí mismo. Lo que queda
+  hecho no vuelve a aparecer la próxima vez.
+- Después, los temas: se salta al que se quiera, en el orden que salga.
+- **El botón de tareas va antes que las conclusiones**: lo importante mientras
+  se habla es registrar quién se lleva qué.
+- El cronómetro quedó reducido a un reloj al costado, que cuenta sin mandar.
 - **Lo que se pide anotar cambia según el objetivo**: si el tema era de Decisión
   pide qué se decidió; si era Informativa, qué se informó.
-- Alta de compromisos en el momento.
-- Panel de **pendientes de reuniones anteriores** a un click.
 
-### Post-reunión
+### La minuta
 
-- Minuta editable con el formato del documento que el equipo ya usaba.
-- **PDF de la minuta**, eligiendo uno por uno qué pendiente viejo se suma.
-- Correo con conclusiones y compromisos.
+- Cerrar la reunión **genera el borrador**; mandarlo es otro paso.
+- Antes de descargar o enviar hay que **recorrer los cuatro apartados**:
+  conclusiones, temas, próximos pasos y observaciones.
+- **Próximos pasos es una sola caja** con las tareas nuevas y las que venían de
+  antes sin terminar.
+- **PDF de la minuta**, eligiendo una por una qué tarea vieja se suma.
+- Correo con conclusiones y tareas.
+- Si la reunión se repite, **la siguiente se crea sola** al cerrarla, y los
+  temas que no se llegaron a hablar vuelven al temario de quien los propuso.
 
-### Las seis secciones
+### Las cinco secciones
 
-**Panel** (el resumen del día) · **Reuniones** · **Temario** (el banco de la
-sala) · **Compromisos** · **Correos** (registro de lo emitido) · **Salas**.
-Todo lo que se ve pertenece a la sala activa.
+**Panel** (accesos directos, la próxima reunión y lo propio) · **Reuniones**
+(próximas e historial, con buscador dentro de las minutas) · **Temario** (el
+bloc personal) · **Tareas** · **Salas**.
 
 ### Seguimiento
 
-- **Compromisos** en una sola sección con dos vistas: tablero (arrastrar entre
+- **Tareas** en una sola sección con dos vistas: tablero (arrastrar entre
   estados) y lista (agrupable por responsable, reunión o vencimiento).
-- Un miembro ve sólo los suyos; el organizador, los de todo el equipo.
-- **PDF con los pendientes de una persona**, con casillas para tildar, para
-  mandarle a cada uno lo suyo por donde lo lea.
-- Compromisos sueltos, sin reunión asociada.
-- Registro de los correos emitidos, con vista previa.
+- Tres estados: pendiente, en curso y hecha. Lo trabado se cuenta en el avance.
+- Un miembro ve sólo las suyas, **sin el filtro por responsable**; el
+  organizador, las de todo el equipo.
+- **PDF con las tareas de una persona**, con casillas para tildar, para mandarle
+  a cada uno lo suyo por donde lo lea.
+- Tareas sueltas, sin reunión asociada.
 
 ---
 
@@ -133,23 +208,30 @@ GitHub Pages. Cada push a `main` compila y publica solo.
 la **Data API** (PostgREST) para hablar con la base desde el navegador, sin
 servidor propio en el medio.
 
-Los **permisos viven en la base**. Está verificado contra la base real:
+Los **permisos viven en la base**. Verificado contra la base real:
 
-- Renata, miembro de Diseño, ve su sala y nada más. No puede crear reuniones
-  (403) y no alcanza la sala de socios ni consultándola de frente.
+- Renata, miembro de Diseño, ve su sala y nada más, y no alcanza la sala de
+  socios ni consultándola de frente.
 - Lucas ve sus dos salas, con el rol que le toca en cada una.
 - Quien pide para sí el alcance de soporte queda como usuario normal.
 - El único organizador de una sala no puede salir y dejarla sin conducción.
 - Un pedido de entrada lo ve quien lo hizo y quien organiza esa sala; nadie más.
-  Sólo el organizador lo resuelve, y nadie puede pedir en nombre de otro.
 
-Hay 35 políticas sobre 9 tablas. El esquema, las políticas y los datos de ejemplo
-están en `db/` y se pueden volver a aplicar en cualquier momento.
+**Lo que cambió el 14/08 y todavía no se probó contra la base real** —está
+escrito y anda en la vista previa, pero hay que verificarlo con dos cuentas de
+verdad después de correr la migración:
+
+- El temario personal: que nadie vea los temas sueltos de otro.
+- La reunión privada: que no aparezca para el resto de la sala.
+- El invitado de afuera: que vea esa reunión y nada más del equipo.
+- Que sólo quien está marcado pueda abrir una sala.
+
+El esquema, las políticas y los datos de ejemplo están en `db/` y se pueden
+volver a aplicar en cualquier momento.
 
 **Identidad visual** tomada de la marca: fondo hueso, tinta casi negra, el rojo
-de la tienda, y las mismas dos tipografías que usa harveywillys.com (Inter para
-el texto, Almarai para los titulares). **Responsive** en móvil, tablet y
-escritorio.
+de la tienda, Inter para el texto y Almarai para los titulares. **Responsive** en
+móvil, tablet y escritorio.
 
 ---
 
@@ -179,6 +261,9 @@ elige gente.**
 | | Pedro, Camila | Miembros |
 | _sin sala_ | Sofía Ledesma | Pidió entrar a Socios, esperando respuesta |
 
+En Marketing hay además una **reunión privada** de ejemplo, entre Lucas y Pedro:
+sirve para mostrar que Camila, que también es de Marketing, no la ve.
+
 > Los correos son **inventados** (`@harveywillys.com`). Cuando estén los reales,
 > se cambian desde la sala y entran directo con su rol.
 
@@ -192,9 +277,14 @@ ofrece: es una cuenta nuestra, no algo que el equipo vaya a usar.
 
 ## Lo que queda pendiente
 
-**Nada de esto bloquea la demostración del lunes: la plataforma funciona
-entera.** Son las cuatro cosas que faltan para que el equipo la use como
-herramienta propia, y las tres primeras dependen de que ellos definan algo.
+**Nada de esto bloquea la revisión del martes: la plataforma funciona entera.**
+Son las cosas que faltan para que el equipo la use como herramienta propia, y
+las tres primeras dependen de que ellos definan algo.
+
+De la reunión del 14 quedaron afuera a propósito **la grabación con IA** y **la
+invitación por Google Calendar**: las dos están explicadas, con sus caminos
+posibles y lo que cuesta cada uno, en
+[PLAN-CAMBIOS-14-08.md](PLAN-CAMBIOS-14-08.md).
 
 > Para llevar a la reunión: **[PEDIDOS-A-HARVEY.md](PEDIDOS-A-HARVEY.md)** tiene
 > esto convertido en preguntas concretas, y en `docs/` está la **guía de uso en
@@ -226,14 +316,18 @@ Después, en **Administración → Estado técnico** hay un botón *Probar*.
 
 ### 2. El logo
 
-Está el wordmark tipográfico. El monograma que usan en Instagram no se pudo
-descargar. Con el SVG o PNG oficial va a la barra lateral, al favicon y al PDF.
+Está el wordmark tipográfico, ya con el nombre nuevo. **Falta que manden el logo
+de Impor Bamas** en SVG o PNG: va a la barra lateral, al favicon y al PDF. Y hay
+que confirmar cómo se escribe —en la minuta aparece "Imporbamas" y "Impor
+Bamas"—; por ahora quedó *Impor Bamas*, y se cambia desde Administración sin
+tocar código.
 
 ### 3. La pantalla de Google dice "neon.tech"
 
-Usa las credenciales compartidas de Neon. Para que diga Harvey hay que registrar
-una aplicación propia en Google Cloud: media hora, mejor cuando confirmen que la
-herramienta les sirve.
+Usa las credenciales compartidas de Neon. Para que diga Impor Bamas hay que
+registrar una aplicación propia en Google Cloud: media hora. **Es la misma
+aplicación que hace falta para mandar el invite por Google Calendar**, así que
+conviene hacer las dos juntas.
 
 ### 4. Invitación por correo
 
@@ -242,16 +336,19 @@ entrar. Cuando esté la casilla conectada, ese aviso puede salir solo. Lo mismo
 con los pedidos de entrada: hoy el organizador los ve al abrir Salas, y podría
 además llegarle un correo.
 
-### 5. Decisiones que dependen de la reunión del lunes
+### 5. Decisiones que dependen de ellos
 
 No son trabajo pendiente nuestro, son datos que faltan:
 
 - **Los correos de Google** de quienes organizan cada sala. Sin eso no entran.
-- **Qué salas arrancan** y quién organiza cada una.
-- Si el temario cierra por plazo o a mano en cada equipo.
-- Si además de diferir usan rechazar.
-- Si cargamos los compromisos que hoy tienen abiertos, para arrancar con su
-  realidad y no con datos de ejemplo.
+- **Qué salas arrancan**, quién organiza cada una y **quiénes pueden abrir salas
+  nuevas** —quedó definido que son los cuatro socios, falta saber cuáles son sus
+  cuentas—.
+- Si además de que un tema vuelva al temario usan el rechazo.
+- Si cargamos las tareas que hoy tienen abiertas, para arrancar con su realidad
+  y no con datos de ejemplo.
+- **Cómo se escribe la marca**: en la minuta figura "Imporbamas" y "Impor
+  Bamas". Quedó *Impor Bamas* y se cambia desde Administración.
 
 ---
 
@@ -286,6 +383,8 @@ No son trabajo pendiente nuestro, son datos que faltan:
 | Archivo | Para qué |
 | --- | --- |
 | `ESTADO.md` | Este. El estado completo y lo que queda pendiente. |
+| `PLAN-CAMBIOS-14-08.md` | Los 62 puntos que salieron de la reunión del 14, con qué se hizo y qué quedó afuera. |
+| `db/migracion-2026-08-15.sql` | Lleva una base que ya está andando al esquema nuevo, sin perder lo cargado. |
 | `PEDIDOS-A-HARVEY.md` | Lo que hay que preguntarle al cliente, ordenado por urgencia. Para llevar a la reunión. |
 | `docs/Harvey - Guia de uso.pdf` | Manual de seis páginas para entregarle al cliente, con la identidad de **Calcuta**: Space Grotesk, la paleta del brandbook y el logotipo. |
 | `docs/guia-de-uso.html` | La fuente de ese PDF. Cada página está maquetada a medida fija —`position: fixed` no se repite de forma confiable al imprimir— así que al editar hay que revisar que el contenido siga entrando. Se regenera con Chrome: `--headless --no-pdf-header-footer --print-to-pdf`. |
@@ -296,6 +395,9 @@ No son trabajo pendiente nuestro, son datos que faltan:
 ---
 
 ## Volver a poner la base de cero
+
+Esto **borra lo cargado y vuelve a los datos de ejemplo**. Para una base que ya
+está andando, usar la migración de más arriba en vez de esto.
 
 ```bash
 export PGURL='postgresql://...'   # connection string de Neon
@@ -309,10 +411,10 @@ psql "$PGURL" -c "notify pgrst, 'reload schema';"
 de soporte, que no forman parte del conjunto de demostración:
 
 ```sql
-insert into public.usuarios (id, nombre, email, alcance, cargo, activo, "creadoEn") values
-  ('u_sop_agu',  'Agustín Ducculi',    'agustin@calcutaconsulting.com',  'superadmin','Calcuta', true, now()),
-  ('u_sop_agu2', 'Agustín Ducculi',    'aguducculi@gmail.com',           'superadmin','Calcuta', true, now()),
-  ('u_sop_fran', 'Francisco Lebermann','francisco@calcutaconsulting.com','superadmin','Calcuta', true, now()),
-  ('u_sop_ariel','Ariel',              'ariel@calcutaconsulting.com',    'superadmin','Calcuta', true, now())
-on conflict (id) do update set alcance = 'superadmin';
+insert into public.usuarios (id, nombre, email, alcance, "puedeCrearSalas", cargo, activo, "creadoEn") values
+  ('u_sop_agu',  'Agustín Ducculi',    'agustin@calcutaconsulting.com',  'superadmin', true, 'Calcuta', true, now()),
+  ('u_sop_agu2', 'Agustín Ducculi',    'aguducculi@gmail.com',           'superadmin', true, 'Calcuta', true, now()),
+  ('u_sop_fran', 'Francisco Lebermann','francisco@calcutaconsulting.com','superadmin', true, 'Calcuta', true, now()),
+  ('u_sop_ariel','Ariel',              'ariel@calcutaconsulting.com',    'superadmin', true, 'Calcuta', true, now())
+on conflict (id) do update set alcance = 'superadmin', "puedeCrearSalas" = true;
 ```

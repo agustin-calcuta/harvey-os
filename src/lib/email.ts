@@ -5,7 +5,7 @@ import { agendaDe, compromisosDe, fechaCorta, fechaLarga, hora, minutosAgenda, n
 /* ─────────────────────────────────────────────────────────────
    Composición de los dos correos automáticos que pidió Fran:
    1. al cerrar el temario, antes de la reunión
-   2. al cerrar la reunión, con conclusiones y compromisos
+   2. al cerrar la reunión, con conclusiones y tareas
    ───────────────────────────────────────────────────────────── */
 
 /* Mismos valores que el tema de la aplicación. */
@@ -16,7 +16,7 @@ const SUAVE = '#6B665D'
 const TENUE = '#9A948A'
 const BORDE = '#E3DED4'
 
-const layout = (titulo: string, kicker: string, cuerpo: string) => `
+const layout = (titulo: string, kicker: string, cuerpo: string, marca: string) => `
 <div style="background:${FONDO};padding:32px 16px;font-family:Inter,Helvetica,Arial,sans-serif">
   <div style="max-width:640px;margin:0 auto;background:#FFFFFF;border:1px solid ${BORDE}">
     <div style="padding:28px 32px;border-bottom:1px solid ${BORDE}">
@@ -25,7 +25,7 @@ const layout = (titulo: string, kicker: string, cuerpo: string) => `
     </div>
     <div style="padding:28px 32px;color:#2C2924;font-size:14px;line-height:1.65">${cuerpo}</div>
     <div style="padding:18px 32px;border-top:1px solid ${BORDE};font-size:10px;letter-spacing:2px;color:${TENUE};text-transform:uppercase">
-      Harvey · enviado automáticamente
+      ${marca} · enviado automáticamente
     </div>
   </div>
 </div>`
@@ -86,7 +86,7 @@ export function correoAgendaCerrada(e: Estado, r: Reunion) {
 
   return {
     asunto: `Temario cerrado · ${r.titulo}`,
-    html: layout('Temario cerrado', 'Pre-reunión', cuerpo),
+    html: layout('Temario cerrado', 'Antes de la reunión', cuerpo, e.config.organizacion),
     texto,
   }
 }
@@ -124,7 +124,7 @@ export function correoMinuta(e: Estado, r: Reunion) {
   const cuerpo = `
     <p style="margin:0 0 20px">
       Cerramos <strong style="color:${TINTA}">${r.titulo}</strong> del ${fechaLarga(r.fecha)}.
-      Acá quedan las conclusiones y los compromisos asumidos.
+      Acá quedan las conclusiones y las tareas que se llevó cada uno.
     </p>
     ${
       r.conclusionesGenerales
@@ -134,7 +134,7 @@ export function correoMinuta(e: Estado, r: Reunion) {
     }
     <div style="font-size:10px;letter-spacing:3px;color:${SUAVE};text-transform:uppercase;margin-bottom:12px">[ Tema por tema ]</div>
     ${bloquesTemas}
-    <div style="font-size:10px;letter-spacing:3px;color:${SUAVE};text-transform:uppercase;margin:28px 0 8px">[ Próximos compromisos ]</div>
+    <div style="font-size:10px;letter-spacing:3px;color:${SUAVE};text-transform:uppercase;margin:28px 0 8px">[ Próximos pasos ]</div>
     ${
       comps.length
         ? `<table style="width:100%;border-collapse:collapse">
@@ -181,7 +181,7 @@ export function correoMinuta(e: Estado, r: Reunion) {
 
   return {
     asunto: `Minuta · ${r.titulo}`,
-    html: layout('Minuta de reunión', 'Post-reunión', cuerpo),
+    html: layout('Minuta de reunión', 'Después de la reunión', cuerpo, e.config.organizacion),
     texto,
   }
 }

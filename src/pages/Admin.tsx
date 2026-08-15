@@ -126,8 +126,9 @@ export default function Admin() {
         }
       >
         <p className="mb-4 max-w-2xl text-sm text-suave">
-          El alcance no es el rol: el rol vive en cada sala. Acá sólo se define quién es soporte
-          técnico, con acceso por encima de todas las salas.
+          El alcance no es el rol: el rol vive en cada sala. Acá se define quién es soporte
+          técnico —con acceso por encima de todas las salas— y quién puede abrir salas nuevas,
+          que quedó en manos de los socios.
         </p>
 
         <ul className="card divide-y divide-borde">
@@ -149,16 +150,21 @@ export default function Admin() {
                   <Users size={11} />
                   {salas}
                 </span>
+                {u.puedeCrearSalas && u.alcance !== 'superadmin' && (
+                  <Chip tono="amber">Abre salas</Chip>
+                )}
                 {u.alcance === 'superadmin' && <Chip tono="signal">Soporte</Chip>}
                 <div className="flex gap-1">
                   <button
                     onClick={() => setEditando(u)}
+                    aria-label={`Editar a ${u.nombre}`}
                     className="border border-borde2 bg-panel p-1.5 text-suave transition-colors hover:border-tinta hover:text-tinta"
                   >
                     <Pencil size={12} />
                   </button>
                   <button
                     onClick={() => setPorBorrar(u)}
+                    aria-label={`Eliminar a ${u.nombre}`}
                     className="border border-borde2 bg-panel p-1.5 text-suave transition-colors hover:border-signal hover:text-signal"
                   >
                     <Trash2 size={12} />
@@ -246,7 +252,7 @@ export default function Admin() {
               <p className="mt-1 max-w-xl pl-5 text-xs text-tenue">
                 {correoConfigurado
                   ? 'Salen solos al cerrar el temario y al cerrar la reunión. Probalo acá para confirmar que la casilla responde.'
-                  : 'Los correos se componen siempre y quedan registrados en la sección Correos, listos para copiar o abrir en el cliente de correo.'}
+                  : 'Los correos se componen siempre y quedan registrados y se pueden revisar desde soporte, listos para copiar o abrir en el cliente de correo.'}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -290,7 +296,7 @@ export default function Admin() {
       <Confirmar
         abierto={!!porBorrar}
         titulo="Eliminar persona"
-        texto={`Se elimina a ${porBorrar?.nombre} y sale de todas sus salas. Sus compromisos quedan registrados.`}
+        texto={`Se elimina a ${porBorrar?.nombre} y sale de todas sus salas. Sus tareas quedan registradas.`}
         textoBoton="Eliminar"
         peligro
         onCancelar={() => setPorBorrar(undefined)}
@@ -369,6 +375,7 @@ function ModalPersona({
   const [email, setEmail] = useState('')
   const [cargo, setCargo] = useState('')
   const [alcance, setAlcance] = useState<Alcance>('usuario')
+  const [puedeCrearSalas, setPuedeCrearSalas] = useState(false)
   const [activo, setActivo] = useState(true)
 
   const [ultimo, setUltimo] = useState<string | undefined>()
@@ -378,6 +385,7 @@ function ModalPersona({
     setEmail(usuario?.email ?? '')
     setCargo(usuario?.cargo ?? '')
     setAlcance(usuario?.alcance ?? 'usuario')
+    setPuedeCrearSalas(usuario?.puedeCrearSalas ?? false)
     setActivo(usuario?.activo ?? true)
   }
   if (!abierto && ultimo !== undefined) setUltimo(undefined)
@@ -391,6 +399,7 @@ function ModalPersona({
       email: email.trim().toLowerCase(),
       cargo: cargo.trim() || undefined,
       alcance,
+      puedeCrearSalas,
       activo,
       avatarUrl: usuario?.avatarUrl,
       creadoEn: usuario?.creadoEn ?? new Date().toISOString(),
@@ -402,7 +411,6 @@ function ModalPersona({
     <Modal
       abierto={abierto}
       onCerrar={onCerrar}
-      kicker="Cuentas"
       titulo={usuario ? 'Editar persona' : 'Agregar persona'}
     >
       <form onSubmit={enviar} className="space-y-4">
@@ -441,6 +449,21 @@ function ModalPersona({
             opciones={ALCANCES.map((a) => ({ valor: a.valor, label: a.nombre, title: a.desc }))}
           />
         </Campo>
+        {/* Abrir salas quedó en manos de los socios. */}
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 accent-[#C0392B]"
+            checked={puedeCrearSalas}
+            onChange={(e) => setPuedeCrearSalas(e.target.checked)}
+          />
+          <span className="text-sm">
+            Puede abrir salas
+            <span className="ml-2 text-xs text-tenue">
+              Crear reuniones puede cualquiera; abrir una sala nueva, sólo quien esté marcado acá.
+            </span>
+          </span>
+        </label>
         <label className="flex cursor-pointer items-center gap-3">
           <input
             type="checkbox"

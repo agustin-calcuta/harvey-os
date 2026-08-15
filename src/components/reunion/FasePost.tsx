@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Download, Mail, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Check, Download, Mail, Pencil, Plus, RotateCcw, Send, Trash2 } from 'lucide-react'
 import { useApp } from '../../store/AppContext'
 import { generarMinutaPDF } from '../../lib/pdf'
 import { correoMinuta } from '../../lib/email'
@@ -15,9 +15,47 @@ import {
   nombreDe,
   paraInputDate,
 } from '../../lib/utils'
-import { ESTADO_COMPROMISO, IMPORTANCIA, OBJETIVOS, type Compromiso, type Reunion } from '../../types'
-import { Boton, Capa, Chip, ChipImportancia, Confirmar, Etiqueta, Vacio } from '../ui'
+import {
+  ESTADO_COMPROMISO,
+  IMPORTANCIA,
+  OBJETIVOS,
+  type Compromiso,
+  type Reunion,
+} from '../../types'
+import {
+  BarraFlotante,
+  Boton,
+  Capa,
+  Chip,
+  ChipImportancia,
+  Confirmar,
+  Etiqueta,
+  Vacio,
+} from '../ui'
 import ModalCompromiso from './ModalCompromiso'
+
+/* ─────────────────────────────────────────────────────────────
+   Generación de la minuta.
+
+   Cerrar la reunión arma el borrador; mandarlo es otro paso, y
+   antes hay que pasar por todo: "me debería obligar a ver todo
+   esto, como un supermercado que te obliga a pasar por todo, y
+   recién cuando llego acá la podés descargar o enviar".
+
+   Los pendientes de reuniones anteriores dejaron de ser una
+   sección aparte —"esto tiene que volar todo, confunde"—: las
+   tareas viejas que siguen abiertas van en la misma caja que las
+   nuevas, bajo Próximos pasos.
+   ───────────────────────────────────────────────────────────── */
+
+const PASOS = [
+  { id: 'conclusiones', nombre: 'Conclusiones' },
+  { id: 'temas', nombre: 'Temas' },
+  { id: 'pasos', nombre: 'Próximos pasos' },
+  { id: 'observaciones', nombre: 'Observaciones' },
+] as const
+
+type PasoId = (typeof PASOS)[number]['id']
 
 export default function FasePost({ reunion }: { reunion: Reunion }) {
   const {
@@ -26,25 +64,54 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
     actualizarReunion,
     borrarCompromiso,
     reabrirReunion,
+    enviarMinuta,
   } = useApp()
 
   const temas = agendaDe(estado, reunion.id)
-  const compromisos = compromisosDe(estado, reunion.id)
-  const arrastrados = compromisosArrastrados(estado, reunion.id)
+  const nuevas = compromisosDe(estado, reunion.id)
+  const arrastradas = compromisosArrastrados(estado, reunion.id)
   const editable = puedeModerar(reunion)
 
   const [conclusiones, setConclusiones] = useState(reunion.conclusionesGenerales ?? '')
   const [observaciones, setObservaciones] = useState(reunion.observaciones ?? '')
   const [proxima, setProxima] = useState(paraInputDate(reunion.proximaReunionFecha))
-  /* Qué pendientes viejos entran en la minuta lo decide el organizador
-     uno por uno, no una casilla de todo o nada. */
+  /* Cuáles de las que vienen de antes se suman al PDF: una por una. */
   const [enElPDF, setEnElPDF] = useState<Set<string>>(new Set())
-  const [nuevoCompromiso, setNuevoCompromiso] = useState(false)
+  const [nuevaTarea, setNuevaTarea] = useState(false)
   const [editando, setEditando] = useState<Compromiso | undefined>()
   const [porBorrar, setPorBorrar] = useState<Compromiso | undefined>()
   const [verCorreo, setVerCorreo] = useState(false)
+  const [confirmarEnvio, setConfirmarEnvio] = useState(false)
 
-  /* Autoguardado de los campos largos */
+  /* ── El recorrido obligatorio ── */
+  const [vistos, setVistos] = useState<Set<PasoId>>(new Set())
+  const refs = useRef<Partial<Record<PasoId, HTMLElement | null>>>({})
+
+  useEffect(() => {
+    /*
+     * Se marca cuando la sección cruza la banda del medio de la
+     * pantalla. Con un umbral por porcentaje del elemento, un apartado
+     * más alto que el viewport —el de los temas, con cuatro o cinco—
+     * no llegaba nunca a marcarse.
+     */
+    const obs = new IntersectionObserver(
+      (entradas) => {
+        for (const e of entradas) {
+          if (!e.isIntersecting) continue
+          const id = e.target.getAttribute('data-paso') as PasoId | null
+          if (id) setVistos((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
+        }
+      },
+      { rootMargin: '-35% 0px -35% 0px', threshold: 0 },
+    )
+    for (const el of Object.values(refs.current)) if (el) obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  const faltan = PASOS.filter((p) => !vistos.has(p.id))
+  const listo = faltan.length === 0
+
+  /* Autoguardado de los campos largos. */
   useEffect(() => {
     const id = window.setTimeout(() => {
       const cambios: Partial<Reunion> = {}
@@ -60,32 +127,53 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
     return () => window.clearTimeout(id)
   }, [conclusiones, observaciones, proxima, reunion, actualizarReunion])
 
+  const irA = (id: PasoId) =>
+    refs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
   return (
     <div className="space-y-8">
-      {/* ── Acciones ── */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Boton
-          variante="solido"
-          onClick={() =>
-            generarMinutaPDF(estado, reunion, { pendientesIncluidos: [...enElPDF] })
-          }
-        >
-          <Download size={13} /> Descargar minuta PDF
-          {enElPDF.size > 0 && (
-            <span className="ml-1 opacity-70">+{enElPDF.size}</span>
-          )}
-        </Boton>
-        <Boton onClick={() => setVerCorreo(true)}>
-          <Mail size={13} /> Ver el correo
-        </Boton>
-        {editable && reunion.estado === 'cerrada' && (
+      <div>
+        <h2 className="display text-2xl sm:text-3xl">Generación de minuta</h2>
+        <p className="mt-2 max-w-2xl text-sm text-suave">
+          Revisá los cuatro apartados y completá lo que falte. Cuando termines el recorrido se
+          habilita descargarla y enviarla.
+        </p>
+      </div>
+
+      {/* ── El recorrido ── */}
+      <nav aria-label="Apartados de la minuta" className="card flex flex-wrap gap-px bg-borde">
+        {PASOS.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => irA(p.id)}
+            className={
+              vistos.has(p.id)
+                ? 'flex flex-1 items-center justify-center gap-2 bg-panel px-3 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-acid'
+                : 'flex flex-1 items-center justify-center gap-2 bg-panel px-3 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:text-tinta'
+            }
+          >
+            {vistos.has(p.id) ? (
+              <Check size={12} />
+            ) : (
+              <span className="h-2 w-2 shrink-0 border border-borde2" />
+            )}
+            {p.nombre}
+          </button>
+        ))}
+      </nav>
+
+      {editable && reunion.estado === 'cerrada' && (
+        <div className="flex flex-wrap gap-2">
           <Boton variante="fantasma" onClick={() => reabrirReunion(reunion.id)}>
             <RotateCcw size={12} /> Reabrir para editar
           </Boton>
-        )}
-      </div>
+          <Boton variante="fantasma" onClick={() => setVerCorreo(true)}>
+            <Mail size={12} /> Ver cómo llega el correo
+          </Boton>
+        </div>
+      )}
 
-      {/* ── Ficha, tal cual la minuta de Fran ── */}
+      {/* ── Ficha ── */}
       <div className="card">
         <div className="grid gap-px bg-borde sm:grid-cols-2 lg:grid-cols-4">
           <Dato etiqueta="Participantes">
@@ -101,6 +189,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
               <input
                 type="date"
                 className="w-full"
+                aria-label="Fecha de la próxima reunión"
                 value={proxima}
                 onChange={(e) => setProxima(e.target.value)}
               />
@@ -111,13 +200,14 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
         </div>
       </div>
 
-      {/* ── Conclusiones generales ── */}
-      <section>
+      {/* ── 1. Conclusiones ── */}
+      <section data-paso="conclusiones" ref={(el) => void (refs.current.conclusiones = el)}>
         <Etiqueta className="bracket mb-3">Principales conclusiones</Etiqueta>
         {editable ? (
           <textarea
             className="w-full resize-y text-sm leading-relaxed"
             rows={4}
+            aria-label="Principales conclusiones"
             value={conclusiones}
             onChange={(e) => setConclusiones(e.target.value)}
             placeholder="Los hallazgos, definiciones y decisiones que dejó la reunión."
@@ -129,9 +219,9 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
         )}
       </section>
 
-      {/* ── Desarrollo por tema ── */}
-      <section>
-        <Etiqueta className="bracket mb-3">Desarrollo por tema</Etiqueta>
+      {/* ── 2. Temas ── */}
+      <section data-paso="temas" ref={(el) => void (refs.current.temas = el)}>
+        <Etiqueta className="bracket mb-3">Qué se habló en cada tema</Etiqueta>
         {temas.length === 0 ? (
           <Vacio titulo="Sin temas" texto="Esta reunión no tuvo temas en agenda." />
         ) : (
@@ -154,17 +244,11 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
                       </span>
                     </div>
                   </div>
-                  <div className="shrink-0 text-right">
-                    <div className="font-semibold text-xs text-suave">
-                      {t.duracionRealSeg ? mmss(t.duracionRealSeg) : '—'}
-                      <span className="text-tenue"> / {t.duracionMin}:00</span>
+                  {t.duracionRealSeg ? (
+                    <div className="shrink-0 text-right font-semibold text-xs text-suave">
+                      {mmss(t.duracionRealSeg)}
                     </div>
-                    {t.duracionRealSeg && t.duracionRealSeg > t.duracionMin * 60 && (
-                      <div className="mt-0.5 font-semibold text-[9px] uppercase tracking-[0.14em] text-signal">
-                        Se pasó {mmss(t.duracionRealSeg - t.duracionMin * 60)}
-                      </div>
-                    )}
-                  </div>
+                  ) : null}
                 </div>
 
                 <div className="mt-3 border-t border-borde pt-3 sm:pl-8">
@@ -182,97 +266,79 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
         )}
       </section>
 
-      {/* ── Próximos compromisos ── */}
-      <section>
+      {/* ── 3. Próximos pasos ──
+          Una sola caja: las tareas nuevas y las que venían de antes sin
+          terminar. Diferenciadas adentro, no en secciones separadas. */}
+      <section data-paso="pasos" ref={(el) => void (refs.current.pasos = el)}>
         <div className="mb-3 flex items-center justify-between gap-3">
-          <Etiqueta className="bracket">Próximos compromisos</Etiqueta>
+          <Etiqueta className="bracket">Próximos pasos</Etiqueta>
           {editable && (
-            <Boton tam="sm" variante="solido" onClick={() => setNuevoCompromiso(true)}>
-              <Plus size={12} /> Agregar
+            <Boton tam="sm" variante="solido" onClick={() => setNuevaTarea(true)}>
+              <Plus size={12} /> Agregar tarea
             </Boton>
           )}
         </div>
 
-        {compromisos.length === 0 ? (
-          <Vacio titulo="Sin compromisos" texto="No se registraron acciones en esta reunión." />
+        {nuevas.length === 0 && arrastradas.length === 0 ? (
+          <Vacio titulo="Sin tareas" texto="No quedó nadie a cargo de nada en esta reunión." />
         ) : (
           <div className="card overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
+              <caption className="sr-only">
+                Tareas que salen de esta reunión y las que siguen abiertas de antes
+              </caption>
               <thead>
                 <tr className="border-b border-borde">
-                  {['Acción / compromiso', 'Responsable', 'Fecha límite', 'Estado', ''].map(
-                    (h) => (
-                      <th
-                        key={h}
-                        className="p-3 text-left font-semibold text-[9px] font-normal uppercase tracking-[0.16em] text-suave"
-                      >
-                        {h}
-                      </th>
-                    ),
-                  )}
+                  {['Tarea', 'Responsable', 'Fecha límite', 'Estado', ''].map((h) => (
+                    <th
+                      key={h}
+                      scope="col"
+                      className="p-3 text-left font-semibold text-[9px] uppercase tracking-[0.16em] text-suave"
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-borde">
-                {compromisos.map((c) => (
-                  <tr key={c.id} className="transition-colors hover:bg-hueco">
-                    <td className="p-3">
-                      <div className="flex items-start gap-2.5">
-                        <span
-                          className="mt-0.5 h-5 w-0.5 shrink-0"
-                          style={{ background: IMPORTANCIA[c.importancia].hex }}
-                        />
-                        <div>
-                          <div>{c.accion}</div>
-                          {c.detalle && (
-                            <div className="mt-0.5 text-xs text-tenue">{c.detalle}</div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-3 text-xs text-suave">{nombreDe(estado, c.responsableId)}</td>
-                    <td
-                      className={
-                        estaVencido(c)
-                          ? 'p-3 font-semibold text-xs text-signal'
-                          : 'p-3 font-semibold text-xs text-suave'
-                      }
-                    >
-                      {fechaCorta(c.fechaLimite)}
-                    </td>
-                    <td className="p-3">
-                      <Chip
-                        tono={
-                          c.estado === 'hecho'
-                            ? 'acid'
-                            : c.estado === 'bloqueado'
-                              ? 'signal'
-                              : c.estado === 'en_curso'
-                                ? 'amber'
-                                : 'neutro'
-                        }
-                      >
-                        {ESTADO_COMPROMISO[c.estado].nombre}
-                      </Chip>
-                    </td>
-                    <td className="p-3">
-                      {editable && (
-                        <div className="flex justify-end gap-1">
-                          <button
-                            onClick={() => setEditando(c)}
-                            className="border border-borde2 p-1.5 text-suave transition-colors hover:border-tinta hover:text-tinta"
-                          >
-                            <Pencil size={11} />
-                          </button>
-                          <button
-                            onClick={() => setPorBorrar(c)}
-                            className="border border-borde2 p-1.5 text-suave transition-colors hover:border-signal hover:text-signal"
-                          >
-                            <Trash2 size={11} />
-                          </button>
-                        </div>
-                      )}
+                {nuevas.map((c) => (
+                  <Fila
+                    key={c.id}
+                    c={c}
+                    editable={editable}
+                    onEditar={() => setEditando(c)}
+                    onBorrar={() => setPorBorrar(c)}
+                  />
+                ))}
+
+                {arrastradas.length > 0 && (
+                  <tr className="bg-hueco">
+                    <td colSpan={5} className="px-3 py-2">
+                      <span className="font-semibold text-[9px] uppercase tracking-[0.16em] text-suave">
+                        Siguen abiertas de reuniones anteriores
+                      </span>
+                      <span className="ml-2 text-[10px] text-tenue">
+                        Tildá las que quieras sumar al PDF
+                      </span>
                     </td>
                   </tr>
+                )}
+                {arrastradas.map((c) => (
+                  <Fila
+                    key={c.id}
+                    c={c}
+                    editable={false}
+                    vieja
+                    marcada={enElPDF.has(c.id)}
+                    onMarcar={(v) =>
+                      setEnElPDF((prev) => {
+                        const s = new Set(prev)
+                        if (v) s.add(c.id)
+                        else s.delete(c.id)
+                        return s
+                      })
+                    }
+                  />
                 ))}
               </tbody>
             </table>
@@ -280,71 +346,14 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
         )}
       </section>
 
-      {/* ── Pendientes anteriores ── */}
-      {arrastrados.length > 0 && (
-        <section>
-          <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <Etiqueta className="bracket mb-1">Pendientes de reuniones anteriores</Etiqueta>
-              <p className="max-w-2xl text-xs text-tenue">
-                No forman parte de esta minuta. Tildá los que quieras sumar al PDF.
-              </p>
-            </div>
-            <button
-              onClick={() =>
-                setEnElPDF((prev) =>
-                  prev.size === arrastrados.length
-                    ? new Set()
-                    : new Set(arrastrados.map((c) => c.id)),
-                )
-              }
-              className="text-[10px] font-semibold uppercase tracking-[0.12em] text-suave underline underline-offset-2 hover:text-tinta"
-            >
-              {enElPDF.size === arrastrados.length ? 'Ninguno' : 'Todos'}
-            </button>
-          </div>
-          <ul className="card divide-y divide-borde">
-            {arrastrados.map((c) => (
-              <li key={c.id} className="flex flex-wrap items-center gap-3 p-3">
-                <input
-                  type="checkbox"
-                  className="h-3.5 w-3.5 shrink-0 accent-[#C0392B]"
-                  checked={enElPDF.has(c.id)}
-                  onChange={(e) =>
-                    setEnElPDF((prev) => {
-                      const s = new Set(prev)
-                      if (e.target.checked) s.add(c.id)
-                      else s.delete(c.id)
-                      return s
-                    })
-                  }
-                  aria-label={`Sumar «${c.accion}» al PDF`}
-                />
-                <ChipImportancia valor={c.importancia} conTexto={false} />
-                <span className="min-w-0 flex-1 truncate text-sm">{c.accion}</span>
-                <span className="text-xs text-suave">{nombreDe(estado, c.responsableId)}</span>
-                <span
-                  className={
-                    estaVencido(c)
-                      ? 'font-semibold text-[11px] text-signal'
-                      : 'font-semibold text-[11px] text-tenue'
-                  }
-                >
-                  {fechaCorta(c.fechaLimite)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {/* ── Observaciones ── */}
-      <section>
+      {/* ── 4. Observaciones ── */}
+      <section data-paso="observaciones" ref={(el) => void (refs.current.observaciones = el)}>
         <Etiqueta className="bracket mb-3">Observaciones adicionales</Etiqueta>
         {editable ? (
           <textarea
             className="w-full resize-y text-sm leading-relaxed"
             rows={3}
+            aria-label="Observaciones adicionales"
             value={observaciones}
             onChange={(e) => setObservaciones(e.target.value)}
             placeholder="Riesgos, pendientes o comentarios que deban quedar registrados."
@@ -356,10 +365,28 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
         )}
       </section>
 
+      {/* ── El cierre ── */}
+      <BarraFlotante>
+        <span className="mr-auto text-xs text-suave">
+          {listo
+            ? 'Recorriste toda la minuta.'
+            : `Falta mirar: ${faltan.map((p) => p.nombre.toLowerCase()).join(', ')}.`}
+        </span>
+        <Boton
+          disabled={!listo}
+          onClick={() => generarMinutaPDF(estado, reunion, { pendientesIncluidos: [...enElPDF] })}
+        >
+          <Download size={13} /> Descargar
+        </Boton>
+        <Boton variante="solido" disabled={!listo} onClick={() => setConfirmarEnvio(true)}>
+          <Send size={13} /> Enviar minuta
+        </Boton>
+      </BarraFlotante>
+
       {/* ── Modales ── */}
       <ModalCompromiso
-        abierto={nuevoCompromiso}
-        onCerrar={() => setNuevoCompromiso(false)}
+        abierto={nuevaTarea}
+        onCerrar={() => setNuevaTarea(false)}
         reunionId={reunion.id}
       />
       <ModalCompromiso
@@ -370,8 +397,8 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
       />
       <Confirmar
         abierto={!!porBorrar}
-        titulo="Eliminar compromiso"
-        texto={`Se elimina “${porBorrar?.accion}” de forma definitiva.`}
+        titulo="Eliminar tarea"
+        texto={`Se elimina «${porBorrar?.accion}» de forma definitiva.`}
         textoBoton="Eliminar"
         peligro
         onCancelar={() => setPorBorrar(undefined)}
@@ -380,12 +407,106 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
           setPorBorrar(undefined)
         }}
       />
+      <Confirmar
+        abierto={confirmarEnvio}
+        titulo="Enviar la minuta"
+        texto={`Sale por correo a los ${reunion.participantesIds.length} participantes, con los temas, las conclusiones y las tareas de cada uno.`}
+        textoBoton="Enviar"
+        onCancelar={() => setConfirmarEnvio(false)}
+        onConfirmar={() => {
+          void enviarMinuta(reunion.id)
+          setConfirmarEnvio(false)
+        }}
+      />
       <VistaCorreo abierto={verCorreo} onCerrar={() => setVerCorreo(false)} reunion={reunion} />
     </div>
   )
 }
 
 /* ── Auxiliares ───────────────────────────────────────────── */
+
+function Fila({
+  c,
+  editable,
+  vieja,
+  marcada,
+  onMarcar,
+  onEditar,
+  onBorrar,
+}: {
+  c: Compromiso
+  editable: boolean
+  vieja?: boolean
+  marcada?: boolean
+  onMarcar?: (v: boolean) => void
+  onEditar?: () => void
+  onBorrar?: () => void
+}) {
+  const { estado } = useApp()
+  return (
+    <tr className="transition-colors hover:bg-hueco">
+      <td className="p-3">
+        <div className="flex items-start gap-2.5">
+          {vieja && onMarcar ? (
+            <input
+              type="checkbox"
+              className="mt-1 h-3.5 w-3.5 shrink-0 accent-[#C0392B]"
+              checked={marcada}
+              onChange={(e) => onMarcar(e.target.checked)}
+              aria-label={`Sumar «${c.accion}» al PDF`}
+            />
+          ) : (
+            <span
+              className="mt-0.5 h-5 w-0.5 shrink-0"
+              style={{ background: IMPORTANCIA[c.importancia].hex }}
+            />
+          )}
+          <div>
+            <div>{c.accion}</div>
+            {c.detalle && <div className="mt-0.5 text-xs text-tenue">{c.detalle}</div>}
+          </div>
+        </div>
+      </td>
+      <td className="p-3 text-xs text-suave">{nombreDe(estado, c.responsableId)}</td>
+      <td
+        className={
+          estaVencido(c)
+            ? 'p-3 font-semibold text-xs text-signal'
+            : 'p-3 font-semibold text-xs text-suave'
+        }
+      >
+        {fechaCorta(c.fechaLimite)}
+      </td>
+      <td className="p-3">
+        <Chip
+          tono={c.estado === 'hecho' ? 'acid' : c.estado === 'en_curso' ? 'amber' : 'neutro'}
+        >
+          {ESTADO_COMPROMISO[c.estado].nombre}
+        </Chip>
+      </td>
+      <td className="p-3">
+        {editable && onEditar && onBorrar && (
+          <div className="flex justify-end gap-1">
+            <button
+              onClick={onEditar}
+              aria-label={`Editar «${c.accion}»`}
+              className="border border-borde2 p-1.5 text-suave transition-colors hover:border-tinta hover:text-tinta"
+            >
+              <Pencil size={11} />
+            </button>
+            <button
+              onClick={onBorrar}
+              aria-label={`Eliminar «${c.accion}»`}
+              className="border border-borde2 p-1.5 text-suave transition-colors hover:border-signal hover:text-signal"
+            >
+              <Trash2 size={11} />
+            </button>
+          </div>
+        )}
+      </td>
+    </tr>
+  )
+}
 
 function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
   return (
@@ -411,6 +532,7 @@ function NotaEditable({ temaId, valor }: { temaId: string; valor: string }) {
     <textarea
       className="w-full resize-y text-sm leading-relaxed"
       rows={3}
+      aria-label="Conclusiones de este tema"
       value={texto}
       onChange={(e) => setTexto(e.target.value)}
       placeholder="Conclusiones de este tema."
@@ -439,7 +561,7 @@ function VistaCorreo({
       <div className="my-auto w-full max-w-2xl">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <Etiqueta className="bracket mb-1">Se envía a {destinatarios.length} personas</Etiqueta>
+            <Etiqueta className="bracket mb-1">Va a {destinatarios.length} personas</Etiqueta>
             <div className="text-sm text-tinta">{correo.asunto}</div>
           </div>
           <Boton onClick={onCerrar}>Cerrar</Boton>

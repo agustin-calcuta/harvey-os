@@ -25,7 +25,7 @@ export const ROLES_SALA: Record<RolSala, { nombre: string; desc: string }> = {
   },
   miembro: {
     nombre: 'Miembro',
-    desc: 'Propone temas, participa y sigue sus propios compromisos.',
+    desc: 'Propone temas, participa y sigue sus propias tareas.',
   },
 }
 
@@ -46,6 +46,12 @@ export interface Usuario {
   nombre: string
   email: string
   alcance: Alcance
+  /**
+   * Abrir salas quedó en manos de los socios; reuniones crea
+   * cualquiera. Se marca desde Administración y nadie se lo puede dar
+   * a sí mismo: lo congela un disparador de la base.
+   */
+  puedeCrearSalas?: boolean
   avatarUrl?: string
   cargo?: string
   activo: boolean
@@ -54,6 +60,11 @@ export interface Usuario {
 
 /* ── Salas ────────────────────────────────────────────────── */
 
+/**
+ * El alta pregunta cuatro cosas —nombre, descripción, cadencia y a
+ * quién sumar—. El resto son valores por omisión para precargar el
+ * formulario de cada reunión, y se ajustan después desde la sala.
+ */
 export interface Sala {
   id: string
   nombre: string
@@ -66,6 +77,8 @@ export interface Sala {
   duracionReunionDefaultMin: number
   duracionTemaDefaultMin: number
   lugarHabitual?: string
+  /** Lo que ofrece el desplegable de lugar. Vacío: los ya usados en la sala. */
+  lugares?: string[]
   creadaPor: string
   creadaEn: string
   archivada: boolean
@@ -158,7 +171,7 @@ export const OBJETIVOS: Record<
     desc: 'Se necesita definir algo y salir con una resolución tomada.',
     pideConclusion: 'Qué se decidió',
     ejemploConclusion:
-      'Qué se resolvió, con qué alcance y desde cuándo. Si quedó alguien a cargo, registralo abajo como compromiso.',
+      'Qué se resolvió, con qué alcance y desde cuándo. Si quedó alguien a cargo, registralo abajo como tarea.',
   },
   exploratoria: {
     nombre: 'Exploratoria',
@@ -185,31 +198,41 @@ export const OBJETIVOS: Record<
 }
 
 export type EstadoTema =
-  /** En el banco de la sala, todavía sin reunión asignada. */
+  /** En el temario personal de quien lo escribió: sin sala y sin reunión. */
   | 'banco'
   | 'propuesto'
   | 'aprobado'
   | 'rechazado'
+  /** Estuvo en una agenda y no se llegó a hablar. Conserva la sala. */
   | 'diferido'
   | 'tratado'
 
 export const ESTADO_TEMA: Record<EstadoTema, { nombre: string; color: string }> = {
-  banco: { nombre: 'En el banco', color: 'text-cold' },
+  banco: { nombre: 'En mi temario', color: 'text-cold' },
   propuesto: { nombre: 'Propuesto', color: 'text-suave' },
   aprobado: { nombre: 'En agenda', color: 'text-acid' },
   rechazado: { nombre: 'Rechazado', color: 'text-signal' },
-  diferido: { nombre: 'Diferido', color: 'text-amber' },
+  diferido: { nombre: 'Sin tratar', color: 'text-amber' },
   tratado: { nombre: 'Tratado', color: 'text-cold' },
 }
 
+/**
+ * Un tema vive en dos lados, y de eso depende quién lo ve.
+ *
+ * En el **temario** —el bloc de notas personal de cada uno— no tiene
+ * sala ni reunión, y sólo lo ve quien lo escribió: *"a vos no te
+ * interesa ver el temario que yo quiero cargar"*. Cuando se asigna a
+ * una reunión toma la sala de esa reunión y pasa a ser del equipo.
+ *
+ * El que se llevó a una reunión y no se llegó a hablar queda
+ * `diferido`: pierde la reunión y conserva la sala, así el
+ * organizador lo puede volver a incluir y a la vez le vuelve a
+ * aparecer en el temario a quien lo propuso.
+ */
 export interface Tema {
   id: string
-  salaId: string
-  /**
-   * Sin reunión asignada mientras vive en el banco: es el "banco de
-   * suplentes" que pidió Fran, para anotar un tema antes de que
-   * exista una fecha y no perderlo.
-   */
+  /** Sin sala mientras está en el temario personal. */
+  salaId?: string
   reunionId?: string
   titulo: string
   detalle?: string
@@ -228,34 +251,27 @@ export interface Tema {
 
 /* ── Reuniones ────────────────────────────────────────────── */
 
-export type EstadoReunion =
-  | 'borrador'
-  | 'agenda_abierta'
-  | 'agenda_cerrada'
-  | 'en_curso'
-  | 'cerrada'
+/**
+ * Cuatro estados. «Borrador» se fue: si la reunión existe, se le
+ * pueden cargar temas, y nadie entendía la diferencia.
+ */
+export type EstadoReunion = 'agenda_abierta' | 'agenda_cerrada' | 'en_curso' | 'cerrada'
 
 export const ESTADO_REUNION: Record<
   EstadoReunion,
   { nombre: string; color: string; bg: string; desc: string }
 > = {
-  borrador: {
-    nombre: 'Borrador',
-    color: 'text-suave',
-    bg: 'bg-hueco',
-    desc: 'Todavía no se abrió la carga de temas.',
-  },
   agenda_abierta: {
     nombre: 'Agenda abierta',
     color: 'text-acid',
     bg: 'bg-acid/15',
-    desc: 'Se pueden proponer temas hasta el cierre.',
+    desc: 'Se pueden proponer temas.',
   },
   agenda_cerrada: {
-    nombre: 'Agenda cerrada',
+    nombre: 'Temario cerrado',
     color: 'text-amber',
     bg: 'bg-amber/15',
-    desc: 'Temario definido y notificado. Listo para reunirse.',
+    desc: 'Temario definido y avisado. Igual se puede sumar algo de último momento.',
   },
   en_curso: {
     nombre: 'En curso',
@@ -267,8 +283,18 @@ export const ESTADO_REUNION: Record<
     nombre: 'Cerrada',
     color: 'text-cold',
     bg: 'bg-cold/15',
-    desc: 'Minuta emitida y compromisos distribuidos.',
+    desc: 'Minuta emitida y tareas distribuidas.',
   },
+}
+
+/** Cada cuánto se repite. Se elige al crear la reunión, no en la sala. */
+export type Recurrencia = 'unica' | 'semanal' | 'quincenal' | 'mensual'
+
+export const RECURRENCIAS: Record<Recurrencia, { nombre: string; dias: number }> = {
+  unica: { nombre: 'Por única vez', dias: 0 },
+  semanal: { nombre: 'Todas las semanas', dias: 7 },
+  quincenal: { nombre: 'Cada quince días', dias: 14 },
+  mensual: { nombre: 'Una vez por mes', dias: 28 },
 }
 
 export interface Reunion {
@@ -280,8 +306,17 @@ export interface Reunion {
   duracionPrevistaMin: number
   lugar?: string
   moderadorId: string
+  /**
+   * Puede incluir a alguien que no es de la sala: se suma a esta
+   * reunión, no al equipo, y no ve el resto de las minutas.
+   */
   participantesIds: string[]
   estado: EstadoReunion
+  /** No se lista para el resto de la sala: sólo la ven los que están. */
+  privada?: boolean
+  recurrencia?: Recurrencia
+  /** Las de una misma serie lo comparten. En «Próximas» se ve una sola. */
+  serieId?: string
   /** Horas antes del inicio en que se cierra la carga de temas. */
   horasCierreAgenda: number
   /** Sin cierre automático: sólo cierra cuando el organizador aprieta el botón. */
@@ -296,9 +331,19 @@ export interface Reunion {
   creadoEn: string
 }
 
-/* ── Compromisos ──────────────────────────────────────────── */
+/* ── Tareas ───────────────────────────────────────────────── */
 
-export type EstadoCompromiso = 'pendiente' | 'en_curso' | 'bloqueado' | 'hecho'
+/*
+ * De cara a quien la usa esto son **tareas**: la palabra "compromiso"
+ * se fue de toda la interfaz. Adentro el tipo y la tabla conservan el
+ * nombre viejo a propósito —renombrar la tabla obliga a migrar la
+ * base y a rehacer el caché de la Data API sin que nadie lo note—.
+ *
+ * Tres estados y no más: *"o lo tengo pendiente y todavía no lo pude
+ * hacer, o ya lo terminé"*. Lo que está trabado se cuenta en el
+ * avance de la tarea en curso, que es donde se explica por qué.
+ */
+export type EstadoCompromiso = 'pendiente' | 'en_curso' | 'hecho'
 
 export const ESTADO_COMPROMISO: Record<
   EstadoCompromiso,
@@ -316,26 +361,15 @@ export const ESTADO_COMPROMISO: Record<
     bg: 'bg-amber/15',
     border: 'border-amber',
   },
-  bloqueado: {
-    nombre: 'Bloqueado',
-    color: 'text-signal',
-    bg: 'bg-signal/15',
-    border: 'border-signal',
-  },
   hecho: {
-    nombre: 'Hecho',
+    nombre: 'Hecha',
     color: 'text-acid',
     bg: 'bg-acid/15',
     border: 'border-acid',
   },
 }
 
-export const COLUMNAS_KANBAN: EstadoCompromiso[] = [
-  'pendiente',
-  'en_curso',
-  'bloqueado',
-  'hecho',
-]
+export const COLUMNAS_KANBAN: EstadoCompromiso[] = ['pendiente', 'en_curso', 'hecho']
 
 export interface Compromiso {
   id: string

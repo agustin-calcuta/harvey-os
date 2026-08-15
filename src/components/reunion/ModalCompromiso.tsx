@@ -10,7 +10,7 @@ import {
 } from '../../types'
 import { Boton, Campo, Modal, Segmentado } from '../ui'
 
-/* Alta y edición de compromisos: acción, responsable, fecha límite y estado. */
+/* Alta y edición de tareas: qué hay que hacer, quién y para cuándo. */
 
 export default function ModalCompromiso({
   abierto,
@@ -36,16 +36,17 @@ export default function ModalCompromiso({
   const [est, setEst] = useState<EstadoCompromiso>('pendiente')
   const [avance, setAvance] = useState('')
 
+  const primero = gente[0]?.id
   useEffect(() => {
     if (!abierto) return
     setAccion(compromiso?.accion ?? '')
     setDetalle(compromiso?.detalle ?? '')
-    setResponsableId(compromiso?.responsableId ?? gente[0]?.id ?? '')
+    setResponsableId(compromiso?.responsableId ?? primero ?? '')
     setFechaLimite(paraInputDate(compromiso?.fechaLimite) || sugerirFecha())
     setImportancia(compromiso?.importancia ?? 'media')
     setEst(compromiso?.estado ?? 'pendiente')
     setAvance(compromiso?.avance ?? '')
-  }, [abierto, compromiso, salaActiva, estado])
+  }, [abierto, compromiso, primero])
 
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -71,11 +72,10 @@ export default function ModalCompromiso({
     <Modal
       abierto={abierto}
       onCerrar={onCerrar}
-      kicker={compromiso ? 'Editar' : 'Post-reunión'}
-      titulo={compromiso ? 'Editar compromiso' : 'Nuevo compromiso'}
+      titulo={compromiso ? 'Editar tarea' : 'Nueva tarea'}
     >
       <form onSubmit={enviar} className="space-y-5">
-        <Campo etiqueta="Acción / compromiso">
+        <Campo etiqueta="Qué hay que hacer">
           <input
             className="w-full"
             value={accion}
@@ -145,7 +145,7 @@ export default function ModalCompromiso({
         </Campo>
 
         {compromiso && (
-          <Campo etiqueta="Avance" ayuda="Qué se hizo hasta ahora o qué lo está frenando.">
+          <Campo etiqueta="Avance" ayuda="Qué se hizo hasta ahora, o qué la está frenando.">
             <textarea
               className="w-full resize-y"
               rows={2}
@@ -160,7 +160,7 @@ export default function ModalCompromiso({
             Cancelar
           </Boton>
           <Boton type="submit" variante="solido">
-            {compromiso ? 'Guardar' : 'Registrar compromiso'}
+            {compromiso ? 'Guardar' : 'Registrar tarea'}
           </Boton>
         </div>
       </form>

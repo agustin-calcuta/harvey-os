@@ -1,174 +1,206 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { CalendarPlus, Plus } from 'lucide-react'
+import { CalendarPlus, Lock, Plus, Search, UserPlus, X } from 'lucide-react'
 import { useApp } from '../store/AppContext'
 import {
   agendaDe,
-  integrantes,
-  cuentaRegresiva,
-  deadlineAgenda,
+  buscarEnMinutas,
   fechaCorta,
+  fechaLarga,
+  historialReuniones,
   hora,
-  minutosAgenda,
+  integrantes,
+  lugaresDe,
   nombreDe,
-  ordenarReuniones,
   paraInputDateTime,
+  proximasReuniones,
   temasDe,
 } from '../lib/utils'
-import { ESTADO_REUNION, type EstadoReunion } from '../types'
-import {
-  Avatares,
-  Boton,
-  Campo,
-  Chip,
-  Modal,
-  Seccion,
-  Vacio,
-} from '../components/ui'
+import { ESTADO_REUNION, RECURRENCIAS, type Recurrencia, type Reunion } from '../types'
+import { Avatares, Boton, Campo, Chip, Modal, Seccion, Vacio } from '../components/ui'
 
-const FILTROS: { valor: EstadoReunion | 'todas'; texto: string }[] = [
-  { valor: 'todas', texto: 'Todas' },
-  { valor: 'agenda_abierta', texto: 'Agenda abierta' },
-  { valor: 'agenda_cerrada', texto: 'Agenda cerrada' },
-  { valor: 'en_curso', texto: 'En curso' },
-  { valor: 'cerrada', texto: 'Cerradas' },
-]
+/* ─────────────────────────────────────────────────────────────
+   Reuniones.
+
+   Dos vistas y no una lista larga: "para mí hay próximas
+   reuniones y reuniones que ya ocurrieron". De una serie que se
+   repite se muestra sólo la primera, y el historial se recorre
+   como un extracto, con un buscador que entra en las minutas.
+   ───────────────────────────────────────────────────────────── */
+
+type Vista = 'proximas' | 'historial'
 
 export default function Reuniones() {
-  const { estado, puedeOrganizar, salaActiva } = useApp()
-  // Las métricas del panel entran acá con el estado ya filtrado.
-  const [params] = useSearchParams()
-  const [filtro, setFiltro] = useState<EstadoReunion | 'todas'>(() => {
-    const e = params.get('estado')
-    return e && e in ESTADO_REUNION ? (e as EstadoReunion) : 'todas'
-  })
-  const [creando, setCreando] = useState(false)
+  const { estado, yo, salaActiva, misSalas } = useApp()
+  const [params, setParams] = useSearchParams()
 
-  const deLaSala = estado.reuniones.filter((r) => r.salaId === salaActiva?.id)
-  const lista = ordenarReuniones(
-    filtro === 'todas' ? deLaSala : deLaSala.filter((r) => r.estado === filtro),
+  const [vista, setVista] = useState<Vista>(
+    params.get('vista') === 'historial' ? 'historial' : 'proximas',
   )
+  const [creando, setCreando] = useState(params.get('nueva') === '1')
+  const [busqueda, setBusqueda] = useState('')
+  const [soloEstaSala, setSoloEstaSala] = useState(true)
+
+  /* El panel entra acá con la vista ya elegida. */
+  useEffect(() => {
+    if (params.get('nueva') === '1') {
+      setCreando(true)
+      params.delete('nueva')
+      setParams(params, { replace: true })
+    }
+  }, [params, setParams])
+
+  const salaFiltro = soloEstaSala ? salaActiva?.id : undefined
+  const proximas = proximasReuniones(estado, yo, salaFiltro)
+  const historial = historialReuniones(estado, yo, salaFiltro)
+  const coincidencias = useMemo(
+    () => buscarEnMinutas(estado, busqueda, yo, salaFiltro),
+    [estado, busqueda, yo, salaFiltro],
+  )
+  const enBusqueda = busqueda.trim().length >= 2
 
   return (
     <div className="space-y-6">
       <Seccion
-        kicker={salaActiva?.nombre ?? "Agenda del equipo"}
+        kicker={salaActiva?.nombre ?? 'Agenda del equipo'}
         titulo="Reuniones"
         acciones={
-          puedeOrganizar && (
-            <Boton variante="solido" onClick={() => setCreando(true)}>
-              <Plus size={13} /> Nueva reunión
-            </Boton>
-          )
+          <Boton variante="solido" onClick={() => setCreando(true)}>
+            <Plus size={13} /> Crear reunión
+          </Boton>
         }
       >
-        {/* En móvil se desplazan en horizontal en vez de apilarse en varias filas. */}
-        <div className="no-scrollbar -mx-4 mb-5 flex gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
-          {FILTROS.map((f) => (
+        {/* ── Próximas / Historial ── */}
+        <div role="tablist" aria-label="Vista de reuniones" className="mb-5 flex gap-1.5">
+          {(
+            [
+              ['proximas', 'Próximas'],
+              ['historial', 'Historial'],
+            ] as const
+          ).map(([v, texto]) => (
             <button
-              key={f.valor}
-              onClick={() => setFiltro(f.valor)}
+              key={v}
+              role="tab"
+              aria-selected={vista === v}
+              onClick={() => setVista(v)}
               className={
-                filtro === f.valor
-                  ? 'shrink-0 whitespace-nowrap border border-tinta bg-tinta px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-fondo'
-                  : 'shrink-0 whitespace-nowrap border border-borde2 px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
+                vista === v
+                  ? 'border border-tinta bg-tinta px-4 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-fondo'
+                  : 'border border-borde2 px-4 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
               }
             >
-              {f.texto}
+              {texto}
             </button>
           ))}
+          {misSalas.length > 1 && (
+            <button
+              onClick={() => setSoloEstaSala((v) => !v)}
+              className="ml-auto border border-borde2 px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta"
+            >
+              {soloEstaSala ? 'Ver todas mis salas' : `Sólo ${salaActiva?.nombre ?? 'esta sala'}`}
+            </button>
+          )}
         </div>
 
-        {lista.length === 0 ? (
-          <Vacio
-            titulo="No hay reuniones"
-            texto="Todavía no se creó ninguna reunión con este filtro."
-            icono={<CalendarPlus size={32} />}
-          />
+        {vista === 'proximas' ? (
+          proximas.length === 0 ? (
+            <Vacio
+              titulo="No hay reuniones a la vista"
+              texto="Creá la próxima para que el equipo empiece a cargar temas."
+              icono={<CalendarPlus size={32} />}
+              accion={
+                <Boton variante="solido" onClick={() => setCreando(true)}>
+                  <Plus size={13} /> Crear reunión
+                </Boton>
+              }
+            />
+          ) : (
+            <div className="space-y-3">
+              {proximas.map((r) => (
+                <Fila key={r.id} reunion={r} />
+              ))}
+            </div>
+          )
         ) : (
-          <div className="space-y-3">
-            {lista.map((r) => {
-              const agenda = agendaDe(estado, r.id)
-              const propuestos = temasDe(estado, r.id).filter((t) => t.estado === 'propuesto')
-              const total = minutosAgenda(agenda)
-              const excedido = total > r.duracionPrevistaMin
-              const cd = cuentaRegresiva(deadlineAgenda(r))
-
-              return (
-                <Link
-                  key={r.id}
-                  to={`/reuniones/${r.id}`}
-                  className="card group block p-5 transition-colors hover:border-signal"
+          <div className="space-y-4">
+            {/* ── Buscar en las minutas ── */}
+            <div className="card flex items-center gap-3 px-4 py-3">
+              <Search size={16} className="shrink-0 text-suave" aria-hidden />
+              {/* type="text" a propósito: en WebKit, `search` dibuja su
+                  propia cruz y quedaban dos, una al lado de la otra. */}
+              <input
+                type="text"
+                className="w-full border-0 bg-transparent p-0 focus:ring-0"
+                placeholder="Buscar una palabra en todas las minutas"
+                aria-label="Buscar una palabra en todas las minutas"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+              />
+              {busqueda && (
+                <button
+                  onClick={() => setBusqueda('')}
+                  className="shrink-0 text-suave hover:text-tinta"
+                  aria-label="Limpiar la búsqueda"
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <Chip
-                          tono={
-                            r.estado === 'en_curso'
-                              ? 'signal'
-                              : r.estado === 'agenda_abierta'
-                                ? 'acid'
-                                : r.estado === 'agenda_cerrada'
-                                  ? 'amber'
-                                  : r.estado === 'cerrada'
-                                    ? 'cold'
-                                    : 'neutro'
-                          }
-                        >
-                          {r.estado === 'en_curso' && (
-                            <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-signal" />
-                          )}
-                          {ESTADO_REUNION[r.estado].nombre}
-                        </Chip>
-                        {r.estado === 'agenda_abierta' && !r.cierreManual && (
-                          <span
-                            className={
-                              cd.vencido
-                                ? 'font-semibold text-[10px] uppercase tracking-[0.14em] text-signal'
-                                : 'font-semibold text-[10px] uppercase tracking-[0.14em] text-amber'
-                            }
-                          >
-                            {cd.vencido ? 'Plazo vencido' : `Cierra en ${cd.texto}`}
-                          </span>
-                        )}
-                      </div>
+                  <X size={14} />
+                </button>
+              )}
+            </div>
 
-                      <h3 className="display text-xl transition-colors group-hover:text-signal sm:text-2xl">
-                        {r.titulo}
-                      </h3>
-
-                      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-suave">
-                        <span>
-                          {fechaCorta(r.fecha)} · {hora(r.fecha)}
-                        </span>
-                        {r.lugar && <span>{r.lugar}</span>}
-                        <span>Modera {nombreDe(estado, r.moderadorId)}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex w-full shrink-0 flex-row-reverse items-center justify-between gap-3 sm:w-auto sm:flex-col sm:items-end">
-                      <Avatares
-                        nombres={r.participantesIds
-                          .map((id) => estado.usuarios.find((u) => u.id === id))
-                          .filter(Boolean)
-                          .map((u) => ({ nombre: u!.nombre, url: u!.avatarUrl }))}
-                        max={4}
-                      />
-                      <div className="flex gap-4 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
-                        <span>{agenda.length} temas</span>
-                        {propuestos.length > 0 && (
-                          <span className="text-amber">{propuestos.length} por aprobar</span>
-                        )}
-                        <span className={excedido ? 'text-signal' : ''}>
-                          {total}/{r.duracionPrevistaMin} min
-                        </span>
-                      </div>
-                    </div>
+            {enBusqueda ? (
+              coincidencias.length === 0 ? (
+                <Vacio
+                  titulo="Sin resultados"
+                  texto={`Ninguna minuta menciona «${busqueda.trim()}».`}
+                  icono={<Search size={32} />}
+                />
+              ) : (
+                <>
+                  <p className="text-xs text-suave">
+                    {coincidencias.length}{' '}
+                    {coincidencias.length === 1 ? 'minuta menciona' : 'minutas mencionan'} «
+                    {busqueda.trim()}».
+                  </p>
+                  <div className="space-y-3">
+                    {coincidencias.map(({ reunion, donde }) => (
+                      <Fila key={reunion.id} reunion={reunion} donde={donde} />
+                    ))}
                   </div>
-                </Link>
+                </>
               )
-            })}
+            ) : historial.length === 0 ? (
+              <Vacio
+                titulo="Todavía no hay historial"
+                texto="Acá van a quedar todas las reuniones cerradas, de la más nueva a la más vieja."
+                icono={<CalendarPlus size={32} />}
+              />
+            ) : (
+              <ul className="card divide-y divide-borde">
+                {historial.map((r) => (
+                  <li key={r.id}>
+                    <Link
+                      to={`/reuniones/${r.id}`}
+                      className="flex flex-wrap items-center gap-x-4 gap-y-1 p-4 transition-colors hover:bg-hueco"
+                    >
+                      <span className="w-20 shrink-0 font-semibold text-[11px] text-tenue">
+                        {fechaCorta(r.fecha)}
+                      </span>
+                      <span className="min-w-0 flex-1 basis-[60%] truncate text-sm sm:basis-auto">
+                        {r.titulo}
+                      </span>
+                      {!soloEstaSala && (
+                        <span className="text-xs text-tenue">
+                          {estado.salas.find((s) => s.id === r.salaId)?.nombre}
+                        </span>
+                      )}
+                      <span className="font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
+                        {agendaDe(estado, r.id).length} temas
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
       </Seccion>
@@ -178,14 +210,91 @@ export default function Reuniones() {
   )
 }
 
+/* ── Una reunión en la lista ──────────────────────────────── */
+
+function Fila({ reunion: r, donde }: { reunion: Reunion; donde?: string[] }) {
+  const { estado } = useApp()
+  const agenda = agendaDe(estado, r.id)
+  const propuestos = temasDe(estado, r.id).filter((t) => t.estado === 'propuesto')
+
+  return (
+    <Link
+      to={`/reuniones/${r.id}`}
+      className="card group block p-4 transition-colors hover:border-signal"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="mb-1.5 flex flex-wrap items-center gap-2">
+            <Chip
+              tono={
+                r.estado === 'en_curso'
+                  ? 'signal'
+                  : r.estado === 'agenda_abierta'
+                    ? 'acid'
+                    : r.estado === 'agenda_cerrada'
+                      ? 'amber'
+                      : 'cold'
+              }
+            >
+              {r.estado === 'en_curso' && (
+                <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-signal" />
+              )}
+              {ESTADO_REUNION[r.estado].nombre}
+            </Chip>
+            {r.privada && (
+              <Chip tono="neutro" title="Sólo la ven quienes participan">
+                <Lock size={9} /> Privada
+              </Chip>
+            )}
+          </div>
+
+          <h3 className="text-base transition-colors group-hover:text-signal sm:text-lg">
+            {r.titulo}
+          </h3>
+
+          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-suave">
+            <span>
+              {fechaLarga(r.fecha)} · {hora(r.fecha)}
+            </span>
+            {r.lugar && <span>{r.lugar}</span>}
+            <span>Modera {nombreDe(estado, r.moderadorId)}</span>
+          </div>
+
+          {donde && donde.length > 0 && (
+            <p className="mt-2 text-xs text-tenue">Aparece en: {donde.slice(0, 3).join(' · ')}</p>
+          )}
+        </div>
+
+        <div className="flex w-full shrink-0 flex-row-reverse items-center justify-between gap-3 sm:w-auto sm:flex-col sm:items-end">
+          <Avatares
+            nombres={r.participantesIds
+              .map((id) => estado.usuarios.find((u) => u.id === id))
+              .filter(Boolean)
+              .map((u) => ({ nombre: u!.nombre, url: u!.avatarUrl }))}
+            max={4}
+          />
+          <div className="flex gap-3 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
+            <span>{agenda.length} temas</span>
+            {propuestos.length > 0 && (
+              <span className="text-amber">{propuestos.length} por aprobar</span>
+            )}
+          </div>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
 /* ── Alta de reunión ──────────────────────────────────────── */
 
+const OTRO = '__otro__'
+
 function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {
-  const { estado, crearReunion, salaActiva, yo } = useApp()
+  const { estado, crearReunion, asegurarPersona, salaActiva, yo } = useApp()
   const navegar = useNavigate()
 
-  /* La sala define los valores por defecto de sus reuniones. */
   const gente = salaActiva ? integrantes(estado, salaActiva.id) : []
+  const lugares = lugaresDe(estado, salaActiva?.id)
 
   const proximoLunes = () => {
     const d = new Date()
@@ -194,31 +303,51 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
     return paraInputDateTime(d.toISOString())
   }
 
-  const siguiente =
-    estado.reuniones.filter((r) => r.salaId === salaActiva?.id).length + 1
+  const siguiente = estado.reuniones.filter((r) => r.salaId === salaActiva?.id).length + 1
   const [titulo, setTitulo] = useState(`${salaActiva?.nombre ?? 'Reunión'} · #${siguiente}`)
   const [fecha, setFecha] = useState(proximoLunes())
   const [duracion, setDuracion] = useState(salaActiva?.duracionReunionDefaultMin ?? 60)
-  const [lugar, setLugar] = useState(salaActiva?.lugarHabitual ?? '')
+  const [lugar, setLugar] = useState(lugares[0] ?? OTRO)
+  const [otroLugar, setOtroLugar] = useState('')
   const [moderadorId, setModeradorId] = useState(yo?.id ?? gente[0]?.id ?? '')
-  const [horasCierre, setHorasCierre] = useState(salaActiva?.horasCierreAgenda ?? 24)
-  const [cierreManual, setCierreManual] = useState(salaActiva?.cierreManual ?? false)
-  const [participantes, setParticipantes] = useState<string[]>(gente.map((u) => u.id))
+  const [recurrencia, setRecurrencia] = useState<Recurrencia>('unica')
+  const [privada, setPrivada] = useState(false)
+  /* Desmarcados a propósito: se marca quién va, no quién no va. */
+  const [participantes, setParticipantes] = useState<string[]>([])
+  const [invitados, setInvitados] = useState<{ nombre: string; email: string }[]>([])
+  const [sumandoInvitado, setSumandoInvitado] = useState(false)
+  const [nuevoNombre, setNuevoNombre] = useState('')
+  const [nuevoEmail, setNuevoEmail] = useState('')
 
   const alternar = (id: string) =>
     setParticipantes((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
 
+  const agregarInvitado = () => {
+    const email = nuevoEmail.trim().toLowerCase()
+    if (!email) return
+    setInvitados((v) => [...v, { nombre: nuevoNombre.trim() || email, email }])
+    setNuevoNombre('')
+    setNuevoEmail('')
+    setSumandoInvitado(false)
+  }
+
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault()
+    // Los de afuera se dan de alta ahora y entran sólo a esta reunión.
+    const ids = [...participantes]
+    for (const inv of invitados) {
+      const persona = await asegurarPersona(inv.nombre, inv.email)
+      if (persona && !ids.includes(persona.id)) ids.push(persona.id)
+    }
     const r = await crearReunion({
       titulo,
       fecha: new Date(fecha).toISOString(),
       duracionPrevistaMin: duracion,
-      lugar: lugar || undefined,
+      lugar: (lugar === OTRO ? otroLugar.trim() : lugar) || undefined,
       moderadorId,
-      horasCierreAgenda: horasCierre,
-      cierreManual,
-      participantesIds: participantes,
+      recurrencia,
+      privada,
+      participantesIds: ids,
       estado: 'agenda_abierta',
     })
     onCerrar()
@@ -226,7 +355,7 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
   }
 
   return (
-    <Modal abierto={abierto} onCerrar={onCerrar} kicker="Pre-reunión" titulo="Nueva reunión">
+    <Modal abierto={abierto} onCerrar={onCerrar} titulo="Crear reunión">
       <form onSubmit={enviar} className="space-y-4">
         <Campo etiqueta="Título">
           <input
@@ -261,7 +390,23 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Campo etiqueta="Lugar">
-            <input className="w-full" value={lugar} onChange={(e) => setLugar(e.target.value)} />
+            <select className="w-full" value={lugar} onChange={(e) => setLugar(e.target.value)}>
+              {lugares.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+              <option value={OTRO}>Otro…</option>
+            </select>
+            {lugar === OTRO && (
+              <input
+                className="mt-2 w-full"
+                placeholder="¿Dónde se juntan?"
+                aria-label="Otro lugar"
+                value={otroLugar}
+                onChange={(e) => setOtroLugar(e.target.value)}
+              />
+            )}
           </Campo>
           <Campo etiqueta="Modera">
             <select
@@ -278,74 +423,124 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
           </Campo>
         </div>
 
-        <Campo
-          etiqueta="El temario cierra"
-          ayuda="Con cierre a mano no hay plazo: se aceptan temas hasta que lo cierres."
-        >
+        <Campo etiqueta="Se repite">
           <div className="flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              onClick={() => setCierreManual(true)}
-              className={
-                cierreManual
-                  ? 'border border-tinta bg-tinta px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-fondo'
-                  : 'border border-borde2 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
-              }
-            >
-              A mano
-            </button>
-            {[12, 24, 48].map((h) => (
+            {(Object.keys(RECURRENCIAS) as Recurrencia[]).map((r) => (
               <button
-                key={h}
+                key={r}
                 type="button"
-                onClick={() => {
-                  setCierreManual(false)
-                  setHorasCierre(h)
-                }}
+                onClick={() => setRecurrencia(r)}
                 className={
-                  !cierreManual && horasCierre === h
+                  recurrencia === r
                     ? 'border border-tinta bg-tinta px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-fondo'
                     : 'border border-borde2 px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
                 }
               >
-                {h} h antes
+                {RECURRENCIAS[r].nombre}
               </button>
             ))}
           </div>
         </Campo>
 
-        <Campo etiqueta={`Participantes (${participantes.length})`}>
+        {/* ── Participantes ── */}
+        <Campo
+          etiqueta={`Quiénes participan (${participantes.length + invitados.length})`}
+          ayuda="Marcá a quiénes convocás. Podés sumar a alguien de afuera: entra a esta reunión y no ve el resto de la sala."
+        >
           <div className="grid gap-1.5 sm:grid-cols-2">
             {gente.map((u) => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => alternar(u.id)}
+              <button
+                key={u.id}
+                type="button"
+                aria-pressed={participantes.includes(u.id)}
+                onClick={() => alternar(u.id)}
+                className={
+                  participantes.includes(u.id)
+                    ? 'flex items-center gap-2 border border-tinta/60 bg-hueco px-3 py-2 text-left text-xs'
+                    : 'flex items-center gap-2 border border-borde px-3 py-2 text-left text-xs text-suave transition-colors hover:border-suave'
+                }
+              >
+                <span
                   className={
                     participantes.includes(u.id)
-                      ? 'flex items-center gap-2 border border-tinta/60 bg-hueco px-3 py-2 text-left text-xs'
-                      : 'flex items-center gap-2 border border-borde px-3 py-2 text-left text-xs text-suave transition-colors hover:border-suave'
+                      ? 'h-2 w-2 shrink-0 bg-signal'
+                      : 'h-2 w-2 shrink-0 border border-borde2'
                   }
+                />
+                <span className="truncate">{u.nombre}</span>
+              </button>
+            ))}
+            {invitados.map((inv, i) => (
+              <span
+                key={inv.email}
+                className="flex items-center gap-2 border border-cold/50 bg-cold/5 px-3 py-2 text-xs"
+              >
+                <span className="min-w-0 flex-1 truncate">{inv.nombre} · de afuera</span>
+                <button
+                  type="button"
+                  onClick={() => setInvitados((v) => v.filter((_, j) => j !== i))}
+                  aria-label={`Sacar a ${inv.nombre}`}
+                  className="shrink-0 text-suave hover:text-signal"
                 >
-                  <span
-                    className={
-                      participantes.includes(u.id)
-                        ? 'h-2 w-2 shrink-0 bg-signal'
-                        : 'h-2 w-2 shrink-0 border border-borde2'
-                    }
-                  />
-                  <span className="truncate">{u.nombre}</span>
+                  <X size={12} />
                 </button>
-              ))}
+              </span>
+            ))}
           </div>
+
+          {sumandoInvitado ? (
+            <div className="mt-2 grid gap-2 border border-borde p-3 sm:grid-cols-[1fr_1fr_auto]">
+              <input
+                className="w-full"
+                placeholder="Nombre"
+                aria-label="Nombre de la persona invitada"
+                value={nuevoNombre}
+                onChange={(e) => setNuevoNombre(e.target.value)}
+              />
+              <input
+                type="email"
+                className="w-full"
+                placeholder="Correo"
+                aria-label="Correo de la persona invitada"
+                value={nuevoEmail}
+                onChange={(e) => setNuevoEmail(e.target.value)}
+              />
+              <Boton type="button" tam="sm" onClick={agregarInvitado}>
+                Sumar
+              </Boton>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSumandoInvitado(true)}
+              className="mt-2 flex items-center gap-1.5 border border-dashed border-borde2 px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-signal hover:text-signal"
+            >
+              <UserPlus size={12} /> Sumar a alguien de afuera
+            </button>
+          )}
         </Campo>
+
+        <label className="flex items-start gap-2.5 border border-borde p-3 text-xs">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={privada}
+            onChange={(e) => setPrivada(e.target.checked)}
+          />
+          <span>
+            <span className="block text-tinta">Reunión privada</span>
+            <span className="mt-0.5 block text-tenue">
+              No se lista para el resto de la sala: la ven sólo quienes participan.
+            </span>
+          </span>
+        </label>
 
         <div className="flex justify-end gap-2 pt-2">
           <Boton type="button" variante="fantasma" onClick={onCerrar}>
             Cancelar
           </Boton>
           <Boton type="submit" variante="solido">
-            Crear y abrir agenda
+            Crear reunión
           </Boton>
         </div>
       </form>

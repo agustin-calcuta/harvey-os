@@ -1,15 +1,19 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '../../store/AppContext'
-import { integrantes } from '../../lib/utils'
+import { integrantes, llegaTarde } from '../../lib/utils'
 import { IMPORTANCIA, OBJETIVOS, type Importancia, type Objetivo, type Tema } from '../../types'
 import { Boton, Campo, Modal, Segmentado } from '../ui'
 
 /* ─────────────────────────────────────────────────────────────
    Alta y edición de un tema.
 
-   Los tres campos que exigió Fran: importancia (semáforo), objetivo
-   (los cuatro tipos) y quién lo propone. Sin reunión, el tema va al
-   banco de la sala y espera ahí hasta que se arme una.
+   Tres campos y nada más: importancia (el semáforo), objetivo (los
+   cuatro tipos) y quién lo propone. El tiempo estimado salió de
+   acá —"es muy subjetivo, lo sacaría"—: lo ajusta el organizador
+   desde la agenda si quiere, y el cronómetro sigue corriendo igual
+   durante la reunión.
+
+   Sin reunión, el tema va al temario personal de quien lo escribe.
    ───────────────────────────────────────────────────────────── */
 
 export default function ModalTema({
@@ -23,20 +27,20 @@ export default function ModalTema({
 }: {
   abierto: boolean
   onCerrar: () => void
-  salaId: string
+  salaId?: string
   reunionId?: string
   tema?: Tema
   entraDirecto?: boolean
 }) {
   const { yo, estado, proponerTema, actualizarTema, puedeOrganizar } = useApp()
   const sala = estado.salas.find((s) => s.id === salaId)
-  const gente = integrantes(estado, salaId)
+  const reunion = estado.reuniones.find((r) => r.id === reunionId)
+  const gente = salaId ? integrantes(estado, salaId) : yo ? [yo] : []
 
   const [titulo, setTitulo] = useState('')
   const [detalle, setDetalle] = useState('')
   const [importancia, setImportancia] = useState<Importancia>('media')
   const [objetivo, setObjetivo] = useState<Objetivo>('decision')
-  const [duracion, setDuracion] = useState(sala?.duracionTemaDefaultMin ?? 15)
   const [propuestoPor, setPropuestoPor] = useState(yo?.id ?? '')
 
   useEffect(() => {
@@ -45,11 +49,11 @@ export default function ModalTema({
     setDetalle(tema?.detalle ?? '')
     setImportancia(tema?.importancia ?? 'media')
     setObjetivo(tema?.objetivo ?? 'decision')
-    setDuracion(tema?.duracionMin ?? sala?.duracionTemaDefaultMin ?? 15)
     setPropuestoPor(tema?.propuestoPor ?? yo?.id ?? '')
-  }, [abierto, tema, yo, sala])
+  }, [abierto, tema, yo])
 
-  const alBanco = !reunionId
+  const alTemario = !reunionId
+  const tarde = reunion ? llegaTarde(reunion) : false
 
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,14 +64,15 @@ export default function ModalTema({
       detalle: detalle.trim() || undefined,
       importancia,
       objetivo,
-      duracionMin: duracion,
+      // El tiempo lo pone la sala; el organizador lo ajusta en la agenda.
+      duracionMin: tema?.duracionMin ?? sala?.duracionTemaDefaultMin ?? 15,
       propuestoPor,
     }
     if (tema) await actualizarTema(tema.id, datos)
     else
       await proponerTema({
         ...datos,
-        estado: alBanco ? 'banco' : entraDirecto ? 'aprobado' : 'propuesto',
+        estado: alTemario ? 'banco' : entraDirecto ? 'aprobado' : 'propuesto',
       })
     onCerrar()
   }
@@ -76,8 +81,7 @@ export default function ModalTema({
     <Modal
       abierto={abierto}
       onCerrar={onCerrar}
-      kicker={tema ? 'Editar' : alBanco ? 'Banco de la sala' : 'Pre-reunión'}
-      titulo={tema ? 'Editar tema' : alBanco ? 'Anotar un tema' : 'Proponer tema'}
+      titulo={tema ? 'Editar tema' : alTemario ? 'Anotar un tema' : 'Proponer tema'}
     >
       <form onSubmit={enviar} className="space-y-5">
         <Campo etiqueta="Tema">
@@ -92,7 +96,7 @@ export default function ModalTema({
         </Campo>
 
         <Campo
-          etiqueta="Contexto"
+          etiqueta="Detalle"
           ayuda="Lo que el resto necesita saber para llegar preparado a la reunión."
         >
           <textarea
@@ -128,25 +132,7 @@ export default function ModalTema({
           />
         </Campo>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Campo
-            etiqueta="Tiempo sugerido (min)"
-            ayuda={
-              puedeOrganizar
-                ? 'Como organizador podés ajustarlo después.'
-                : 'El organizador puede ajustarlo.'
-            }
-          >
-            <input
-              type="number"
-              min={5}
-              step={5}
-              className="w-full"
-              value={duracion}
-              onChange={(e) => setDuracion(Number(e.target.value))}
-            />
-          </Campo>
-
+        {!alTemario && (
           <Campo
             etiqueta="Propone"
             ayuda={puedeOrganizar ? 'Podés cargarlo a nombre de otra persona.' : undefined}
@@ -164,15 +150,17 @@ export default function ModalTema({
               ))}
             </select>
           </Campo>
-        </div>
+        )}
 
         {!tema && (
           <p className="border border-borde bg-hueco p-3 text-xs leading-relaxed text-suave">
-            {alBanco
-              ? 'Queda anotado en el banco de la sala, sin fecha. Cuando se arme la próxima reunión va a aparecer para que el organizador lo baje a la agenda.'
-              : entraDirecto
-                ? 'Entra directo a la agenda de esta reunión.'
-                : 'El tema queda como propuesto. El organizador decide si entra en la agenda de esta reunión.'}
+            {alTemario
+              ? 'Queda en tu temario, sin sala y sin fecha. Sólo lo ves vos, y lo asignás a la reunión que quieras cuando quieras.'
+              : tarde
+                ? 'El temario de esta reunión ya se cerró, pero el tema entra igual: se suma al final y el que modera decide si se llega a hablar.'
+                : entraDirecto
+                  ? 'Entra directo a la agenda de esta reunión.'
+                  : 'Queda propuesto. El organizador decide si entra en la agenda.'}
           </p>
         )}
 
@@ -183,8 +171,8 @@ export default function ModalTema({
           <Boton type="submit" variante="solido">
             {tema
               ? 'Guardar'
-              : alBanco
-                ? 'Guardar en el banco'
+              : alTemario
+                ? 'Guardar en mi temario'
                 : entraDirecto
                   ? 'Agregar a la agenda'
                   : 'Proponer tema'}

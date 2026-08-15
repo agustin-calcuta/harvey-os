@@ -1,141 +1,136 @@
 import { Link } from 'react-router-dom'
-import { AlertTriangle, ArrowRight, Clock, Plus, Users } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowRight,
+  CalendarPlus,
+  FileText,
+  Inbox,
+  Search,
+  Users,
+} from 'lucide-react'
 import { useApp } from '../store/AppContext'
 import {
   agendaDe,
-  compromisosArrastrados,
-  cuentaRegresiva,
-  deadlineAgenda,
   estaVencido,
   fechaCorta,
   fechaLarga,
+  historialReuniones,
   hora,
-  minutosAgenda,
   nombreDe,
-  ordenarReuniones,
-  proximaReunion,
+  proximasReuniones,
+  temarioDe,
   temasDe,
-  venceProximo,
+  temasSinTratar,
 } from '../lib/utils'
-import { ESTADO_REUNION, IMPORTANCIA } from '../types'
+import { ESTADO_COMPROMISO, ESTADO_REUNION, IMPORTANCIA } from '../types'
 import {
+  Atajo,
   Avatares,
   Boton,
   Chip,
-  ChipImportancia,
   ChipObjetivo,
-  Metrica,
   Seccion,
   Vacio,
 } from '../components/ui'
 
+/* ─────────────────────────────────────────────────────────────
+   El panel.
+
+   Se limpió entero: "hay demasiada información y no sé a dónde
+   tienen que mirar mis ojos". Quedaron tres cosas y en este
+   orden — los accesos directos, la próxima reunión y lo que
+   tengo yo a mi nombre—. Los pendientes de otras personas y el
+   historial se fueron: viven en Tareas y en Reuniones.
+   ───────────────────────────────────────────────────────────── */
+
 export default function Panel() {
-  const { estado, yo, puedeOrganizar, salaActiva, compromisosVisibles } = useApp()
-  const proxima = proximaReunion(estado, salaActiva?.id)
+  const { estado, yo, salaActiva, compromisosVisibles } = useApp()
 
-  /* `compromisosVisibles` ya viene recortado: el organizador ve los de
-     todo el equipo, el miembro sólo los suyos. */
-  const misAbiertos = compromisosVisibles.filter(
-    (c) => c.responsableId === yo?.id && c.estado !== 'hecho',
-  )
-  const vencidos = compromisosVisibles.filter((c) => estaVencido(c))
-  const porVencer = compromisosVisibles.filter((c) => venceProximo(c))
-  const abiertos = compromisosVisibles.filter((c) => c.estado !== 'hecho')
-  const cerradas = estado.reuniones.filter(
-    (r) => r.salaId === salaActiva?.id && r.estado === 'cerrada',
-  )
+  const proximas = proximasReuniones(estado, yo, salaActiva?.id)
+  const proxima = proximas[0]
+  const ultimaMinuta = historialReuniones(estado, yo, salaActiva?.id)[0]
 
-  /*
-   * El saludo habla de lo propio; las métricas de abajo, de todo el
-   * equipo. Decir "todo al día" sin aclarar el alcance se contradecía
-   * con las cifras que venían justo debajo.
-   */
-  const misVencidos = vencidos.filter((c) => c.responsableId === yo?.id)
-  const plural = (n: number, sing: string, plur: string) => (n === 1 ? sing : plur)
+  const misAbiertas = compromisosVisibles
+    .filter((c) => c.responsableId === yo?.id && c.estado !== 'hecho')
+    .sort((a, b) => (a.fechaLimite ?? '9999').localeCompare(b.fechaLimite ?? '9999'))
+  const misVencidas = misAbiertas.filter((c) => estaVencido(c))
 
-  const saludo =
-    misAbiertos.length === 0
-      ? vencidos.length > 0
-        ? `No tenés nada abierto a tu nombre. El equipo tiene ${vencidos.length} ${plural(vencidos.length, 'compromiso vencido', 'compromisos vencidos')}.`
-        : 'No tenés compromisos abiertos. Todo al día.'
-      : `Tenés ${misAbiertos.length} ${plural(misAbiertos.length, 'compromiso abierto', 'compromisos abiertos')}${
-          misVencidos.length
-            ? `, ${misVencidos.length} de ellos ${plural(misVencidos.length, 'vencido', 'vencidos')}`
-            : ''
-        }.`
-
-  const arrastrados = proxima ? compromisosArrastrados(estado, proxima.id) : []
+  const misTemas = temarioDe(estado, yo?.id).length + temasSinTratar(estado, undefined, yo?.id).length
   const agenda = proxima ? agendaDe(estado, proxima.id) : []
   const propuestos = proxima
     ? temasDe(estado, proxima.id).filter((t) => t.estado === 'propuesto')
     : []
 
+  const plural = (n: number, sing: string, plur: string) => (n === 1 ? sing : plur)
+  const saludo =
+    misAbiertas.length === 0
+      ? 'No tenés tareas abiertas a tu nombre.'
+      : `Tenés ${misAbiertas.length} ${plural(misAbiertas.length, 'tarea abierta', 'tareas abiertas')}${
+          misVencidas.length
+            ? `, ${misVencidas.length} ${plural(misVencidas.length, 'vencida', 'vencidas')}`
+            : ''
+        }.`
+
   return (
     <div className="space-y-10">
       {/* ── Encabezado ── */}
       <div>
-        <div className="label bracket mb-2">{salaActiva?.nombre ?? ''} · 
+        <div className="label bracket mb-2">
+          {salaActiva?.nombre ?? ''} ·{' '}
           {new Date().toLocaleDateString('es-AR', {
             weekday: 'long',
             day: 'numeric',
             month: 'long',
           })}
         </div>
-        <h1 className="display text-4xl sm:text-5xl">
-          Hola, {yo?.nombre.split(' ')[0]}
-        </h1>
+        <h1 className="display text-4xl sm:text-5xl">Hola, {yo?.nombre.split(' ')[0]}</h1>
         <p className="mt-2 max-w-xl text-sm text-suave">{saludo}</p>
       </div>
 
-      {/*
-        Estas cifras son de todo el equipo, no sólo de quien mira: por eso
-        las etiquetas lo dicen. Cada una lleva al listado ya filtrado.
-      */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Metrica
-          valor={abiertos.length}
-          etiqueta={puedeOrganizar ? "Abiertos del equipo" : "Tus abiertos"}
-          a="/compromisos?filtro=abiertos"
+      {/* ── Accesos directos ── */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Atajo
+          a="/temario"
+          icono={<Inbox size={18} />}
+          titulo="Anotar un tema"
+          detalle={
+            misTemas > 0
+              ? `Tenés ${misTemas} ${plural(misTemas, 'tema anotado', 'temas anotados')} sin reunión`
+              : 'Tu bloc de notas, para no perder nada'
+          }
         />
-        <Metrica
-          valor={vencidos.length}
-          etiqueta={puedeOrganizar ? "Vencidos del equipo" : "Tus vencidos"}
-          tono={vencidos.length ? 'signal' : undefined}
-          a="/compromisos?filtro=vencidos"
+        <Atajo
+          a="/reuniones?nueva=1"
+          icono={<CalendarPlus size={18} />}
+          titulo="Crear reunión"
+          detalle="Fecha, lugar y a quiénes convocás"
         />
-        <Metrica
-          valor={porVencer.length}
-          etiqueta="Vencen esta semana"
-          tono={porVencer.length ? 'amber' : undefined}
-          a="/compromisos?filtro=semana"
+        <Atajo
+          a="/reuniones?vista=historial"
+          icono={<Search size={18} />}
+          titulo="Buscar en minutas"
+          detalle="Una palabra y aparece en qué reunión se habló"
         />
-        <Metrica
-          valor={cerradas.length}
-          etiqueta="Reuniones cerradas"
-          a="/reuniones?estado=cerrada"
+        <Atajo
+          a={ultimaMinuta ? `/reuniones/${ultimaMinuta.id}` : '/reuniones?vista=historial'}
+          icono={<FileText size={18} />}
+          titulo="Última minuta"
+          detalle={ultimaMinuta ? ultimaMinuta.titulo : 'Todavía no hay ninguna cerrada'}
         />
       </div>
 
       {/* ── Próxima reunión ── */}
       {proxima ? (
-        <Seccion kicker="Lo que viene" titulo="Próxima reunión">
+        <Seccion titulo="Próxima reunión">
           <div className="card">
             <div className="flex flex-wrap items-start justify-between gap-4 border-b border-borde p-5">
               <div className="min-w-0">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <Chip tono={proxima.estado === 'agenda_abierta' ? 'acid' : 'amber'}>
-                    {ESTADO_REUNION[proxima.estado].nombre}
-                  </Chip>
-                  {proxima.estado === 'agenda_abierta' && (
-                    <span className="flex items-center gap-1.5 font-semibold text-[10px] uppercase tracking-[0.14em] text-amber">
-                      <Clock size={11} />
-                      Temario cierra en {cuentaRegresiva(deadlineAgenda(proxima)).texto}
-                    </span>
-                  )}
-                </div>
+                <Chip tono={proxima.estado === 'agenda_abierta' ? 'acid' : 'amber'}>
+                  {ESTADO_REUNION[proxima.estado].nombre}
+                </Chip>
                 <Link
                   to={`/reuniones/${proxima.id}`}
-                  className="display block text-2xl transition-colors hover:text-signal sm:text-3xl"
+                  className="display mt-2 block text-2xl transition-colors hover:text-signal sm:text-3xl"
                 >
                   {proxima.titulo}
                 </Link>
@@ -162,35 +157,8 @@ export default function Panel() {
               </div>
             </div>
 
-            {/* Agenda */}
-            <div className="grid grid-cols-2 gap-px bg-borde sm:grid-cols-3">
-              <div className="bg-panel p-4">
-                <div className="label mb-1">En agenda</div>
-                <div className="display text-2xl">{agenda.length}</div>
-              </div>
-              <div className="bg-panel p-4">
-                <div className="label mb-1">Esperando aprobación</div>
-                <div className="display text-2xl">{propuestos.length}</div>
-              </div>
-              <div className="col-span-2 bg-panel p-4 sm:col-span-1">
-                <div className="label mb-1">Tiempo asignado</div>
-                <div
-                  className={
-                    minutosAgenda(agenda) > proxima.duracionPrevistaMin
-                      ? 'display text-2xl text-signal'
-                      : 'display text-2xl'
-                  }
-                >
-                  {minutosAgenda(agenda)}
-                  <span className="ml-1 text-sm text-suave">
-                    / {proxima.duracionPrevistaMin} min
-                  </span>
-                </div>
-              </div>
-            </div>
-
             {agenda.length > 0 && (
-              <ul className="divide-y divide-borde border-t border-borde">
+              <ul className="divide-y divide-borde">
                 {agenda.map((t, i) => (
                   <li key={t.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
                     <span className="hidden w-6 shrink-0 font-semibold text-[11px] text-tenue sm:block">
@@ -204,18 +172,15 @@ export default function Panel() {
                     <span className="hidden sm:block">
                       <ChipObjetivo valor={t.objetivo} />
                     </span>
-                    <span className="w-12 shrink-0 text-right font-semibold text-[11px] text-suave sm:w-14">
-                      {t.duracionMin}′
-                    </span>
                   </li>
                 ))}
               </ul>
             )}
 
-            {propuestos.length > 0 && puedeOrganizar && (
+            {propuestos.length > 0 && (
               <div className="flex items-center justify-between gap-3 border-t border-borde bg-amber/5 px-5 py-3">
                 <span className="text-xs text-amber">
-                  Hay {propuestos.length} tema{propuestos.length > 1 ? 's' : ''} esperando tu
+                  Hay {propuestos.length} {plural(propuestos.length, 'tema', 'temas')} esperando
                   aprobación.
                 </span>
                 <Link to={`/reuniones/${proxima.id}`}>
@@ -224,150 +189,83 @@ export default function Panel() {
               </div>
             )}
           </div>
+
+          {/* Las otras que vienen, en una línea cada una. */}
+          {proximas.length > 1 && (
+            <ul className="card mt-3 divide-y divide-borde">
+              {proximas.slice(1).map((r) => (
+                <li key={r.id}>
+                  <Link
+                    to={`/reuniones/${r.id}`}
+                    className="flex flex-wrap items-center gap-x-3 gap-y-1 p-4 transition-colors hover:text-signal"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-sm">{r.titulo}</span>
+                    <span className="text-xs text-suave">
+                      {fechaCorta(r.fecha)} · {hora(r.fecha)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </Seccion>
       ) : (
         <Vacio
-          titulo="No hay reuniones programadas"
-          texto="Creá la próxima reunión para que el equipo empiece a cargar temas."
+          titulo="No hay reuniones a la vista"
+          texto="Creá la próxima para que el equipo empiece a cargar temas."
           icono={<Users size={32} />}
           accion={
-            puedeOrganizar && (
-              <Link to="/reuniones">
-                <Boton variante="solido">
-                  <Plus size={13} /> Nueva reunión
-                </Boton>
-              </Link>
-            )
+            <Link to="/reuniones?nueva=1">
+              <Boton variante="solido">
+                <CalendarPlus size={13} /> Crear reunión
+              </Boton>
+            </Link>
           }
         />
       )}
 
-      {/* ── Mis compromisos ── */}
+      {/* ── Mis tareas ── */}
       <Seccion
-        kicker="Tu carga"
-        titulo="Mis compromisos"
+        titulo="Mis tareas"
         acciones={
           <Link to="/compromisos">
             <Boton tam="sm">
-              Ver tablero <ArrowRight size={12} />
+              Ver todas <ArrowRight size={12} />
             </Boton>
           </Link>
         }
       >
-        {misAbiertos.length === 0 ? (
-          <Vacio titulo="Sin pendientes" texto="No tenés compromisos abiertos a tu nombre." />
+        {misAbiertas.length === 0 ? (
+          <Vacio titulo="Sin pendientes" texto="No tenés tareas abiertas a tu nombre." />
         ) : (
           <ul className="card divide-y divide-borde">
-            {misAbiertos
-              .sort((a, b) => (a.fechaLimite ?? '9999').localeCompare(b.fechaLimite ?? '9999'))
-              .map((c) => (
-                <li key={c.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 p-4">
-                  <span
-                    className="h-8 w-0.5 shrink-0"
-                    style={{ background: IMPORTANCIA[c.importancia].hex }}
-                  />
-                  <div className="min-w-0 flex-1 basis-[70%] sm:basis-auto">
-                    <div className="text-sm">{c.accion}</div>
-                    {c.avance && (
-                      <div className="mt-0.5 truncate text-xs text-tenue">{c.avance}</div>
-                    )}
-                  </div>
-                  <Chip tono={c.estado === 'bloqueado' ? 'signal' : 'neutro'}>{c.estado.replace('_', ' ')}</Chip>
-                  <span
-                    className={
-                      estaVencido(c)
-                        ? 'font-semibold text-[11px] text-signal'
-                        : 'font-semibold text-[11px] text-suave'
-                    }
-                  >
-                    {estaVencido(c) && <AlertTriangle size={11} className="mr-1 inline" />}
-                    {fechaCorta(c.fechaLimite)}
-                  </span>
-                </li>
-              ))}
-          </ul>
-        )}
-      </Seccion>
-
-      {/* ── Arrastre de reuniones anteriores ── */}
-      {arrastrados.length > 0 && (
-        <Seccion
-          kicker="Vienen de atrás"
-          titulo="Pendientes de otras reuniones"
-          acciones={
-            <Link to="/compromisos">
-              <Boton tam="sm">
-                Ver todos <ArrowRight size={12} />
-              </Boton>
-            </Link>
-          }
-        >
-          <p className="mb-4 max-w-2xl text-sm text-suave">
-            Compromisos abiertos de reuniones anteriores. Este es el bloque que se repasa al
-            arrancar, sin ensuciar la minuta del día.
-          </p>
-          <ul className="card divide-y divide-borde">
-            {arrastrados.slice(0, 6).map((c) => (
+            {misAbiertas.slice(0, 5).map((c) => (
               <li key={c.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 p-4">
-                <ChipImportancia valor={c.importancia} conTexto={false} />
-                <span className="min-w-0 flex-1 basis-full truncate text-sm sm:basis-auto">
-                  {c.accion}
-                </span>
-                <span className="text-xs text-suave">{nombreDe(estado, c.responsableId)}</span>
+                <span
+                  className="h-8 w-0.5 shrink-0"
+                  style={{ background: IMPORTANCIA[c.importancia].hex }}
+                />
+                <div className="min-w-0 flex-1 basis-[70%] sm:basis-auto">
+                  <div className="text-sm">{c.accion}</div>
+                  {c.avance && <div className="mt-0.5 truncate text-xs text-tenue">{c.avance}</div>}
+                </div>
+                <Chip tono={c.estado === 'en_curso' ? 'amber' : 'neutro'}>
+                  {ESTADO_COMPROMISO[c.estado].nombre}
+                </Chip>
                 <span
                   className={
                     estaVencido(c)
-                      ? 'w-20 text-right font-semibold text-[11px] text-signal'
-                      : 'w-20 text-right font-semibold text-[11px] text-suave'
+                      ? 'font-semibold text-[11px] text-signal'
+                      : 'font-semibold text-[11px] text-suave'
                   }
                 >
+                  {estaVencido(c) && <AlertTriangle size={11} className="mr-1 inline" />}
                   {fechaCorta(c.fechaLimite)}
                 </span>
               </li>
             ))}
           </ul>
-        </Seccion>
-      )}
-
-      {/* ── Historial ── */}
-      <Seccion
-        kicker="Registro"
-        titulo="Últimas reuniones"
-        acciones={
-          <Link to="/reuniones">
-            <Boton tam="sm">
-              Todas <ArrowRight size={12} />
-            </Boton>
-          </Link>
-        }
-      >
-        <div className="grid gap-3 md:grid-cols-2">
-          {ordenarReuniones(cerradas)
-            .slice(0, 4)
-            .map((r) => (
-              <Link
-                key={r.id}
-                to={`/reuniones/${r.id}`}
-                className="card group p-4 transition-colors hover:border-signal"
-              >
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <Chip tono="cold">{ESTADO_REUNION[r.estado].nombre}</Chip>
-                  <span className="font-semibold text-[10px] text-tenue">
-                    {fechaCorta(r.fecha)}
-                  </span>
-                </div>
-                <div className="text-sm transition-colors group-hover:text-signal">
-                  {r.titulo}
-                </div>
-                <div className="mt-2 flex gap-4 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
-                  <span>{agendaDe(estado, r.id).length} temas</span>
-                  <span>
-                    {estado.compromisos.filter((c) => c.reunionId === r.id).length} compromisos
-                  </span>
-                </div>
-              </Link>
-            ))}
-        </div>
+        )}
       </Seccion>
     </div>
   )
