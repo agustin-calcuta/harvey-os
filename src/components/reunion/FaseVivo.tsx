@@ -451,7 +451,7 @@ function Seguimiento({ reunion }: { reunion: Reunion }) {
                     {c.avance && <p className="mt-1 text-meta text-suave">{c.avance}</p>}
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
                       <span className="text-tinta">{nombreDe(estado, c.responsableId)}</span>
-                      <span className={estaVencido(c) ? 'text-signal' : ''}>
+                      <span className={estaVencido(c) ? 'text-alerta' : ''}>
                         {estaVencido(c) ? 'Vencía ' : 'Vence '}
                         {fechaCorta(c.fechaLimite)}
                       </span>

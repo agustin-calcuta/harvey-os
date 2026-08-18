@@ -330,7 +330,7 @@ export default function Compromisos() {
             {alcance.filter((c) => c.estado !== 'hecho').length}{' '}
             {alcance.filter((c) => c.estado !== 'hecho').length === 1 ? 'abierta' : 'abiertas'}
             {alcance.filter((c) => estaVencido(c)).length > 0 && (
-              <span className="text-signal">
+              <span className="text-alerta">
                 {' · '}
                 {alcance.filter((c) => estaVencido(c)).length} vencidas
               </span>
@@ -445,7 +445,7 @@ function VistaLista({
             <h3 className="text-sm">{clave}</h3>
             <span className="text-meta text-tenue">{items.length}</span>
             {items.some((c) => estaVencido(c)) && (
-              <Chip tono="signal">{items.filter((c) => estaVencido(c)).length} vencidos</Chip>
+              <Chip tono="alerta">{items.filter((c) => estaVencido(c)).length} vencidos</Chip>
             )}
             <div className="h-px flex-1 bg-borde" />
             {/* Listado suelto para mandarle a cada uno lo suyo: hay
@@ -496,7 +496,7 @@ function VistaLista({
                       {agrupar !== 'responsable' && (
                         <span>{nombreDe(estado, c.responsableId)}</span>
                       )}
-                      <span className={estaVencido(c) ? 'text-signal' : ''}>
+                      <span className={estaVencido(c) ? 'text-alerta' : ''}>
                         {estaVencido(c) && <AlertTriangle size={9} className="mr-1 inline" />}
                         {estaVencido(c) ? 'Venció ' : 'Vence '}
                         {fechaCorta(c.fechaLimite)}
@@ -632,7 +632,7 @@ function Tarjeta({
       className={cx(
         'group border bg-panel p-3 transition-colors',
         isDragging ? 'opacity-30' : 'hover:border-borde2',
-        vencido ? 'border-signal/50' : 'border-borde',
+        vencido ? 'border-alerta/50' : 'border-borde',
       )}
     >
       <div className="flex items-start gap-2">
@@ -672,7 +672,7 @@ function Tarjeta({
           <span
             className={cx(
               'ml-auto flex items-center gap-1 text-[10px]',
-              vencido ? 'text-signal' : proximo ? 'text-amber' : 'text-tenue',
+              vencido ? 'text-alerta' : proximo ? 'text-amber' : 'text-tenue',
             )}
             title={fechaCorta(c.fechaLimite)}
           >

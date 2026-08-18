@@ -1,3 +1,5 @@
+import { colores } from './marca'
+
 /* ─────────────────────────────────────────────────────────────
    Modelo de dominio — HARVEY
 
@@ -152,21 +154,21 @@ export const IMPORTANCIA: Record<
     alias: 'Caliente',
     color: 'text-signal',
     bg: 'bg-signal',
-    hex: '#C0392B',
+    hex: colores.signal,
   },
   media: {
     nombre: 'Media',
     alias: 'Tibio',
     color: 'text-amber',
     bg: 'bg-amber',
-    hex: '#B26B18',
+    hex: colores.amber,
   },
   baja: {
     nombre: 'Baja',
     alias: 'Frío',
     color: 'text-cold',
     bg: 'bg-cold',
-    hex: '#2E6285',
+    hex: colores.cold,
   },
 }
 

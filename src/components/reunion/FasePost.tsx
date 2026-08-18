@@ -488,7 +488,7 @@ function Fila({
           {vieja && onMarcar ? (
             <input
               type="checkbox"
-              className="mt-1 h-3.5 w-3.5 shrink-0 accent-[#C0392B]"
+              className="mt-1 h-3.5 w-3.5 shrink-0 accent-signal"
               checked={marcada}
               onChange={(e) => onMarcar(e.target.checked)}
               aria-label={`Sumar «${c.accion}» al PDF`}
@@ -509,7 +509,7 @@ function Fila({
       <td
         className={
           estaVencido(c)
-            ? 'p-3 font-semibold text-xs text-signal'
+            ? 'p-3 font-semibold text-xs text-alerta'
             : 'p-3 font-semibold text-meta text-suave'
         }
       >
