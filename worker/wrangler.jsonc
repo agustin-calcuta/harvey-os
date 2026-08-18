@@ -25,10 +25,14 @@
 
     /*
      * Gemini procesa el audio y devuelve la minuta en una sola llamada.
-     * Si el modelo cambia de nombre, se cambia acá y se vuelve a
-     * desplegar: no hay nada más que tocar.
+     *
+     * `-latest` es un alias: apunta siempre al último flash, así que no
+     * se rompe cuando Google jubila una versión. La contra es que el
+     * resumen puede cambiar de tono de un día para otro sin que nadie
+     * toque nada; si algún día molesta, se pinnea acá una versión con
+     * número y se vuelve a desplegar.
      */
-    "MODELO": "gemini-2.5-flash",
+    "MODELO": "gemini-flash-latest",
 
     /* Tope de audio por pedido, en MB. Ver la nota en src/index.js. */
     "MAX_MB": "18"
