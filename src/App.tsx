@@ -1,5 +1,6 @@
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppProvider, useApp } from './store/AppContext'
+import { FiltrosProvider } from './store/Filtros'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Panel from './pages/Panel'
@@ -16,9 +17,11 @@ import Admin from './pages/Admin'
 export default function App() {
   return (
     <AppProvider>
-      <HashRouter>
-        <Rutas />
-      </HashRouter>
+      <FiltrosProvider>
+        <HashRouter>
+          <Rutas />
+        </HashRouter>
+      </FiltrosProvider>
     </AppProvider>
   )
 }

@@ -16,6 +16,8 @@ import {
   temasSinTratar,
 } from '../lib/utils'
 import { ESTADO_COMPROMISO, ESTADO_REUNION, IMPORTANCIA } from '../types'
+import { BarraFiltros, FiltroFecha, FiltroSala, enRango } from '../components/Filtros'
+import { useFiltros } from '../store/Filtros'
 import {
   Atajo,
   Avatares,
@@ -41,15 +43,20 @@ import {
    ───────────────────────────────────────────────────────────── */
 
 export default function Panel() {
-  const { estado, yo, compromisosVisibles, salasDondeSoyDelEquipo } = useApp()
+  const { estado, yo, misSalas, compromisosVisibles, salasDondeSoyDelEquipo } = useApp()
   /* El externo participa de las reuniones a las que lo convocan; no las arma. */
   const puedeCrearReuniones = salasDondeSoyDelEquipo.length > 0
 
-  const proximas = proximasReuniones(estado, yo)
+  /* El mismo filtro que el resto de la app: acá se pone y allá sigue puesto. */
+  const { sala: salaFiltro, elegirSala, rango, elegirRango } = useFiltros()
+  const unaSala = salaFiltro === 'todas' ? undefined : salaFiltro
+
+  const proximas = proximasReuniones(estado, yo, unaSala).filter((r) => enRango(r.fecha, rango))
   const proxima = proximas[0]
 
   const misAbiertas = compromisosVisibles
     .filter((c) => c.responsableId === yo?.id && c.estado !== 'hecho')
+    .filter((c) => !unaSala || c.salaId === unaSala)
     .sort((a, b) => (a.fechaLimite ?? '9999').localeCompare(b.fechaLimite ?? '9999'))
   const misVencidas = misAbiertas.filter((c) => estaVencido(c))
 
@@ -84,6 +91,12 @@ export default function Panel() {
         <p className="mt-2 max-w-xl text-sm text-suave">{saludo}</p>
       </div>
 
+      {/* El filtro vive acá arriba y vale para toda la app. */}
+      <BarraFiltros>
+        <FiltroSala valor={salaFiltro} onChange={elegirSala} salas={misSalas} />
+        <FiltroFecha valor={rango} onChange={elegirRango} />
+      </BarraFiltros>
+
       {/* ── Accesos directos ──
           Tres y no cuatro: "Última minuta" se fue por redundante,
           si querés la última entrás por Reuniones. */}
@@ -93,10 +106,13 @@ export default function Panel() {
           puedeCrearReuniones ? 'lg:grid-cols-3' : 'lg:grid-cols-2',
         )}
       >
+        {/* Con `?nueva=1` el bloc abre con el modal puesto: es un
+            atajo, y un atajo que te deja a un clic del formulario no
+            es un atajo. */}
         <Atajo
-          a="/bloc"
+          a="/bloc?nueva=1"
           icono={<Inbox size={18} />}
-          titulo="Anotar un tema"
+          titulo="Crear nota"
           detalle={
             misTemas > 0
               ? `Tenés ${misTemas} ${plural(misTemas, 'tema anotado', 'temas anotados')} sin reunión`

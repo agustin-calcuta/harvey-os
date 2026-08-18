@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   CalendarPlus,
   Columns3,
@@ -36,7 +36,8 @@ import {
   SelectorVista,
   Vacio,
 } from '../components/ui'
-import { BarraFiltros, FiltroFecha, FiltroSala, enRango, type Rango } from '../components/Filtros'
+import { BarraFiltros, FiltroFecha, FiltroSala, enRango } from '../components/Filtros'
+import { useFiltros } from '../store/Filtros'
 
 /* ─────────────────────────────────────────────────────────────
    El bloc de notas.
@@ -75,17 +76,14 @@ const GRUPOS: { clave: Grupo; titulo: string; texto: string }[] = [
 
 export default function Bloc() {
   const { estado, yo, misSalas, borrarTema, devolverAlTemario } = useApp()
+  const [params, setParams] = useSearchParams()
 
   const [vista, setVista] = useState<Vista>(
     () => (localStorage.getItem(CLAVE_VISTA) as Vista) ?? 'columnas',
   )
-  const [salaFiltro, setSalaFiltro] = useState('todas')
-  /*
-   * Acá la fecha es la de anotado, que siempre mira para atrás: "de
-   * hoy en adelante" dejaría el bloc vacío. Arranca sin recorte.
-   */
-  const [rango, setRango] = useState<Rango>({ periodo: 'todo' })
-  const [anotando, setAnotando] = useState(false)
+  /* Los filtros son de toda la app: lo que ponés acá sigue puesto allá. */
+  const { sala: salaFiltro, elegirSala: setSalaFiltro, rango, elegirRango: setRango } = useFiltros()
+  const [anotando, setAnotando] = useState(params.get('nueva') === '1')
   const [editando, setEditando] = useState<Tema | undefined>()
   const [porBorrar, setPorBorrar] = useState<Tema | undefined>()
   const [porAsignar, setPorAsignar] = useState<Tema | undefined>()
@@ -94,6 +92,17 @@ export default function Bloc() {
     setVista(v)
     localStorage.setItem(CLAVE_VISTA, v)
   }
+
+  /*
+   * El panel entra acá con el formulario ya pedido. El parámetro se
+   * saca de la URL enseguida: si queda, recargar vuelve a abrirlo.
+   */
+  useEffect(() => {
+    if (params.get('nueva') !== '1') return
+    setAnotando(true)
+    params.delete('nueva')
+    setParams(params, { replace: true })
+  }, [params, setParams])
 
   const porGrupo = useMemo<Record<Grupo, Tema[]>>(() => {
     /*
@@ -105,8 +114,16 @@ export default function Bloc() {
     const deLaSala = (t: Tema) =>
       salaFiltro === 'todas' || t.salaId === salaFiltro || t.salaTentativaId === salaFiltro
 
-    const filtrar = (temas: Tema[]) =>
-      temas.filter((t) => deLaSala(t) && enRango(t.creadoEn, rango))
+    /*
+     * Acá la fecha es la de anotado, que siempre mira para atrás: con
+     * un período hacia adelante —el que trae la app por defecto— el
+     * bloc quedaría vacío y parecería que se perdió todo. Esos
+     * períodos simplemente no recortan las notas.
+     */
+    const haciaAdelante = ['adelante', 'proximaSemana', 'proximoMes'].includes(rango.periodo)
+    const enFecha = (t: Tema) => haciaAdelante || enRango(t.creadoEn, rango)
+
+    const filtrar = (temas: Tema[]) => temas.filter((t) => deLaSala(t) && enFecha(t))
 
     return {
       borradores: filtrar(temarioDe(estado, yo?.id)),
@@ -116,7 +133,7 @@ export default function Bloc() {
   }, [estado, yo, salaFiltro, rango])
 
   const total = GRUPOS.reduce((n, g) => n + porGrupo[g.clave].length, 0)
-  const filtrando = salaFiltro !== 'todas' || rango.periodo !== 'todo'
+  const filtrando = salaFiltro !== 'todas'
 
   const tarjeta = (t: Tema, grupo: Grupo) => (
     <Tarjeta
@@ -146,7 +163,7 @@ export default function Bloc() {
               ]}
             />
             <Boton variante="solido" onClick={() => setAnotando(true)}>
-              <Plus size={13} /> Anotar tema
+              <Plus size={13} /> Crear nota
             </Boton>
           </>
         }
@@ -173,7 +190,7 @@ export default function Bloc() {
             accion={
               filtrando ? undefined : (
                 <Boton variante="solido" onClick={() => setAnotando(true)}>
-                  <Plus size={13} /> Anotar el primero
+                  <Plus size={13} /> Crear la primera
                 </Boton>
               )
             }

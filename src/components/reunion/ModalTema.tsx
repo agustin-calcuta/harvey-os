@@ -88,7 +88,7 @@ export default function ModalTema({
     <Modal
       abierto={abierto}
       onCerrar={onCerrar}
-      titulo={tema ? 'Editar tema' : alTemario ? 'Anotar un tema' : 'Proponer tema'}
+      titulo={tema ? 'Editar' : alTemario ? 'Crear nota' : 'Proponer tema'}
     >
       <form onSubmit={enviar} className="space-y-5">
         <Campo etiqueta="Tema">

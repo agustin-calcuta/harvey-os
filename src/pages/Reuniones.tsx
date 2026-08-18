@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { CalendarPlus, Lock, Plus, Search, UserPlus, X } from 'lucide-react'
 import { useApp } from '../store/AppContext'
 import {
@@ -23,11 +23,11 @@ import {
   BarraFiltros,
   FiltroFecha,
   FiltroSala,
-  RANGO_INICIAL,
   enRango,
   textoRango,
   type Rango,
 } from '../components/Filtros'
+import { useFiltros } from '../store/Filtros'
 
 /* ─────────────────────────────────────────────────────────────
    Reuniones.
@@ -55,8 +55,8 @@ export default function Reuniones() {
   )
   const [creando, setCreando] = useState(params.get('nueva') === '1')
   const [busqueda, setBusqueda] = useState('')
-  const [salaFiltro, setSalaFiltro] = useState('todas')
-  const [rango, setRango] = useState<Rango>(RANGO_INICIAL)
+  /* Los filtros son de toda la app: lo que ponés acá sigue puesto allá. */
+  const { sala: salaFiltro, elegirSala: setSalaFiltro, rango, elegirRango: setRango } = useFiltros()
 
   /* El panel entra acá con la vista ya elegida. */
   useEffect(() => {
@@ -350,7 +350,6 @@ const OTRO = '__otro__'
  */
 function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {
   const { estado, crearReunion, asegurarPersona, salasDondeSoyDelEquipo: misSalas, yo } = useApp()
-  const navegar = useNavigate()
 
   const [salaId, setSalaId] = useState(misSalas[0]?.id ?? '')
   const laSala = misSalas.find((s) => s.id === salaId) ?? misSalas[0]
@@ -430,7 +429,9 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
       estado: 'agenda_abierta',
     })
     onCerrar()
-    if (r) navegar(`/reuniones/${r.id}`)
+    // Se queda en la lista: el que arma dos o tres seguidas no quiere
+    // volver atrás cada vez. La reunión nueva ya aparece acá.
+    void r
   }
 
   return (

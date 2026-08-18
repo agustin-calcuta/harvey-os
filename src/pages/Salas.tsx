@@ -362,7 +362,6 @@ function ModalSala({
     misSolicitudes,
     misSalas,
   } = useApp()
-  const navegar = useNavigate()
 
   const [nombre, setNombre] = useState('')
   const [descripcion, setDescripcion] = useState('')
@@ -464,7 +463,8 @@ function ModalSala({
           const persona = await asegurarPersona(n.nombre, n.email)
           if (persona) await sumarAlaSala(nueva.id, persona.id, 'miembro')
         }
-        navegar('/')
+        // Se queda acá: lo que sigue es sumar gente o abrirle una
+        // reunión, y las dos cosas se hacen desde esta pantalla.
       }
     }
     onCerrar()

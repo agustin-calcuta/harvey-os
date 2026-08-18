@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   DndContext,
@@ -42,7 +42,8 @@ import {
   type Importancia,
 } from '../types'
 import { Avatar, Boton, Chip, Etiqueta, Seccion, SelectorVista, Vacio } from '../components/ui'
-import { BarraFiltros, FiltroFecha, FiltroSala, enRango, type Rango } from '../components/Filtros'
+import { BarraFiltros, FiltroFecha, FiltroSala, enRango } from '../components/Filtros'
+import { useFiltros } from '../store/Filtros'
 import { generarPendientesPDF } from '../lib/pdf'
 import ModalCompromiso from '../components/reunion/ModalCompromiso'
 
@@ -103,10 +104,8 @@ export default function Compromisos() {
   const [responsable, setResponsable] = useState<string>(yo?.id ?? 'todos')
   const [importancia, setImportancia] = useState<Importancia | 'todas'>('todas')
   const [soloVencidas, setSoloVencidas] = useState(filtroInicial === 'vencidos')
-  const [salaFiltro, setSalaFiltro] = useState('todas')
-  const [rango, setRango] = useState<Rango>(() =>
-    filtroInicial === 'semana' ? { periodo: 'proximaSemana' } : { periodo: 'todo' },
-  )
+  /* Los filtros son de toda la app: lo que ponés acá sigue puesto allá. */
+  const { sala: salaFiltro, elegirSala: setSalaFiltro, rango, elegirRango: setRango } = useFiltros()
   const [incluirHechos, setIncluirHechos] = useState(filtroInicial !== 'abiertos')
   const [busqueda, setBusqueda] = useState('')
   const [creando, setCreando] = useState(false)
@@ -124,10 +123,13 @@ export default function Compromisos() {
    */
   useEffect(() => {
     setSoloVencidas(filtroInicial === 'vencidos')
-    setRango(filtroInicial === 'semana' ? { periodo: 'proximaSemana' } : { periodo: 'todo' })
+    if (filtroInicial === 'semana') setRango({ periodo: 'proximaSemana' })
     setIncluirHechos(filtroInicial !== 'abiertos')
     if (filtroInicial === 'equipo') setResponsable('todos')
     else if (yo) setResponsable(yo.id)
+    // `setRango` no va en las dependencias: cambia con el rango y
+    // volvería a pisar lo que el usuario acaba de elegir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtroInicial, yo])
 
   /* El filtro por persona ofrece a todos los de las salas que se miran. */
@@ -151,18 +153,37 @@ export default function Compromisos() {
   /* El alcance de las cifras acompaña a lo que se está mirando. */
   const alcance = soloMias ? propias : deLasSalas
 
+  /*
+   * El período es el mismo de toda la app, pero acá se compara contra
+   * el vencimiento, y eso tiene una vuelta: una tarea vencida tiene la
+   * fecha en el pasado, así que "de hoy en adelante" la escondería.
+   * Justo lo atrasado, que es lo primero que uno quiere ver.
+   *
+   * Así que mirando hacia adelante, lo vencido y sin cerrar entra
+   * igual: "lo que tengo por delante" incluye lo que se pasó y sigue
+   * abierto.
+   */
+  const entraPorFecha = useCallback(
+    (c: Compromiso) => {
+      const haciaAdelante = ['adelante', 'proximaSemana', 'proximoMes'].includes(rango.periodo)
+      if (haciaAdelante && estaVencido(c)) return true
+      return enRango(c.fechaLimite, rango)
+    },
+    [rango],
+  )
+
   const filtrados = useMemo(
     () =>
       deLasSalas.filter((c) => {
         if (responsable !== 'todos' && c.responsableId !== responsable) return false
         if (importancia !== 'todas' && c.importancia !== importancia) return false
         if (soloVencidas && !estaVencido(c)) return false
-        if (!enRango(c.fechaLimite, rango)) return false
+        if (!entraPorFecha(c)) return false
         if (!incluirHechos && c.estado === 'hecho') return false
         if (busqueda && !c.accion.toLowerCase().includes(busqueda.toLowerCase())) return false
         return true
       }),
-    [deLasSalas, responsable, importancia, soloVencidas, rango, incluirHechos, busqueda],
+    [deLasSalas, responsable, importancia, soloVencidas, entraPorFecha, incluirHechos, busqueda],
   )
 
   const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
