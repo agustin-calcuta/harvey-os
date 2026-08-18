@@ -11,6 +11,7 @@ import ReunionDetalle from './pages/ReunionDetalle'
 import Compromisos from './pages/Compromisos'
 import Correos from './pages/Correos'
 import Admin from './pages/Admin'
+import { marca } from './marca'
 
 /* HashRouter: GitHub Pages sirve archivos estáticos y no reescribe rutas. */
 
@@ -65,7 +66,7 @@ function Rutas() {
 function Cargando() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <div className="display text-4xl">Imporbamas</div>
+      <div className="display text-4xl">{marca.nombre}</div>
       <div className="h-px w-32 overflow-hidden bg-borde">
         <div className="h-full w-1/3 animate-pulse bg-signal" />
       </div>

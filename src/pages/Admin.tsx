@@ -3,7 +3,7 @@ import { Database, DoorOpen, Pencil, Plus, RotateCcw, Send, Trash2, Users } from
 import { useApp } from '../store/AppContext'
 import { firebaseConfigurado } from '../lib/firebase'
 import { neonConfigurado } from '../lib/neon'
-import { correoConfigurado, enviarCorreo } from '../lib/email'
+import { correoConfigurado, correoDePrueba, enviarCorreo } from '../lib/email'
 import { fechaCorta, integrantes, uid } from '../lib/utils'
 import type { Alcance, Usuario } from '../types'
 import { Boton, Campo, Chip, Confirmar, Modal, Seccion, Segmentado } from '../components/ui'
@@ -41,24 +41,7 @@ export default function Admin() {
     try {
       const r = await enviarCorreo({
         destinatarios: [yo.email],
-        asunto: `Prueba de envío · ${estado.config.organizacion}`,
-        texto:
-          'Si estás leyendo esto, el envío automático quedó funcionando. Los correos de temario y de minuta van a salir por esta misma vía.',
-        html: `<div style="background:#F7F5F1;padding:32px 16px;font-family:Inter,Helvetica,Arial,sans-serif">
-  <div style="max-width:560px;margin:0 auto;background:#FFFFFF;border:1px solid #E3DED4">
-    <div style="padding:28px 32px;border-bottom:1px solid #E3DED4">
-      <div style="font-size:10px;letter-spacing:3px;color:#6B665D;text-transform:uppercase">[ Prueba ]</div>
-      <div style="font-size:32px;font-weight:800;color:#14120F;text-transform:uppercase;margin-top:10px;line-height:1.1">Funciona</div>
-    </div>
-    <div style="padding:28px 32px;color:#2C2924;font-size:14px;line-height:1.65">
-      Si estás leyendo esto, el envío automático quedó funcionando. Los correos de
-      temario y de minuta van a salir por esta misma vía.
-    </div>
-    <div style="padding:18px 32px;border-top:1px solid #E3DED4;font-size:10px;letter-spacing:2px;color:#9A948A;text-transform:uppercase">
-      ${estado.config.organizacion} · enviado automáticamente
-    </div>
-  </div>
-</div>`,
+        ...correoDePrueba(estado.config.organizacion),
       })
       avisar(
         r === 'enviado'
@@ -192,7 +175,7 @@ export default function Admin() {
           <label className="flex cursor-pointer items-start gap-3 p-4">
             <input
               type="checkbox"
-              className="mt-0.5 h-4 w-4 accent-[#C0392B]"
+              className="mt-0.5 h-4 w-4 accent-signal"
               checked={estado.config.emailsActivos}
               onChange={(e) => actualizarConfig({ emailsActivos: e.target.checked })}
             />
@@ -453,7 +436,7 @@ function ModalPersona({
         <label className="flex cursor-pointer items-start gap-3">
           <input
             type="checkbox"
-            className="mt-0.5 h-4 w-4 accent-[#C0392B]"
+            className="mt-0.5 h-4 w-4 accent-signal"
             checked={puedeCrearSalas}
             onChange={(e) => setPuedeCrearSalas(e.target.checked)}
           />
@@ -467,7 +450,7 @@ function ModalPersona({
         <label className="flex cursor-pointer items-center gap-3">
           <input
             type="checkbox"
-            className="h-4 w-4 accent-[#C0392B]"
+            className="h-4 w-4 accent-signal"
             checked={activo}
             onChange={(e) => setActivo(e.target.checked)}
           />

@@ -76,12 +76,14 @@ export function Chip({
 }: {
   children: ReactNode
   className?: string
-  tono?: 'neutro' | 'signal' | 'amber' | 'acid' | 'cold'
+  tono?: 'neutro' | 'signal' | 'alerta' | 'amber' | 'acid' | 'cold'
   title?: string
 }) {
   const tonos = {
     neutro: 'border-borde2 text-suave',
     signal: 'border-signal/60 text-signal',
+    /* Lo vencido. En Imporbamas se ve igual que `signal`. */
+    alerta: 'border-alerta/60 text-alerta',
     amber: 'border-amber/60 text-amber',
     acid: 'border-acid/60 text-acid',
     cold: 'border-cold/60 text-cold',

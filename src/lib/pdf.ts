@@ -12,6 +12,7 @@ import {
   nombreDe,
   slug,
 } from './utils'
+import { coloresRgb, marca } from '../marca'
 
 /* ─────────────────────────────────────────────────────────────
    Minuta en PDF.
@@ -20,10 +21,31 @@ import {
    objetivo y proponente, conclusiones, tareas y observaciones.
    ───────────────────────────────────────────────────────────── */
 
-const NEGRO: [number, number, number] = [10, 10, 10]
-const ROJO: [number, number, number] = [192, 57, 43]
-const GRIS: [number, number, number] = [120, 120, 120]
-const LINEA: [number, number, number] = [215, 213, 209]
+/*
+ * La paleta del documento sale de la marca compilada.
+ *
+ * jsPDF quiere los colores en RGB y la marca los define en
+ * hexadecimal, así que `coloresRgb` los convierte una sola vez.
+ * Antes había cuatro constantes escritas acá: era la copia que más
+ * tardaba en detectarse cuando quedaba vieja, porque para verla hay
+ * que generar una minuta entera.
+ */
+const NEGRO = coloresRgb.tinta
+const GRIS = coloresRgb.tenue
+const LINEA = coloresRgb.borde2
+
+/*
+ * Lo vencido. En Imporbamas es el mismo rojo que la acción
+ * principal; en Calcuta es el naranja, porque el azul de acción no
+ * alerta.
+ */
+const ALERTA = coloresRgb.alerta
+
+/** La barrita bajo el título de la portada y los `[ KICKER ]`. */
+const SIGNAL = coloresRgb.signal
+
+/** El relleno de las celdas de encabezado y de los totales. */
+const HUECO = coloresRgb.hueco
 
 const M = 42 // margen lateral
 
@@ -53,9 +75,9 @@ export function construirMinuta(
   doc.setTextColor(255, 255, 255)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(30)
-  doc.text((estado.config.organizacion || 'Imporbamas').toUpperCase(), M, 52)
+  doc.text((estado.config.organizacion || marca.nombre).toUpperCase(), M, 52)
 
-  doc.setFillColor(...ROJO)
+  doc.setFillColor(...SIGNAL)
   doc.rect(M, 62, 30, 3, 'F')
 
   doc.setFont('helvetica', 'normal')
@@ -84,9 +106,9 @@ export function construirMinuta(
     theme: 'grid',
     styles: { fontSize: 8.5, cellPadding: 7, lineColor: LINEA, lineWidth: 0.5, textColor: NEGRO },
     columnStyles: {
-      0: { cellWidth: 92, fontStyle: 'bold', fillColor: [246, 245, 243], textColor: GRIS },
+      0: { cellWidth: 92, fontStyle: 'bold', fillColor: HUECO, textColor: GRIS },
       1: { cellWidth: 180 },
-      2: { cellWidth: 92, fontStyle: 'bold', fillColor: [246, 245, 243], textColor: GRIS },
+      2: { cellWidth: 92, fontStyle: 'bold', fillColor: HUECO, textColor: GRIS },
       3: { cellWidth: 'auto' },
     },
     body: [
@@ -139,7 +161,7 @@ export function construirMinuta(
     },
     foot: [['', '', 'TOTAL ASIGNADO', `${minutosAgenda(temas)} min`]],
     footStyles: {
-      fillColor: [246, 245, 243],
+      fillColor: HUECO,
       textColor: NEGRO,
       fontSize: 7.5,
       fontStyle: 'bold',
@@ -247,7 +269,7 @@ export function construirMinuta(
       margin: { left: M, right: M },
       theme: 'grid',
       headStyles: {
-        fillColor: [246, 245, 243],
+        fillColor: HUECO,
         textColor: GRIS,
         fontSize: 7.5,
         fontStyle: 'bold',
@@ -290,7 +312,7 @@ export function construirMinuta(
     doc.setFontSize(7)
     doc.setTextColor(...GRIS)
     doc.text(
-      `${(estado.config.organizacion || 'Imporbamas').toUpperCase()}  ·  MINUTA GENERADA AUTOMÁTICAMENTE`,
+      `${(estado.config.organizacion || marca.nombre).toUpperCase()}  ·  MINUTA GENERADA AUTOMÁTICAMENTE`,
       M,
       alto - 28,
     )
@@ -336,9 +358,9 @@ export function construirPendientes(
   doc.setTextColor(255, 255, 255)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(30)
-  doc.text((estado.config.organizacion || 'Imporbamas').toUpperCase(), M, 50)
+  doc.text((estado.config.organizacion || marca.nombre).toUpperCase(), M, 50)
 
-  doc.setFillColor(...ROJO)
+  doc.setFillColor(...SIGNAL)
   doc.rect(M, 60, 30, 3, 'F')
 
   doc.setFont('helvetica', 'normal')
@@ -414,7 +436,7 @@ export function construirPendientes(
       if (!c) return
       const vencido = c.fechaLimite && new Date(c.fechaLimite).getTime() < Date.now()
       if (data.column.index === 2 && vencido) {
-        data.cell.styles.textColor = ROJO
+        data.cell.styles.textColor = ALERTA
         data.cell.styles.fontStyle = 'bold'
       }
       if (data.column.index === 3) data.cell.styles.textColor = GRIS
@@ -447,7 +469,7 @@ export function construirPendientes(
     doc.setFontSize(7)
     doc.setTextColor(...GRIS)
     doc.text(
-      `${(estado.config.organizacion || 'Imporbamas').toUpperCase()}  ·  LISTADO GENERADO AUTOMÁTICAMENTE`,
+      `${(estado.config.organizacion || marca.nombre).toUpperCase()}  ·  LISTADO GENERADO AUTOMÁTICAMENTE`,
       M,
       alto - 28,
     )
@@ -472,7 +494,7 @@ export function generarPendientesPDF(
 function titulo(doc: jsPDF, texto: string, y: number): number {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(8)
-  doc.setTextColor(...ROJO)
+  doc.setTextColor(...SIGNAL)
   doc.text(`[ ${texto} ]`, M, y)
   return y + 14
 }

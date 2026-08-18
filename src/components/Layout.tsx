@@ -18,6 +18,7 @@ import {
 import { useApp } from '../store/AppContext'
 import { cx, estaVencido, proximasReuniones, temarioDe, temasSinTratar } from '../lib/utils'
 import { ESTADO_REUNION } from '../types'
+import { logos, marca, rutaPublica } from '../marca'
 
 /*
  * «Correos» salió del menú: mostraba vistas previas de mensajes sin
@@ -72,8 +73,12 @@ export default function Layout() {
     ? [...NAV, { a: '/admin', icono: Settings, texto: 'Administración' }]
     : NAV
 
-  // La marca sale de la configuración: la usan para todas sus sociedades.
-  const marca = estado.config.organizacion || 'Imporbamas'
+  /*
+   * El nombre sale de la configuración: la usan para todas sus
+   * sociedades. La marca compilada es sólo el valor de arranque,
+   * para antes de que exista configuración cargada.
+   */
+  const nombre = estado.config.organizacion || marca.nombre
 
   return (
     <div className="flex min-h-screen">
@@ -87,9 +92,24 @@ export default function Layout() {
         )}
       >
         <div className="flex items-center justify-between px-5 py-5">
-          <button onClick={() => navegar('/')} className="text-left">
-            <div className="display text-2xl leading-none">{marca}</div>
-            <div className="label mt-1">Reuniones y minutas</div>
+          <button onClick={() => navegar('/')} className="flex items-center gap-3 text-left">
+            {/*
+              El isotipo si la marca lo trae, el nombre compuesto si
+              no. Imporbamas nunca tuvo archivo de logo y así se
+              queda como estaba.
+            */}
+            {logos.isotipoClaro && (
+              <img
+                src={rutaPublica(logos.isotipoClaro)}
+                alt=""
+                aria-hidden
+                className="h-8 w-8 shrink-0"
+              />
+            )}
+            <span className="block">
+              <span className="display block text-2xl leading-none">{nombre}</span>
+              <span className="label mt-1 block">Reuniones y minutas</span>
+            </span>
           </button>
           <button
             className="text-white/50 lg:hidden"
@@ -129,7 +149,7 @@ export default function Layout() {
               {n.a === '/compromisos' &&
                 (vencidos.length > 0 ? (
                   <span
-                    className="bg-signal px-1.5 py-0.5 text-[9px] text-white"
+                    className="bg-alerta px-1.5 py-0.5 text-[9px] text-white"
                     title={`${vencidos.length} vencidos`}
                   >
                     {vencidos.length}
@@ -218,7 +238,7 @@ export default function Layout() {
             <Menu size={20} />
           </button>
           <button onClick={() => navegar('/')} className="display text-lg">
-            {marca}
+            {nombre}
           </button>
         </header>
 
@@ -244,7 +264,7 @@ export default function Layout() {
 
         <footer className="border-t border-borde px-6 py-4">
           <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-tenue">
-            <span>{marca} · reuniones y minutas</span>
+            <span>{nombre} · reuniones y minutas</span>
             <span>Desarrollado por Calcuta</span>
           </div>
         </footer>

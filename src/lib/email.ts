@@ -1,6 +1,7 @@
 import type { Compromiso, Estado, Reunion, Tema } from '../types'
 import { IMPORTANCIA, OBJETIVOS } from '../types'
 import { agendaDe, compromisosDe, fechaCorta, fechaLarga, hora, minutosAgenda, nombreDe } from './utils'
+import { colores, fuentes } from '../marca'
 
 /* ─────────────────────────────────────────────────────────────
    Composición de los dos correos automáticos que pidió Fran:
@@ -8,22 +9,43 @@ import { agendaDe, compromisosDe, fechaCorta, fechaLarga, hora, minutosAgenda, n
    2. al cerrar la reunión, con conclusiones y tareas
    ───────────────────────────────────────────────────────────── */
 
-/* Mismos valores que el tema de la aplicación. */
-const ROJO = '#C0392B'
-const TINTA = '#14120F'
-const FONDO = '#F7F5F1'
-const SUAVE = '#6B665D'
-const TENUE = '#9A948A'
-const BORDE = '#E3DED4'
+/*
+ * Los colores salen de la marca compilada, no de una copia local.
+ *
+ * Un correo no puede usar `var(--color-…)`: ningún cliente resuelve
+ * custom properties, así que los valores tienen que viajar
+ * literales en el `style` de cada etiqueta. Eso es justamente lo
+ * que hacía que este archivo tuviera su propia paleta y fuera el
+ * último en enterarse de un cambio de marca —hay que cerrar un
+ * temario para verlo—.
+ */
+const {
+  panel: PANEL,
+  tinta: TINTA,
+  fondo: FONDO,
+  suave: SUAVE,
+  tenue: TENUE,
+  borde: BORDE,
+  signal: SIGNAL,
+  alerta: ALERTA,
+} = colores
+const TIPO = fuentes.correo
+
+/*
+ * El titular del correo sigue la misma regla que el de la
+ * aplicación: mayúsculas donde la marca las usa, caja mixta donde
+ * no. Sin esto, Calcuta manda correos que contradicen su manual.
+ */
+const CAJA = fuentes.displayCaja
 
 const layout = (titulo: string, kicker: string, cuerpo: string, marca: string) => `
-<div style="background:${FONDO};padding:32px 16px;font-family:Inter,Helvetica,Arial,sans-serif">
-  <div style="max-width:640px;margin:0 auto;background:#FFFFFF;border:1px solid ${BORDE}">
+<div style="background:${FONDO};padding:32px 16px;font-family:${TIPO}">
+  <div style="max-width:640px;margin:0 auto;background:${PANEL};border:1px solid ${BORDE}">
     <div style="padding:28px 32px;border-bottom:1px solid ${BORDE}">
       <div style="font-size:10px;letter-spacing:3px;color:${SUAVE};text-transform:uppercase">[ ${kicker} ]</div>
-      <div style="font-size:32px;font-weight:800;color:${TINTA};letter-spacing:-0.5px;text-transform:uppercase;margin-top:10px;line-height:1.1">${titulo}</div>
+      <div style="font-size:32px;font-weight:${fuentes.displayPeso};color:${TINTA};letter-spacing:-0.5px;text-transform:${CAJA};margin-top:10px;line-height:1.1">${titulo}</div>
     </div>
-    <div style="padding:28px 32px;color:#2C2924;font-size:14px;line-height:1.65">${cuerpo}</div>
+    <div style="padding:28px 32px;color:${TINTA};font-size:14px;line-height:1.65">${cuerpo}</div>
     <div style="padding:18px 32px;border-top:1px solid ${BORDE};font-size:10px;letter-spacing:2px;color:${TENUE};text-transform:uppercase">
       ${marca} · enviado automáticamente
     </div>
@@ -63,7 +85,7 @@ export function correoAgendaCerrada(e: Estado, r: Reunion) {
       <span style="color:${SUAVE};font-size:12px;margin-left:20px">Temas</span>
       <span style="color:${TINTA};font-size:13px;margin-left:8px">${temas.length}</span>
       <span style="color:${SUAVE};font-size:12px;margin-left:20px">Duración</span>
-      <span style="color:${total > r.duracionPrevistaMin ? ROJO : TINTA};font-size:13px;margin-left:8px">${total} min</span>
+      <span style="color:${total > r.duracionPrevistaMin ? ALERTA : TINTA};font-size:13px;margin-left:8px">${total} min</span>
     </div>
     <div style="font-size:10px;letter-spacing:3px;color:${SUAVE};text-transform:uppercase;margin-bottom:8px">[ Temas a tratar ]</div>
     <table style="width:100%;border-collapse:collapse">${temas.map((t, i) => filaTema(e, t, i)).join('')}</table>
@@ -99,7 +121,7 @@ const filaCompromiso = (e: Estado, c: Compromiso) => `
     ${c.accion}
     ${c.detalle ? `<div style="color:${SUAVE};font-size:12px;margin-top:3px">${c.detalle}</div>` : ''}
   </td>
-  <td style="padding:10px 12px;border-bottom:1px solid ${BORDE};color:#2C2924;font-size:13px;white-space:nowrap">${nombreDe(e, c.responsableId)}</td>
+  <td style="padding:10px 12px;border-bottom:1px solid ${BORDE};color:${TINTA};font-size:13px;white-space:nowrap">${nombreDe(e, c.responsableId)}</td>
   <td style="padding:10px 0;border-bottom:1px solid ${BORDE};color:${IMPORTANCIA[c.importancia].hex};font-size:13px;white-space:nowrap">${fechaCorta(c.fechaLimite)}</td>
 </tr>`
 
@@ -116,7 +138,7 @@ export function correoMinuta(e: Estado, r: Reunion) {
         ${chip(OBJETIVOS[t.objetivo].nombre, SUAVE)}
         <span style="color:${TENUE};font-size:11px;margin-left:6px">Propuso ${nombreDe(e, t.propuestoPor)}</span>
       </div>
-      <div style="color:#2C2924;font-size:13px;line-height:1.6;white-space:pre-wrap">${t.conclusiones ?? `<span style="color:${TENUE}">Sin conclusiones registradas.</span>`}</div>
+      <div style="color:${TINTA};font-size:13px;line-height:1.6;white-space:pre-wrap">${t.conclusiones ?? `<span style="color:${TENUE}">Sin conclusiones registradas.</span>`}</div>
     </div>`,
     )
     .join('')
@@ -129,7 +151,7 @@ export function correoMinuta(e: Estado, r: Reunion) {
     ${
       r.conclusionesGenerales
         ? `<div style="font-size:10px;letter-spacing:3px;color:${SUAVE};text-transform:uppercase;margin-bottom:8px">[ Principales conclusiones ]</div>
-           <div style="border-left:2px solid ${ROJO};padding-left:14px;color:#2C2924;font-size:14px;line-height:1.65;margin-bottom:28px;white-space:pre-wrap">${r.conclusionesGenerales}</div>`
+           <div style="border-left:2px solid ${SIGNAL};padding-left:14px;color:${TINTA};font-size:14px;line-height:1.65;margin-bottom:28px;white-space:pre-wrap">${r.conclusionesGenerales}</div>`
         : ''
     }
     <div style="font-size:10px;letter-spacing:3px;color:${SUAVE};text-transform:uppercase;margin-bottom:12px">[ Tema por tema ]</div>
@@ -150,7 +172,7 @@ export function correoMinuta(e: Estado, r: Reunion) {
     ${
       r.observaciones
         ? `<div style="font-size:10px;letter-spacing:3px;color:${SUAVE};text-transform:uppercase;margin:28px 0 8px">[ Observaciones adicionales ]</div>
-           <div style="color:#2C2924;font-size:13px;line-height:1.6;white-space:pre-wrap">${r.observaciones}</div>`
+           <div style="color:${TINTA};font-size:13px;line-height:1.6;white-space:pre-wrap">${r.observaciones}</div>`
         : ''
     }
     ${
@@ -183,6 +205,28 @@ export function correoMinuta(e: Estado, r: Reunion) {
     asunto: `Minuta · ${r.titulo}`,
     html: layout('Minuta de reunión', 'Después de la reunión', cuerpo, e.config.organizacion),
     texto,
+  }
+}
+
+/* ── 3. Prueba de envío ───────────────────────────────────── */
+
+/**
+ * El correo que manda Administración para verificar que la casilla
+ * quedó conectada.
+ *
+ * Vivía escrito a mano adentro de `Admin.tsx`, con su propia copia
+ * de los seis colores: era el único de los tres correos que no
+ * pasaba por `layout`, y por lo tanto el único que se quedaba con
+ * la paleta del cliente anterior sin que nadie lo notara.
+ */
+export function correoDePrueba(organizacion: string) {
+  const texto =
+    'Si estás leyendo esto, el envío automático quedó funcionando. Los correos de temario y de minuta van a salir por esta misma vía.'
+
+  return {
+    asunto: `Prueba de envío · ${organizacion}`,
+    texto,
+    html: layout('Funciona', 'Prueba', `<p style="margin:0">${texto}</p>`, organizacion),
   }
 }
 

@@ -1,15 +1,16 @@
 @import 'tailwindcss';
 
 /* ─────────────────────────────────────────────────────────────
-   HARVEY — sistema visual
+   El sistema visual, sin la marca
 
-   Tomado de la marca: fondo hueso, tinta casi negra y el rojo
-   señal de la tienda. Las dos familias son las mismas que usa
-   harveywillys.com: Inter para el texto y Almarai para titulares.
+   Acá vive la **estructura**: la escala tipográfica, el volumen,
+   los componentes y las utilidades. Los valores de marca —colores,
+   familias, caja del titular— los pone el cliente que se compile,
+   desde `src/marca/`.
 
-   Los nombres son semánticos a propósito (fondo, panel, tinta) y
-   no descriptivos: si alguna vez se invierte el esquema, cambian
-   los valores acá y el resto de la aplicación no se toca.
+   Los nombres son semánticos a propósito (fondo, panel, tinta,
+   signal) y no descriptivos: `signal` es rojo en Imporbamas y azul
+   en Calcuta, y ningún componente se entera.
 
    ── Sobre el volumen ──────────────────────────────────────────
    Ariel, dos reuniones seguidas: *"la app sigue gritando; todos
@@ -28,41 +29,75 @@
       lados deja de destacar—.
    2. Una escala de cinco pasos, del titular a la etiqueta, con un
       escalón nuevo para los títulos de sección.
-   3. El rojo vuelve a significar algo: la acción principal de
-      cada pantalla y lo vencido. El resto de los botones sólidos
-      pasan a tinta.
+   3. El color de acción vuelve a significar algo: `signal` es la
+      acción principal de cada pantalla y nada más. El resto de los
+      botones sólidos pasan a tinta.
+
+      En Imporbamas ese mismo rojo marcaba además lo vencido, y
+      funcionaba porque un rojo alerta solo. Con el azul de Calcuta
+      dejó de funcionar, así que lo vencido tiene su propio token
+      (`alerta`) y en Imporbamas vale igual que `signal`: la regla
+      de «un color de acción por pantalla» no cambió, se le sacó
+      encima el segundo trabajo que hacía.
    ───────────────────────────────────────────────────────────── */
+/*
+ * Ningún color vive acá.
+ *
+ * Los `--m-*` los define la marca que se esté compilando: los emite
+ * `src/marca/css.ts` y `vite.config.ts` los inyecta en el `<head>`
+ * antes que esta hoja. Este bloque sólo les pone el nombre con el
+ * que los usa Tailwind, para que `bg-signal` siga escribiéndose
+ * igual sea cual sea el cliente.
+ *
+ * Dar de alta un cliente no requiere tocar este archivo.
+ */
 @theme {
   /* Superficies, de la más al fondo a la más cercana */
-  --color-fondo: #f7f5f1;
-  --color-panel: #ffffff;
-  --color-hueco: #efece6;
+  --color-fondo: var(--m-fondo);
+  --color-panel: var(--m-panel);
+  --color-hueco: var(--m-hueco);
 
   /* Texto */
-  --color-tinta: #14120f;
-  --color-suave: #6b665d;
-  --color-tenue: #9a948a;
+  --color-tinta: var(--m-tinta);
+  --color-suave: var(--m-suave);
+  --color-tenue: var(--m-tenue);
 
   /* Bordes */
-  --color-borde: #e3ded4;
-  --color-borde2: #cdc6b8;
+  --color-borde: var(--m-borde);
+  --color-borde2: var(--m-borde2);
 
-  /* Acentos, calibrados para leerse sobre fondo claro */
-  --color-signal: #c0392b;
-  --color-signal-hi: #a52f23;
-  --color-rust: #ae5343;
-  --color-amber: #b26b18;
-  --color-acid: #5f7d1c;
-  --color-cold: #2e6285;
+  /* La acción principal de la pantalla */
+  --color-signal: var(--m-signal);
+  --color-signal-hi: var(--m-signal-hi);
+
+  /*
+   * Lo vencido. En Imporbamas vale lo mismo que `signal` —un rojo
+   * hacía las dos cosas—, en Calcuta no puede: la acción es azul y
+   * un azul no alerta.
+   */
+  --color-alerta: var(--m-alerta);
+  --color-alerta-hi: var(--m-alerta-hi);
+
+  /* Lo que está pasando ahora. Poco y muy visible. */
+  --color-acento: var(--m-acento);
+  --color-acento-tinta: var(--m-acento-tinta);
+
+  /* Estados */
+  --color-rust: var(--m-rust);
+  --color-amber: var(--m-amber);
+  --color-acid: var(--m-acid);
+  --color-cold: var(--m-cold);
 
   /* Contraparte oscura: barra lateral y portada */
-  --color-noche: #14120f;
-  --color-noche2: #1f1c18;
-  --color-nocheborde: #322d26;
+  --color-noche: var(--m-noche);
+  --color-noche2: var(--m-noche2);
+  --color-nocheborde: var(--m-nocheborde);
+  --color-nochetinta: var(--m-noche-tinta);
+  --color-nochetenue: var(--m-noche-tenue);
 
-  --font-display: 'Almarai', 'Inter', sans-serif;
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--m-font-display);
+  --font-sans: var(--m-font-sans);
+  --font-mono: var(--m-font-mono);
 
   /*
    * La escala. Cinco pasos y ninguno más: el título de la pantalla,
@@ -137,17 +172,24 @@
 
 @layer components {
   /*
-   * Titular de la marca: Almarai en su peso más alto y bien
-   * apretado. Da el aire de cartel sin traer una condensada ajena
-   * al sistema tipográfico de Harvey.
+   * Titular de la marca: la familia de titulares en su peso más
+   * alto y bien apretada. Da el aire de cartel sin traer una
+   * condensada ajena al sistema tipográfico del cliente.
    *
    * Va **una vez por pantalla**, en el h1. Repetido en cada sección
    * dejaba de ordenar y se volvía ruido: para eso está `.titulo`.
    */
   .display {
     font-family: var(--font-display);
-    font-weight: 800;
-    @apply uppercase tracking-[-0.02em] leading-[1.06];
+    font-weight: var(--m-display-peso);
+    /*
+     * La caja la decide la marca. Imporbamas compone en mayúsculas
+     * porque así es su cartelería; el manual de Calcuta se las
+     * reserva a las etiquetas y compone el titular en caja mixta.
+     */
+    text-transform: var(--m-display-caja);
+    letter-spacing: var(--m-display-tracking);
+    @apply leading-[1.06];
   }
 
   /*
@@ -159,8 +201,9 @@
    */
   .titulo {
     font-family: var(--font-display);
-    font-weight: 700;
-    @apply text-seccion tracking-[-0.01em];
+    font-weight: var(--m-titulo-peso);
+    letter-spacing: var(--m-titulo-tracking);
+    @apply text-seccion;
   }
 
   /* [ ETIQUETA ] — el recurso gráfico que usan en toda la web */
@@ -194,10 +237,10 @@
   /* Zonas sobre la contraparte oscura */
   .noche {
     background: var(--color-noche);
-    color: #f2efe9;
+    color: var(--color-nochetinta);
   }
   .noche .label {
-    color: #8f887c;
+    color: var(--color-nochetenue);
   }
 }
 

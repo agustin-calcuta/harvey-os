@@ -3,6 +3,7 @@ import { useApp } from '../store/AppContext'
 import { firebaseConfigurado } from '../lib/firebase'
 import { neonConfigurado } from '../lib/neon'
 import { ESTADO_INICIAL, S_GERENCIAL, S_MARKETING } from '../lib/seed'
+import { logos, marca, rutaPublica } from '../marca'
 
 const CINTA =
   'TEMARIO · REUNIÓN · MINUTA EN VIVO · SEGUIMIENTO · TAREAS CON RESPONSABLE Y FECHA · '
@@ -60,15 +61,30 @@ export default function Login() {
             className="pointer-events-none absolute inset-0 opacity-[0.05]"
             style={{
               backgroundImage:
-                'repeating-linear-gradient(45deg,#14120F 0,#14120F 1px,transparent 1px,transparent 14px)',
+                'repeating-linear-gradient(45deg,var(--color-tinta) 0,var(--color-tinta) 1px,transparent 1px,transparent 14px)',
             }}
           />
           <div className="relative">
-            <div className="label bracket">Calcuta para Imporbamas</div>
+            <div className="label bracket">{marca.kicker}</div>
           </div>
 
           <div className="relative py-12">
-            <h1 className="display text-[clamp(2.5rem,7vw,5rem)]">Imporbamas</h1>
+            {/*
+              El logotipo completo va una vez, acá y grande. Si la
+              marca no trae archivo, el nombre compuesto hace el
+              mismo trabajo —que es lo que hacía Imporbamas—.
+            */}
+            <h1 className="display text-[clamp(2.5rem,7vw,5rem)]">
+              {logos.logotipo ? (
+                <img
+                  src={rutaPublica(logos.logotipo)}
+                  alt={marca.nombre}
+                  className="w-full max-w-[min(28rem,80%)]"
+                />
+              ) : (
+                marca.nombre
+              )}
+            </h1>
             <p className="mt-6 max-w-md text-sm leading-relaxed text-suave">
               Las reuniones dejan de perderse. Cada equipo tiene su sala, con el temario cargado
               con anticipación, tiempos asignados, minuta que se arma sola y tareas con

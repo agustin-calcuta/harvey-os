@@ -7,7 +7,15 @@
     "skipLibCheck": true,
 
     /* Bundler mode */
-    "module": "nodenext",
+    /*
+     * `esnext` + `bundler`, igual que el proyecto de la aplicación.
+     * Estaba en `nodenext`, que exige extensiones `.js` explícitas
+     * en cada import: desde que vite.config.ts importa la marca
+     * desde `src/marca/`, eso obligaba a escribir los imports de
+     * ese directorio de una forma distinta al resto de `src/`.
+     */
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
