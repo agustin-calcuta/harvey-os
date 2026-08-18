@@ -185,6 +185,20 @@ export interface Marca {
    */
   credito?: string
 
+  /**
+   * Si quien administra es parte del equipo o una cuenta de afuera.
+   *
+   * En la instancia de un cliente, el superadmin es la cuenta de
+   * soporte de Calcuta: no participa de ninguna reunión y no tiene
+   * sentido que aparezca cuando se elige a quién sumar a una sala o
+   * a quién asignarle una tarea. Ahí va `false`.
+   *
+   * En la instancia propia son dos socios que además administran:
+   * participan de todo, y esconderlos de esas listas significaría
+   * que nadie los puede sumar a una sala nueva. Ahí va `true`.
+   */
+  adminsSonDelEquipo: boolean
+
   colores: ColoresMarca
   fuentes: FuentesMarca
   logos: LogosMarca

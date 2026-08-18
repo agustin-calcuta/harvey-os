@@ -18,6 +18,9 @@ export const imporbamas: Marca = {
   titulo: 'Imporbamas — Reuniones y minutas',
   descripcion: 'Imporbamas — reuniones y minutas: temario, minuta y seguimiento de tareas.',
   kicker: 'Calcuta para Imporbamas',
+
+  /* El superadmin es la cuenta de soporte de Calcuta, no del equipo. */
+  adminsSonDelEquipo: false,
   credito: 'Desarrollado por Calcuta',
 
   colores: {

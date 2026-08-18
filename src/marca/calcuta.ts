@@ -35,6 +35,9 @@ export const calcuta: Marca = {
   descripcion: 'Calcuta — reuniones y minutas: temario, minuta y seguimiento de tareas.',
   kicker: 'Reuniones y minutas',
 
+  /* Acá administran dos socios que participan de todas las reuniones. */
+  adminsSonDelEquipo: true,
+
   colores: {
     /*
      * Superficies. Neutras a propósito: el hueso de Imporbamas
@@ -140,7 +143,7 @@ export const calcuta: Marca = {
   ejemplos: {
     tema: 'Definir el alcance de la propuesta',
     tarea: 'Preparar la propuesta y pasarla a revisión',
-    correo: 'nombre@calcuta.com',
+    correo: 'nombre@calcutaconsulting.com',
     persona: 'Nombre y apellido',
   },
 
