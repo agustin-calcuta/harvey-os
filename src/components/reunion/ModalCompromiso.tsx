@@ -146,6 +146,7 @@ export default function ModalCompromiso({
           <Campo etiqueta="Fecha límite">
             <input
               type="date"
+              lang="es-AR"
               className="w-full"
               value={fechaLimite}
               onChange={(e) => setFechaLimite(e.target.value)}

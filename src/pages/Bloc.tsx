@@ -24,7 +24,7 @@ import {
   temasAsignados,
   temasSinTratar,
 } from '../lib/utils'
-import type { Tema } from '../types'
+import { IMPORTANCIA, type Tema } from '../types'
 import {
   Boton,
   Chip,
@@ -197,14 +197,31 @@ export default function Bloc() {
             ))}
           </div>
         ) : (
+          /*
+             Lista de verdad: filas, no las mismas tarjetas puestas una
+             abajo de la otra. Es para repasar de un vistazo lo que hay,
+             igual que la lista de Tareas.
+          */
           <div className="space-y-6">
             {GRUPOS.filter((g) => porGrupo[g.clave].length > 0).map((g) => (
               <section key={g.clave}>
-                <h3 className="subtitulo">
-                  {g.titulo} <span className="cuenta">{porGrupo[g.clave].length}</span>
-                </h3>
-                <ul className="grid gap-3 xl:grid-cols-2">
-                  {porGrupo[g.clave].map((t) => tarjeta(t, g.clave))}
+                <div className="mb-2 flex items-center gap-3">
+                  <h3 className="text-tarjeta font-semibold">{g.titulo}</h3>
+                  <span className="text-meta text-tenue">{porGrupo[g.clave].length}</span>
+                  <div className="h-px flex-1 bg-borde" />
+                </div>
+                <ul className="card divide-y divide-borde">
+                  {porGrupo[g.clave].map((t) => (
+                    <Fila
+                      key={t.id}
+                      tema={t}
+                      grupo={g.clave}
+                      onAsignar={() => setPorAsignar(t)}
+                      onEditar={() => setEditando(t)}
+                      onBorrar={() => setPorBorrar(t)}
+                      onSacar={() => void devolverAlTemario(t.id)}
+                    />
+                  ))}
                 </ul>
               </section>
             ))}
@@ -234,6 +251,84 @@ export default function Bloc() {
 }
 
 /* ── La nota ──────────────────────────────────────────────── */
+
+/**
+ * Una nota en la vista de lista: una fila y no una tarjeta.
+ *
+ * En columnas cada nota es una ficha con su botón grande, porque la
+ * columna es angosta y hay pocas. En lista lo que se quiere es
+ * repasar: el título manda, lo demás va al costado en gris, y las
+ * acciones son íconos que aparecen al pasar por encima.
+ */
+function Fila({
+  tema: t,
+  grupo,
+  onAsignar,
+  onEditar,
+  onBorrar,
+  onSacar,
+}: {
+  tema: Tema
+  grupo: Grupo
+  onAsignar: () => void
+  onEditar: () => void
+  onBorrar: () => void
+  onSacar: () => void
+}) {
+  const { estado } = useApp()
+  const suya = reunion(estado, t.reunionId)
+  const equipo = sala(estado, t.salaId ?? t.salaTentativaId)
+
+  return (
+    <li className="group flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3">
+      <span
+        className="h-8 w-0.5 shrink-0"
+        style={{ background: IMPORTANCIA[t.importancia].hex }}
+        title={IMPORTANCIA[t.importancia].nombre}
+      />
+
+      <div className="min-w-0 flex-1 basis-[60%] sm:basis-auto">
+        <div className="text-sm leading-snug">{t.titulo}</div>
+        {t.detalle && <div className="mt-0.5 truncate text-meta text-tenue">{t.detalle}</div>}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-meta text-tenue">
+        <ChipObjetivo valor={t.objetivo} />
+        {equipo && <span>{equipo.nombre}</span>}
+        {grupo === 'pendientes' && (
+          <span className="text-amber">{t.motivoRechazo ?? 'No se llegó a hablar'}</span>
+        )}
+        {grupo === 'asignados' && suya && (
+          <Link to={`/reuniones/${suya.id}`} className="transition-colors hover:text-tinta">
+            {suya.titulo} · {fechaCorta(suya.fecha)}
+          </Link>
+        )}
+        <span>{relativo(t.creadoEn)}</span>
+      </div>
+
+      {/* En táctil no hay hover: en pantalla chica quedan siempre. */}
+      <div className="flex shrink-0 items-center gap-1 xl:opacity-0 xl:group-hover:opacity-100">
+        {grupo === 'asignados' ? (
+          <Boton tam="sm" variante="fantasma" onClick={onSacar} aria-label="Sacar de la reunión">
+            <RotateCcw size={12} />
+          </Boton>
+        ) : (
+          <Boton tam="sm" onClick={onAsignar}>
+            <CalendarPlus size={11} /> Asignar
+          </Boton>
+        )}
+        <Boton tam="sm" variante="fantasma" onClick={onEditar} aria-label="Editar tema">
+          <Pencil size={11} />
+        </Boton>
+        {grupo !== 'asignados' && (
+          <Boton tam="sm" variante="fantasma" onClick={onBorrar} aria-label="Borrar tema">
+            <Trash2 size={11} />
+          </Boton>
+        )}
+      </div>
+    </li>
+  )
+}
 
 /**
  * Una nota, con las acciones que tienen sentido según dónde esté.

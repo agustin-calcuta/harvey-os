@@ -180,6 +180,7 @@ export function FiltroFecha({ valor, onChange }: { valor: Rango; onChange: (v: R
         <div className="flex flex-wrap items-center gap-1.5">
           <input
             type="date"
+            lang="es-AR"
             value={valor.desde ?? ''}
             max={valor.hasta || undefined}
             onChange={(e) => onChange({ ...valor, desde: e.target.value || undefined })}
@@ -189,6 +190,7 @@ export function FiltroFecha({ valor, onChange }: { valor: Rango; onChange: (v: R
           <span className="text-meta text-tenue">a</span>
           <input
             type="date"
+            lang="es-AR"
             value={valor.hasta ?? ''}
             min={valor.desde || undefined}
             onChange={(e) => onChange({ ...valor, hasta: e.target.value || undefined })}

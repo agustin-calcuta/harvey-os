@@ -210,6 +210,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
             {editable ? (
               <input
                 type="date"
+                lang="es-AR"
                 className="w-full"
                 aria-label="Fecha de la próxima reunión"
                 value={proxima}

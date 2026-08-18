@@ -469,6 +469,7 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
           <Campo etiqueta="Fecha y hora">
             <input
               type="datetime-local"
+              lang="es-AR"
               className="w-full"
               value={fecha}
               onChange={(e) => setFecha(e.target.value)}
