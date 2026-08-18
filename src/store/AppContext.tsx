@@ -1130,6 +1130,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await persistir('temas', {
         ...t,
         salaId: r.salaId,
+        // Ya tiene sala de verdad: la tentativa cumplió su función.
+        salaTentativaId: undefined,
         reunionId,
         estado: 'aprobado',
         orden: hermanos.length,
@@ -1147,6 +1149,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...t,
         reunionId: undefined,
         salaId: undefined,
+        /*
+         * De qué equipo venía queda anotado como tentativa: el tema
+         * vuelve a ser privado, pero no se pierde para quién era.
+         */
+        salaTentativaId: t.salaId ?? t.salaTentativaId,
         estado: 'banco',
         orden: 0,
       })

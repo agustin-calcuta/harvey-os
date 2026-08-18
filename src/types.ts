@@ -252,6 +252,16 @@ export interface Tema {
   id: string
   /** Sin sala mientras está en el temario personal. */
   salaId?: string
+  /**
+   * Para qué equipo *pensás* que es, mientras todavía es tuyo.
+   *
+   * No es `salaId`: eso significa "ya es del equipo y lo ven todos".
+   * Esto es una nota al margen —"esto va para Marketing"— que sirve
+   * para filtrar el bloc y para que, al asignarlo, se ofrezcan
+   * primero las reuniones de ese equipo. Sigue siendo privado, y se
+   * puede anotar sin saberlo todavía.
+   */
+  salaTentativaId?: string
   reunionId?: string
   titulo: string
   detalle?: string

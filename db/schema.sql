@@ -162,6 +162,10 @@ create table if not exists public.reuniones (
 create table if not exists public.temas (
   id               text primary key,
   "salaId"         text references public.salas(id) on delete cascade,
+  -- Para qué equipo se pensó, mientras la nota es todavía privada. No
+  -- da acceso a nadie: sólo sirve para encontrarla y para sugerir
+  -- reuniones al asignarla.
+  "salaTentativaId" text references public.salas(id) on delete set null,
   "reunionId"      text references public.reuniones(id) on delete cascade,
   titulo           text not null,
   detalle          text,

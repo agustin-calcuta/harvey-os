@@ -32,7 +32,8 @@ export default function ModalTema({
   tema?: Tema
   entraDirecto?: boolean
 }) {
-  const { yo, estado, proponerTema, actualizarTema, organizoLa } = useApp()
+  const { yo, estado, proponerTema, actualizarTema, organizoLa, salasDondeSoyDelEquipo } =
+    useApp()
   const sala = estado.salas.find((s) => s.id === salaId)
   const reunion = estado.reuniones.find((r) => r.id === reunionId)
   const puedeOrganizar = organizoLa(salaId ?? reunion?.salaId)
@@ -43,6 +44,8 @@ export default function ModalTema({
   const [importancia, setImportancia] = useState<Importancia>('media')
   const [objetivo, setObjetivo] = useState<Objetivo>('decision')
   const [propuestoPor, setPropuestoPor] = useState(yo?.id ?? '')
+  /* Para qué equipo es, mientras la nota todavía es sólo mía. */
+  const [salaTentativaId, setSalaTentativaId] = useState('')
 
   useEffect(() => {
     if (!abierto) return
@@ -51,6 +54,7 @@ export default function ModalTema({
     setImportancia(tema?.importancia ?? 'media')
     setObjetivo(tema?.objetivo ?? 'decision')
     setPropuestoPor(tema?.propuestoPor ?? yo?.id ?? '')
+    setSalaTentativaId(tema?.salaTentativaId ?? '')
   }, [abierto, tema, yo])
 
   const alTemario = !reunionId
@@ -61,6 +65,8 @@ export default function ModalTema({
     const datos = {
       salaId,
       reunionId,
+      // Sólo tiene sentido mientras la nota no está en una reunión.
+      salaTentativaId: alTemario ? salaTentativaId || undefined : undefined,
       titulo: titulo.trim(),
       detalle: detalle.trim() || undefined,
       importancia,
@@ -133,6 +139,30 @@ export default function ModalTema({
           />
         </Campo>
 
+        {/* ── Para qué equipo ──
+            Sólo cuando la nota es del bloc: en una reunión la sala ya
+            está decidida. Se puede dejar sin elegir, que es el caso de
+            "lo anoto ahora y después veo con quién lo hablo". */}
+        {alTemario && salasDondeSoyDelEquipo.length > 0 && (
+          <Campo
+            etiqueta="¿Para qué equipo?"
+            ayuda="Opcional. Sirve para encontrarlo después; el tema sigue siendo sólo tuyo hasta que lo asignes a una reunión."
+          >
+            <select
+              className="w-full"
+              value={salaTentativaId}
+              onChange={(e) => setSalaTentativaId(e.target.value)}
+            >
+              <option value="">Todavía no sé</option>
+              {salasDondeSoyDelEquipo.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre}
+                </option>
+              ))}
+            </select>
+          </Campo>
+        )}
+
         {!alTemario && (
           <Campo
             etiqueta="Propone"
@@ -156,7 +186,7 @@ export default function ModalTema({
         {!tema && (
           <p className="border border-borde bg-hueco p-3 text-xs leading-relaxed text-suave">
             {alTemario
-              ? 'Queda en tu bloc de notas, sin sala y sin fecha. Sólo lo ves vos, y lo asignás a la reunión que quieras cuando quieras.'
+              ? 'Queda en tu bloc de notas, sin fecha y sin que lo vea nadie más. Lo asignás a la reunión que quieras cuando quieras.'
               : tarde
                 ? 'El temario de esta reunión ya se cerró, pero el tema entra igual: se suma al final y el que modera decide si se llega a hablar.'
                 : entraDirecto

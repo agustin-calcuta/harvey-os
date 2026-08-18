@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { CalendarRange } from 'lucide-react'
+import { CalendarRange, DoorOpen, Filter } from 'lucide-react'
 import { cx } from '../lib/utils'
 import type { Sala } from '../types'
 
@@ -103,8 +103,28 @@ export function textoRango(r: Rango): string {
 
 /* ── Los controles ────────────────────────────────────────── */
 
-const selectCls =
-  'border border-borde2 bg-panel px-3 py-2 font-semibold text-meta text-suave transition-colors hover:border-suave hover:text-tinta'
+/*
+ * Los filtros tienen que **parecer** filtros. Eran dos desplegables
+ * grises sin etiqueta, arriba a la izquierda, y se leían como texto:
+ * "¿dónde está el filtro de salas?". Ahora cada uno lleva su ícono
+ * adelante, y el que está puesto se pinta en tinta para que se note
+ * de un vistazo que la pantalla no está mostrando todo.
+ */
+const selectCls = 'appearance-none border bg-panel py-2 pl-8 pr-7 text-cuerpo transition-colors'
+
+const enReposo = 'border-borde2 text-suave hover:border-suave hover:text-tinta'
+const puesto = 'border-tinta font-semibold text-tinta'
+
+/** El ícono adelante y la flechita atrás, sin romper el `select`. */
+function ConIcono({ icono, children }: { icono: ReactNode; children: ReactNode }) {
+  return (
+    <div className="relative inline-flex items-center">
+      <span className="pointer-events-none absolute left-2.5 flex text-tenue">{icono}</span>
+      {children}
+      <span className="pointer-events-none absolute right-2.5 text-meta text-tenue">▾</span>
+    </div>
+  )
+}
 
 export function FiltroSala({
   valor,
@@ -120,41 +140,44 @@ export function FiltroSala({
   if (salas.length < 2) return null
 
   return (
-    <select
-      value={valor}
-      onChange={(e) => onChange(e.target.value)}
-      aria-label="Filtrar por sala"
-      className={cx(selectCls, valor !== 'todas' && 'border-tinta text-tinta')}
-    >
-      <option value="todas">Todas las salas</option>
-      {salas.map((s) => (
-        <option key={s.id} value={s.id}>
-          {s.nombre}
-        </option>
-      ))}
-    </select>
+    <ConIcono icono={<DoorOpen size={13} />}>
+      <select
+        value={valor}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label="Filtrar por sala"
+        className={cx(selectCls, valor === 'todas' ? enReposo : puesto)}
+      >
+        <option value="todas">Todas las salas</option>
+        {salas.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.nombre}
+          </option>
+        ))}
+      </select>
+    </ConIcono>
   )
 }
 
 export function FiltroFecha({ valor, onChange }: { valor: Rango; onChange: (v: Rango) => void }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <select
-        value={valor.periodo}
-        onChange={(e) => onChange({ ...valor, periodo: e.target.value as Periodo })}
-        aria-label="Filtrar por fecha"
-        className={cx(selectCls, valor.periodo !== 'adelante' && 'border-tinta text-tinta')}
-      >
-        {PERIODOS.map((p) => (
-          <option key={p.valor} value={p.valor}>
-            {p.texto}
-          </option>
-        ))}
-      </select>
+      <ConIcono icono={<CalendarRange size={13} />}>
+        <select
+          value={valor.periodo}
+          onChange={(e) => onChange({ ...valor, periodo: e.target.value as Periodo })}
+          aria-label="Filtrar por fecha"
+          className={cx(selectCls, valor.periodo === 'todo' ? enReposo : puesto)}
+        >
+          {PERIODOS.map((p) => (
+            <option key={p.valor} value={p.valor}>
+              {p.texto}
+            </option>
+          ))}
+        </select>
+      </ConIcono>
 
       {valor.periodo === 'rango' && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <CalendarRange size={13} className="text-tenue" />
           <input
             type="date"
             value={valor.desde ?? ''}
@@ -189,5 +212,12 @@ export function FiltroFecha({ valor, onChange }: { valor: Rango; onChange: (v: R
 
 /** La fila donde viven los filtros de una pantalla. */
 export function BarraFiltros({ children }: { children: ReactNode }) {
-  return <div className="mb-5 flex flex-wrap items-center gap-2">{children}</div>
+  return (
+    <div className="mb-5 flex flex-wrap items-center gap-2 border-y border-borde py-2.5">
+      <span className="mr-1 flex items-center gap-1.5 text-meta text-tenue">
+        <Filter size={12} /> Filtrar
+      </span>
+      {children}
+    </div>
+  )
 }

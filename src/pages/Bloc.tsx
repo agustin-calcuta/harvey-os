@@ -97,23 +97,21 @@ export default function Bloc() {
 
   const porGrupo = useMemo<Record<Grupo, Tema[]>>(() => {
     /*
-     * Un borrador no tiene sala todavía: sólo se lo esconde si se está
-     * mirando una sala en concreto, porque no es de ninguna.
+     * Un borrador todavía no es de ninguna sala, pero puede tener
+     * anotado para qué equipo se pensó. Filtrar por sala mira las dos
+     * cosas: si no, elegir una sala vaciaba la columna de borradores
+     * entera y parecía que se habían perdido.
      */
-    const deLaSala = (t: Tema) => salaFiltro === 'todas' || t.salaId === salaFiltro
+    const deLaSala = (t: Tema) =>
+      salaFiltro === 'todas' || t.salaId === salaFiltro || t.salaTentativaId === salaFiltro
+
     const filtrar = (temas: Tema[]) =>
       temas.filter((t) => deLaSala(t) && enRango(t.creadoEn, rango))
 
-    const asignados = temasAsignados(estado, yo?.id).filter(
-      (t) => enRango(t.creadoEn, rango) && (salaFiltro === 'todas' || t.salaId === salaFiltro),
-    )
     return {
-      borradores:
-        salaFiltro === 'todas'
-          ? temarioDe(estado, yo?.id).filter((t) => enRango(t.creadoEn, rango))
-          : [],
+      borradores: filtrar(temarioDe(estado, yo?.id)),
       pendientes: filtrar(temasSinTratar(estado, undefined, yo?.id)),
-      asignados,
+      asignados: filtrar(temasAsignados(estado, yo?.id)),
     }
   }, [estado, yo, salaFiltro, rango])
 
@@ -277,6 +275,13 @@ function Tarjeta({
       <h4 className="mb-1 text-sm leading-snug">{t.titulo}</h4>
       {t.detalle && <p className="mb-2 text-xs leading-relaxed text-suave">{t.detalle}</p>}
 
+      {/* Para qué equipo se pensó, mientras la nota sigue siendo tuya. */}
+      {grupo === 'borradores' && t.salaTentativaId && (
+        <div className="mt-1">
+          <Chip>{sala(estado, t.salaTentativaId)?.nombre}</Chip>
+        </div>
+      )}
+
       {grupo === 'pendientes' && (
         <p className="mt-1 text-xs text-amber">
           {t.motivoRechazo ?? 'No se llegó a hablar.'}
@@ -329,9 +334,19 @@ function ModalAsignar({ tema, onCerrar }: { tema?: Tema; onCerrar: () => void })
    */
   const candidatas = useMemo(() => {
     if (!tema) return []
-    return proximasReuniones(estado, yo, tema.salaId ?? undefined).filter(
+    const todas = proximasReuniones(estado, yo, tema.salaId ?? undefined).filter(
       (r) => r.estado !== 'cerrada',
     )
+    /*
+     * Si al anotarlo dijiste para qué equipo era, las de ese equipo
+     * van primero. No se esconden las otras: era una intención, no una
+     * decisión, y capaz el tema termina en otra reunión.
+     */
+    if (!tema.salaTentativaId) return todas
+    return [
+      ...todas.filter((r) => r.salaId === tema.salaTentativaId),
+      ...todas.filter((r) => r.salaId !== tema.salaTentativaId),
+    ]
   }, [estado, yo, tema])
 
   if (!tema) return null

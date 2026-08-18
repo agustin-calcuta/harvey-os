@@ -1,8 +1,9 @@
 -- ─────────────────────────────────────────────────────────────
 -- Harvey — migración del 18 de agosto de 2026
 --
--- Dos cosas: el rol **externo** en las membresías y las columnas del
--- evento de Google Calendar en las reuniones.
+-- Tres cosas: el rol **externo** en las membresías, las columnas del
+-- evento de Google Calendar en las reuniones, y la sala tentativa de
+-- las notas del bloc.
 --
 -- El rol externo sale de la reunión del
 -- 18/08: Ariel no quiso al proveedor de sólo lectura —*"si es un
@@ -51,5 +52,20 @@ comment on column public.membresias.rol is
 alter table public.reuniones add column if not exists "calendarEventoId" text;
 alter table public.reuniones add column if not exists "calendarUrl"      text;
 alter table public.reuniones add column if not exists "meetUrl"          text;
+
+/* ── Para qué equipo es una nota del bloc ─────────────────── */
+
+/*
+ * Una nota del bloc no tiene sala —es privada hasta que se asigna a
+ * una reunión— pero sí puede tener anotado para qué equipo se pensó:
+ * *"cuando creo una nota, ¿dónde le pongo a qué sala iría?"*.
+ *
+ * No da acceso a nadie: las políticas de `temas` siguen mirando
+ * `salaId`, que sigue vacío. Esto es sólo para poder encontrarla y
+ * para que, al asignarla, se ofrezcan primero las reuniones de ese
+ * equipo.
+ */
+alter table public.temas
+  add column if not exists "salaTentativaId" text references public.salas(id) on delete set null;
 
 commit;
