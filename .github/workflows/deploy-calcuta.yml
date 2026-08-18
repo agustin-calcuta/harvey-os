@@ -1,0 +1,78 @@
+# ─────────────────────────────────────────────────────────────
+# Despliegue de la instancia de Calcuta, en Cloudflare Pages.
+#
+# El de Imporbamas (deploy.yml) sigue publicando a GitHub Pages
+# desde el mismo `main`. Son dos destinos porque GitHub Pages sirve
+# un solo sitio por repositorio: el mismo código, dos despliegues,
+# distinta `VITE_MARCA`.
+#
+# ── Los secrets van con prefijo ───────────────────────────────
+# Cada instancia tiene su propia base de Neon y su propia casilla
+# de correo, así que no puede compartir variables con la otra. Los
+# de acá van con `CALCUTA_` adelante; los de Imporbamas quedan sin
+# prefijo, como estaban.
+#
+# Cargarlos en Ajustes → Secrets and variables → Actions:
+#
+#   CLOUDFLARE_API_TOKEN         token con permiso de Cloudflare Pages
+#   CLOUDFLARE_ACCOUNT_ID        el id de la cuenta de Calcuta
+#   CALCUTA_VITE_NEON_AUTH_URL
+#   CALCUTA_VITE_NEON_DATA_API_URL
+#   CALCUTA_VITE_EMAILJS_*       si se usa el envío por EmailJS
+#   CALCUTA_VITE_IA_ENDPOINT     la URL del Worker de worker/
+#   CALCUTA_VITE_GOOGLE_CLIENT_ID
+#
+# Sin las de Neon la aplicación arranca igual, en modo local: se ve
+# y se usa, pero nada se guarda fuera del navegador.
+# ─────────────────────────────────────────────────────────────
+name: Deploy Calcuta a Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: pages-calcuta
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        env:
+          # Lo único que decide de qué cliente es este despliegue.
+          # Si el valor no existe, el build falla en vez de publicar
+          # la aplicación con la marca del otro.
+          VITE_MARCA: calcuta
+          # Cloudflare Pages sirve el sitio en la raíz, a diferencia
+          # de GitHub Pages, que lo cuelga de /<repo>/.
+          VITE_BASE: /
+          VITE_NEON_AUTH_URL: ${{ secrets.CALCUTA_VITE_NEON_AUTH_URL }}
+          VITE_NEON_DATA_API_URL: ${{ secrets.CALCUTA_VITE_NEON_DATA_API_URL }}
+          VITE_EMAILJS_SERVICE_ID: ${{ secrets.CALCUTA_VITE_EMAILJS_SERVICE_ID }}
+          VITE_EMAILJS_TEMPLATE_ID: ${{ secrets.CALCUTA_VITE_EMAILJS_TEMPLATE_ID }}
+          VITE_EMAILJS_PUBLIC_KEY: ${{ secrets.CALCUTA_VITE_EMAILJS_PUBLIC_KEY }}
+          VITE_EMAIL_ENDPOINT: ${{ secrets.CALCUTA_VITE_EMAIL_ENDPOINT }}
+          # Transcripción y resumen: la URL del Worker de worker/.
+          VITE_IA_ENDPOINT: ${{ secrets.CALCUTA_VITE_IA_ENDPOINT }}
+          # Google Calendar. El client_id es público por diseño.
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.CALCUTA_VITE_GOOGLE_CLIENT_ID }}
+        run: npm run build
+
+      - name: Publicar en Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=calcuta-reuniones --branch=main

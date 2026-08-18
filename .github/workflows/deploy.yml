@@ -1,4 +1,7 @@
-name: Deploy a GitHub Pages
+# La instancia de Imporbamas. La de Calcuta se publica en
+# Cloudflare Pages desde deploy-calcuta.yml, con el mismo código y
+# otra VITE_MARCA.
+name: Deploy Imporbamas a GitHub Pages
 
 on:
   push:
@@ -29,6 +32,10 @@ jobs:
 
       - name: Build
         env:
+          # De qué cliente es este despliegue. Explícito y no por
+          # omisión: si algún día cambia el valor por defecto, este
+          # sitio no tiene que enterarse.
+          VITE_MARCA: imporbamas
           # GitHub Pages sirve el sitio bajo /<repo>/
           VITE_BASE: /${{ github.event.repository.name }}/
           # Neon: Auth con Google + Data API sobre Postgres.

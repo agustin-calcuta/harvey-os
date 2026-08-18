@@ -474,11 +474,11 @@ está andando, usar la migración de más arriba en vez de esto.
 export PGURL='postgresql://...'   # connection string de Neon
 psql "$PGURL" -f db/schema.sql    # tablas e índices
 psql "$PGURL" -f db/rls.sql       # funciones de pertenencia y políticas
-psql "$PGURL" -f db/seed.sql      # datos de ejemplo, se puede repetir
+psql "$PGURL" -f db/seed-imporbamas.sql      # datos de ejemplo, se puede repetir
 psql "$PGURL" -c "notify pgrst, 'reload schema';"
 ```
 
-`db/seed.sql` es idempotente. Al recargarlo hay que volver a agregar las cuentas
+`db/seed-imporbamas.sql` es idempotente. Al recargarlo hay que volver a agregar las cuentas
 de superadmin, que no forman parte del conjunto de demostración:
 
 ```sql

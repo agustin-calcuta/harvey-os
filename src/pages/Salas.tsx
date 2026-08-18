@@ -385,9 +385,15 @@ function ModalSala({
   const [nuevoNombre, setNuevoNombre] = useState('')
   const [nuevoEmail, setNuevoEmail] = useState('')
 
-  /* Todo el mundo menos yo y menos las cuentas superadmin. */
+  /*
+   * Todo el mundo menos yo, y menos las cuentas de administración
+   * cuando son de soporte y no del equipo: una cuenta que no
+   * participa de ninguna reunión no tiene por qué aparecer acá.
+   * Donde quien administra es alguien del equipo, sí aparece —si no,
+   * nadie lo podría sumar a una sala nueva—.
+   */
   const disponibles = estado.usuarios.filter(
-    (u) => u.activo && u.id !== yo?.id && u.alcance !== 'superadmin',
+    (u) => u.activo && u.id !== yo?.id && (marca.adminsSonDelEquipo || u.alcance !== 'superadmin'),
   )
 
   /*
@@ -766,7 +772,10 @@ function ModalEquipo({
     () =>
       sala
         ? estado.usuarios.filter(
-            (u) => u.activo && u.alcance !== 'superadmin' && !gente.some((g) => g.id === u.id),
+            (u) =>
+              u.activo &&
+              (marca.adminsSonDelEquipo || u.alcance !== 'superadmin') &&
+              !gente.some((g) => g.id === u.id),
           )
         : [],
     [estado.usuarios, gente, sala],

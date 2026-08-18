@@ -16,38 +16,45 @@ import type { VistaPrevia } from './tipos.ts'
    en cada una.
 
    ── Quién puede qué ──────────────────────────────────────────
-   Ariel y Denise son socios: abren salas y suman gente. El resto
-   propone temas, crea reuniones en sus salas y sigue sus tareas.
-   Es la única diferencia de permisos que pidieron.
+   **Todos** crean salas, reuniones, temas y tareas. La única
+   diferencia es que Ariel y Denise administran el equipo: son los
+   que dan de alta y de baja gente.
+
+   Eso los hace `superadmin`, que además de administrar les deja ver
+   todas las salas. Para cinco personas en un mismo estudio eso no
+   molesta, pero conviene saberlo: no es sólo «pueden agregar
+   miembros», es también «ven todo».
    ───────────────────────────────────────────────────────────── */
 
 /**
  * El dominio del Workspace.
  *
  * En un solo lugar porque el acceso es con Google: el correo con el
- * que cada uno entra tiene que ser exactamente el de su cuenta, y
- * si el dominio cambia, cambia acá y en ningún otro lado.
- *
- * ⚠️ PENDIENTE: confirmar contra el Workspace real antes de cargar
- * la base. Un correo que no coincide es una persona que no puede
- * entrar.
+ * que cada uno entra tiene que ser **exactamente** el de su cuenta.
+ * Uno que no coincide es una persona que no puede entrar, y el
+ * error no se ve hasta que lo intenta.
  */
-const DOMINIO = 'calcuta.com'
+const DOMINIO = 'calcutaconsulting.com'
 
 /* ── Personas ─────────────────────────────────────────────── */
 
+/**
+ * Todos pueden abrir salas: `puedeCrearSalas` va en `true` para
+ * cualquiera. El `alcance` es lo único que separa a quien
+ * administra el equipo del resto.
+ */
 const persona = (
   id: string,
   nombre: string,
   usuario: string,
   cargo: string,
-  puedeCrearSalas = false,
+  alcance: Usuario['alcance'] = 'usuario',
 ): Usuario => ({
   id,
   nombre,
   email: `${usuario}@${DOMINIO}`,
-  alcance: 'usuario',
-  puedeCrearSalas,
+  alcance,
+  puedeCrearSalas: true,
   cargo,
   activo: true,
   creadoEn: en(0),
@@ -55,37 +62,27 @@ const persona = (
 
 export const USUARIOS: Usuario[] = [
   /*
-   * Socios. Son los únicos que abren salas y suman gente nueva.
-   * ⚠️ Faltan los apellidos y confirmar el usuario de cada correo.
+   * Ariel y Denise administran: dan de alta y de baja gente. No hay
+   * una cuenta de soporte aparte —la administración la hacen ellos—.
+   * ⚠️ Faltan los apellidos.
    */
-  persona('u_ariel', 'Ariel', 'ariel', 'Socio', true),
-  persona('u_denise', 'Denise', 'denise', 'Socia', true),
-
-  /* Equipo. */
-  persona('u_agustin', 'Agustín', 'agustin', 'Digital Lab'),
-  persona('u_francisco', 'Francisco', 'francisco', 'Digital Lab'),
-  persona('u_lucas', 'Lucas', 'lucas', 'Digital Lab'),
+  persona('u_ariel', 'Ariel', 'ariel', 'Socio', 'superadmin'),
+  persona('u_denise', 'Denise', 'denise', 'Socia', 'superadmin'),
 
   /*
-   * La cuenta de soporte: ve todas las salas y puede intervenir en
-   * cualquiera, pero no pertenece a ningún equipo y queda fuera de
-   * las listas donde se elige gente.
+   * El equipo. Crean salas, reuniones, temas y tareas como
+   * cualquiera; lo único que no hacen es dar de alta gente nueva.
    *
-   * ⚠️ PENDIENTE: definir con qué casilla se entra. Tiene que ser
-   * una cuenta de Google real o nadie va a poder usarla.
+   * ⚠️ El correo de Lucas es `digitallab@`, no `lucas@`: es la
+   * casilla del área, no una personal. Los otros dos están
+   * deducidos del mismo dominio y hay que confirmarlos.
    */
-  {
-    id: 'u_superadmin',
-    nombre: 'Superadmin',
-    email: `superadmin@${DOMINIO}`,
-    alcance: 'superadmin',
-    puedeCrearSalas: true,
-    activo: true,
-    creadoEn: en(0),
-  },
+  persona('u_agustin', 'Agustín', 'agustin', 'Digital Lab'),
+  persona('u_francisco', 'Francisco', 'francisco', 'Digital Lab'),
+  persona('u_lucas', 'Lucas', 'digitallab', 'Digital Lab'),
 ]
 
-const SOCIOS = ['u_ariel', 'u_denise']
+const ADMINS = ['u_ariel', 'u_denise']
 const EQUIPO = ['u_agustin', 'u_francisco', 'u_lucas']
 
 /* ── Salas ────────────────────────────────────────────────── */
@@ -168,23 +165,36 @@ const m = (salaId: string, usuarioId: string, rol: RolSala): Membresia => ({
   desde: en(0),
 })
 
+/*
+ * Todos entran como `organizador` a las salas donde trabajan, y no
+ * es un descuido.
+ *
+ * «Agregar miembros» son dos cosas distintas en la herramienta:
+ * dar de alta una **cuenta** —que es de quien administra, o sea
+ * Ariel y Denise, desde Administración— y sumar a alguien que ya
+ * existe a una **sala**, que es de quien organiza esa sala.
+ *
+ * Si el equipo entrara como `miembro`, cada tema que propusieran
+ * quedaría esperando que un socio lo apruebe antes de entrar al
+ * temario. Eso no es lo que se pidió —«el resto todos podemos crear
+ * reuniones, temas, tareas»— así que van como organizadores: cargan
+ * su temario sin pedir permiso y moderan sus propias reuniones.
+ */
 export const MEMBRESIAS: Membresia[] = [
-  /*
-   * Digital Lab: los socios organizan —son los que suman gente— y
-   * el equipo propone.
-   */
-  ...SOCIOS.map((id) => m(S_LAB, id, 'organizador')),
-  ...EQUIPO.map((id) => m(S_LAB, id, 'miembro')),
+  /* Digital Lab: el equipo entero, todos a la par. */
+  ...ADMINS.map((id) => m(S_LAB, id, 'organizador')),
+  ...EQUIPO.map((id) => m(S_LAB, id, 'organizador')),
 
   /* General: está todo el estudio. */
-  ...SOCIOS.map((id) => m(S_GENERAL, id, 'organizador')),
-  ...EQUIPO.map((id) => m(S_GENERAL, id, 'miembro')),
+  ...ADMINS.map((id) => m(S_GENERAL, id, 'organizador')),
+  ...EQUIPO.map((id) => m(S_GENERAL, id, 'organizador')),
 
-  /* Comercial: por ahora los socios. Se suma gente desde la sala. */
-  ...SOCIOS.map((id) => m(S_COMERCIAL, id, 'organizador')),
-
-  /* Socios: los dos a la par. */
-  ...SOCIOS.map((id) => m(S_SOCIOS, id, 'organizador')),
+  /*
+   * Comercial y Socios arrancan sólo con Ariel y Denise. Si tiene
+   * que entrar alguien más, se suma desde la sala.
+   */
+  ...ADMINS.map((id) => m(S_COMERCIAL, id, 'organizador')),
+  ...ADMINS.map((id) => m(S_SOCIOS, id, 'organizador')),
 ]
 
 /* ── Pantalla de acceso ───────────────────────────────────── */

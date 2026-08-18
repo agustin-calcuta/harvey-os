@@ -100,10 +100,10 @@ auto-ascienda de rol.
 export PGURL='postgresql://...'   # connection string de Neon
 psql "$PGURL" -f db/schema.sql    # tablas e índices
 psql "$PGURL" -f db/rls.sql       # funciones de rol y políticas (requiere Data API habilitada)
-psql "$PGURL" -f db/seed.sql      # datos de demostración, idempotente
+psql "$PGURL" -f db/seed-imporbamas.sql      # datos de demostración, idempotente
 ```
 
-`db/seed.sql` se puede volver a correr en cualquier momento para restablecer la
+`db/seed-imporbamas.sql` se puede volver a correr en cualquier momento para restablecer la
 demostración a su estado original.
 
 ### Variables
