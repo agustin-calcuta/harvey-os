@@ -41,14 +41,6 @@ export default {
       return responder({ error: 'No existe.' }, 404, cors)
     }
 
-    if (!env.GEMINI_API_KEY) {
-      return responder(
-        { error: 'Falta la clave de Gemini. Ver el README del worker.' },
-        500,
-        cors,
-      )
-    }
-
     const sesion = await validarSesion(peticion, env)
     if (!sesion.ok) return responder({ error: sesion.error }, 401, cors)
 
@@ -91,6 +83,16 @@ export default {
       } catch {
         /* El contexto es una ayuda, no un requisito: sin él se resume igual. */
       }
+    }
+
+    /*
+     * Recién acá: primero se le dice al cliente si mandó algo mal
+     * —falta el audio, pesa de más— y después si el servidor está a
+     * medio configurar. Al revés, un pedido roto contra un Worker sin
+     * clave devolvía "falta la clave" y no había forma de darse cuenta.
+     */
+    if (!env.GEMINI_API_KEY) {
+      return responder({ error: 'Falta la clave de Gemini. Ver el README del worker.' }, 500, cors)
     }
 
     try {
