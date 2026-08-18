@@ -281,7 +281,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (!vivo) return
           setEstado(datos)
         } catch (e) {
-          console.warn('[harvey] no se pudieron cargar los usuarios:', e)
+          console.warn('[reuniones] no se pudieron cargar los usuarios:', e)
         }
       }
 
@@ -779,7 +779,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             avisar('Quedó en el calendario, con su link de Meet.')
           })
           .catch((e) => {
-            console.warn('[harvey] no se pudo crear el evento:', e)
+            console.warn('[reuniones] no se pudo crear el evento:', e)
             avisar('La reunión quedó creada, pero no se pudo agendar en Google.', 'info')
           })
       }
@@ -853,7 +853,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
        */
       if (nueva.calendarEventoId && tocaAlCalendario(actual, cambios)) {
         void actualizarEvento(ref.current, nueva, nueva.calendarEventoId).catch((e) =>
-          console.warn('[harvey] no se pudo actualizar el evento:', e),
+          console.warn('[reuniones] no se pudo actualizar el evento:', e),
         )
       }
     },
@@ -866,7 +866,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const eventoId = ref.current.reuniones.find((r) => r.id === id)?.calendarEventoId
       if (eventoId) {
         void cancelarEvento(eventoId).catch((e) =>
-          console.warn('[harvey] no se pudo cancelar el evento:', e),
+          console.warn('[reuniones] no se pudo cancelar el evento:', e),
         )
       }
       // Los temas no se pierden: vuelven al temario de quien los escribió.

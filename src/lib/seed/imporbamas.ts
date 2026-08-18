@@ -9,43 +9,24 @@ import type {
   Solicitud,
   Tema,
   Usuario,
-} from '../types'
+} from '../../types'
+import { en, lunesPasado, proximoLunes } from './fechas.ts'
+import type { VistaPrevia } from './tipos.ts'
 
 /* ─────────────────────────────────────────────────────────────
-   Datos de demostración.
+   Datos de demostración — IMPORBAMAS.
 
    Tres salas para que se entienda el modelo de un vistazo:
    la gerencial, donde los cuatro socios están a la par, y dos de
    equipo, donde un socio organiza y su gente propone.
 
+   Los temas de ejemplo son de la marca de ropa a propósito: son lo
+   que le enseña a alguien qué va en cada campo, y para eso tienen
+   que sonar a las reuniones que esa gente tiene de verdad.
+
    Las fechas se generan relativas a "hoy" para que siempre haya
    una reunión próxima con la agenda abierta.
    ───────────────────────────────────────────────────────────── */
-
-const dia = 86400000
-const hoy = new Date()
-
-function en(dias: number, h = 10, m = 0): string {
-  const d = new Date(hoy.getTime() + dias * dia)
-  d.setHours(h, m, 0, 0)
-  return d.toISOString()
-}
-
-function proximoLunes(semanas = 0): string {
-  const d = new Date(hoy)
-  const delta = (8 - d.getDay()) % 7 || 7
-  d.setDate(d.getDate() + delta + semanas * 7)
-  d.setHours(10, 0, 0, 0)
-  return d.toISOString()
-}
-
-function lunesPasado(semanasAtras = 1): string {
-  const d = new Date(hoy)
-  const delta = (d.getDay() + 6) % 7 || 7
-  d.setDate(d.getDate() - delta - (semanasAtras - 1) * 7)
-  d.setHours(10, 0, 0, 0)
-  return d.toISOString()
-}
 
 /* ── Personas ─────────────────────────────────────────────── */
 
@@ -706,6 +687,43 @@ const SOLICITUDES: Solicitud[] = [
     mensaje: 'Arranqué en operaciones y me pidieron seguir los temas de la semanal.',
     estado: 'pendiente',
     creadaEn: en(-1),
+  },
+]
+
+/* ── Los cuatro perfiles de la pantalla de acceso ─────────── */
+
+/**
+ * Un recorrido por perfil. El de superadmin se ofrece para poder
+ * mostrarlo, no porque el equipo lo vaya a usar todos los días.
+ *
+ * Vive acá y no en `Login.tsx` porque son personas y salas de estos
+ * datos: qué cuatro cuentas se ofrecen depende de quién existe en
+ * el seed, y cada cliente tiene los suyos.
+ */
+export const VISTAS: VistaPrevia[] = [
+  {
+    id: 'u_matias',
+    sala: S_GERENCIAL,
+    nombre: 'Socio',
+    que: 'Abre salas, arma la agenda, aprueba temas y modera. Puede ver las tareas de todo su equipo.',
+  },
+  {
+    id: 'u_pedro',
+    sala: S_MARKETING,
+    nombre: 'Miembro',
+    que: 'Propone temas, crea y sigue sus tareas, y pide entrar a las salas donde quiera participar.',
+  },
+  {
+    id: 'u_agencia',
+    sala: S_MARKETING,
+    nombre: 'Externo',
+    que: 'Un proveedor de siempre. Propone temas para que los apruebe el socio y ve sólo las tareas a su nombre.',
+  },
+  {
+    id: 'u_superadmin',
+    sala: S_GERENCIAL,
+    nombre: 'Superadmin',
+    que: 'Ve todas las salas, todas las reuniones y todas las tareas. No pertenece a ningún equipo.',
   },
 ]
 

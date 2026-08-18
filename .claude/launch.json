@@ -2,7 +2,13 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "harvey-dev",
+      "name": "calcuta",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:calcuta"],
+      "port": 5174
+    },
+    {
+      "name": "imporbamas",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 5173

@@ -175,10 +175,44 @@ export interface Marca {
   descripcion: string
   /** El `[ kicker ]` de la pantalla de acceso. */
   kicker: string
+  /**
+   * El crédito del pie de página.
+   *
+   * Opcional porque no siempre corresponde: en la instancia de un
+   * cliente dice quién hizo la herramienta, y en la de Calcuta
+   * —que es quien la hace— diría «Calcuta · reuniones y minutas /
+   * desarrollado por Calcuta». Sin valor, el pie no lo muestra.
+   */
+  credito?: string
 
   colores: ColoresMarca
   fuentes: FuentesMarca
   logos: LogosMarca
+  ejemplos: EjemplosMarca
+}
+
+/**
+ * Los ejemplos que muestran los formularios vacíos.
+ *
+ * Parecen decorativos y no lo son: son lo que le dice a alguien qué
+ * se espera que escriba ahí. Uno de otro rubro —«Definir proveedor
+ * de denim» en una consultora— confunde más de lo que ayuda.
+ */
+export interface EjemplosMarca {
+  /** Un tema de reunión típico de este cliente. */
+  tema: string
+  /** Una tarea con acción concreta. */
+  tarea: string
+  /** Un nombre y apellido, para el formulario de alta de gente. */
+  persona: string
+  /**
+   * Un correo con el dominio del cliente.
+   *
+   * Lo muestra el formulario para sumar gente a una sala, y ahí el
+   * dominio importa: es lo que le dice a quien invita con qué
+   * cuenta tiene que entrar la otra persona.
+   */
+  correo: string
 }
 
 /**

@@ -51,7 +51,7 @@ export async function sesionActual(): Promise<SesionNeon | null> {
     const usuario = r?.data?.user
     return usuario ? aSesion(usuario) : null
   } catch (e) {
-    console.warn('[harvey] no se pudo leer la sesión:', e)
+    console.warn('[reuniones] no se pudo leer la sesión:', e)
     return null
   }
 }
@@ -71,6 +71,6 @@ export async function salirDeNeon(): Promise<void> {
   try {
     await neon.auth.signOut()
   } catch (e) {
-    console.warn('[harvey] fallo al cerrar sesión:', e)
+    console.warn('[reuniones] fallo al cerrar sesión:', e)
   }
 }

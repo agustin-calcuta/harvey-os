@@ -50,7 +50,7 @@ function escribirLocal(e: Estado) {
   try {
     localStorage.setItem(CLAVE, JSON.stringify(e))
   } catch (err) {
-    console.warn('[harvey] no se pudo persistir en localStorage:', err)
+    console.warn('[reuniones] no se pudo persistir en localStorage:', err)
   }
 }
 
