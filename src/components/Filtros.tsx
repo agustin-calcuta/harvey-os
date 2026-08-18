@@ -119,14 +119,17 @@ export function textoRango(r: Rango): string {
 const selectCls =
   'appearance-none border bg-panel py-1 pl-7 pr-6 text-meta leading-5 transition-colors'
 
+const selectSinIcono =
+  'appearance-none border bg-panel py-1 pl-2.5 pr-6 text-meta leading-5 transition-colors'
+
 const enReposo = 'border-borde2 text-suave hover:border-suave hover:text-tinta'
 const puesto = 'border-tinta font-semibold text-tinta'
 
 /** El ícono adelante y la flechita atrás, sin romper el `select`. */
-function ConIcono({ icono, children }: { icono: ReactNode; children: ReactNode }) {
+function ConIcono({ icono, children }: { icono?: ReactNode; children: ReactNode }) {
   return (
     <div className="relative inline-flex items-center">
-      <span className="pointer-events-none absolute left-2 flex text-tenue">{icono}</span>
+      {icono && <span className="pointer-events-none absolute left-2 flex text-tenue">{icono}</span>}
       {children}
       <span className="pointer-events-none absolute right-2 text-[9px] text-tenue">▾</span>
     </div>
@@ -220,6 +223,76 @@ export function FiltroFecha({ valor, onChange }: { valor: Rango; onChange: (v: R
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Un desplegable de filtro cualquiera, con la pinta de los de acá.
+ *
+ * Tareas tenía los suyos —importancia, responsable— escritos a mano y
+ * con otro tamaño, así que la pantalla mostraba dos filas de filtros
+ * que no se parecían entre sí.
+ */
+export function FiltroSelect<T extends string>({
+  valor,
+  onChange,
+  opciones,
+  etiqueta,
+  icono,
+  neutro,
+}: {
+  valor: T
+  onChange: (v: T) => void
+  opciones: { valor: T; texto: string }[]
+  /** Para lectores de pantalla. */
+  etiqueta: string
+  icono?: ReactNode
+  /** El valor que significa "sin filtrar". Con ése se ve en reposo. */
+  neutro: T
+}) {
+  return (
+    <ConIcono icono={icono}>
+      <select
+        value={valor}
+        onChange={(e) => onChange(e.target.value as T)}
+        aria-label={etiqueta}
+        className={cx(icono ? selectCls : selectSinIcono, valor === neutro ? enReposo : puesto)}
+      >
+        {opciones.map((o) => (
+          <option key={o.valor} value={o.valor}>
+            {o.texto}
+          </option>
+        ))}
+      </select>
+    </ConIcono>
+  )
+}
+
+/**
+ * Filtro de sí o no: vencidas, cerradas. Prendido va en tinta, igual
+ * que un desplegable con algo elegido.
+ */
+export function FiltroBoton({
+  activo,
+  onClick,
+  children,
+}: {
+  activo: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={activo}
+      className={cx(
+        'border px-2.5 py-1 text-meta leading-5 transition-colors',
+        activo ? 'border-tinta bg-tinta font-semibold text-fondo' : enReposo,
+      )}
+    >
+      {children}
+    </button>
   )
 }
 

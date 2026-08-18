@@ -41,8 +41,16 @@ import {
   type EstadoCompromiso,
   type Importancia,
 } from '../types'
-import { Avatar, Boton, Chip, Etiqueta, Seccion, SelectorVista, Vacio } from '../components/ui'
-import { BarraFiltros, FiltroFecha, FiltroSala, enRango } from '../components/Filtros'
+import { Avatar, Boton, Chip, Seccion, SelectorVista, Vacio } from '../components/ui'
+import {
+  BarraFiltros,
+  Buscador,
+  FiltroBoton,
+  FiltroFecha,
+  FiltroSala,
+  FiltroSelect,
+  enRango,
+} from '../components/Filtros'
 import { useFiltros } from '../store/Filtros'
 import { generarPendientesPDF } from '../lib/pdf'
 import ModalCompromiso from '../components/reunion/ModalCompromiso'
@@ -201,10 +209,6 @@ export default function Compromisos() {
   }
 
 
-  const botonFiltro = (activo: boolean) =>
-    activo
-      ? 'border border-tinta bg-tinta px-3 py-2 text-meta font-semibold text-fondo'
-      : 'border border-borde2 bg-panel px-3 py-2 text-meta font-semibold text-suave transition-colors hover:border-suave hover:text-tinta'
 
   return (
     <div className="space-y-6">
@@ -229,14 +233,75 @@ export default function Compromisos() {
           </>
         }
       >
+        {/* ── Los filtros, todos en una sola fila ──
+            Antes había dos: la de sala y fecha, chiquita, y abajo otra
+            con los de acá, escritos a mano y del doble de alto. Filtrar
+            es una sola cosa y se ve como una sola cosa. */}
         <BarraFiltros>
+          <Buscador valor={busqueda} onChange={setBusqueda} placeholder="Buscar una tarea…" />
           <FiltroSala valor={salaFiltro} onChange={setSalaFiltro} salas={misSalas} />
           <FiltroFecha valor={rango} onChange={setRango} />
+
+          {/* Por persona, sólo cuando se están mirando las del equipo. */}
+          {puedeOrganizar && !soloMias && (
+            <FiltroSelect
+              valor={responsable}
+              onChange={setResponsable}
+              etiqueta="Filtrar por responsable"
+              neutro="todos"
+              opciones={[
+                { valor: 'todos', texto: 'Todos los responsables' },
+                ...gente.map((u) => ({ valor: u.id, texto: u.nombre })),
+              ]}
+            />
+          )}
+
+          <FiltroSelect
+            valor={importancia}
+            onChange={setImportancia}
+            etiqueta="Filtrar por importancia"
+            neutro="todas"
+            opciones={[
+              { valor: 'todas' as const, texto: 'Toda importancia' },
+              ...(Object.keys(IMPORTANCIA) as Importancia[]).map((k) => ({
+                valor: k,
+                texto: IMPORTANCIA[k].nombre,
+              })),
+            ]}
+          />
+
+          {/* Vencida no es un período: es una fecha que ya pasó y sigue
+              abierta. Por eso queda aparte del filtro de fechas. */}
+          <FiltroBoton activo={soloVencidas} onClick={() => setSoloVencidas((v) => !v)}>
+            Vencidas
+          </FiltroBoton>
+          {/* En negativo a propósito: en toda la barra, tinta quiere
+              decir "estás filtrando". Por defecto se ven todas. */}
+          <FiltroBoton activo={!incluirHechos} onClick={() => setIncluirHechos((v) => !v)}>
+            Ocultar cerradas
+          </FiltroBoton>
+
+          {/* Sólo tiene sentido cuando hay grupos que armar. */}
+          {vista === 'lista' && (
+            <div className="flex flex-wrap items-center gap-1.5 sm:ml-auto">
+              <span className="text-meta text-tenue">Agrupar por</span>
+              {AGRUPACIONES.map(({ valor, texto }) => (
+                <FiltroBoton
+                  key={valor}
+                  activo={agrupar === valor}
+                  onClick={() => setAgrupar(valor)}
+                >
+                  {texto}
+                </FiltroBoton>
+              ))}
+            </div>
+          )}
         </BarraFiltros>
 
         {/* ── Mías / del equipo ──
             Sólo para el socio: el miembro ve lo suyo y no hay nada que
-            elegir. Las cifras de al lado acompañan a lo que se mira. */}
+            elegir. No es un filtro más, es de qué se está hablando, y
+            por eso queda afuera de la fila de arriba. */}
         <div className="mb-5 flex flex-wrap items-center gap-3">
           {puedeOrganizar && yo && (
             <div className="flex border border-borde2">
@@ -250,7 +315,7 @@ export default function Compromisos() {
                   key={valor}
                   onClick={() => setResponsable(valor)}
                   className={cx(
-                    'px-4 py-2 text-meta font-semibold transition-colors',
+                    'px-3 py-1 text-meta font-semibold leading-5 transition-colors',
                     responsable === valor
                       ? 'bg-tinta text-fondo'
                       : 'bg-panel text-suave hover:text-tinta',
@@ -277,77 +342,6 @@ export default function Compromisos() {
               </span>
             )}
           </span>
-        </div>
-
-        {/* ── Filtros, comunes a las dos vistas ── */}
-        <div className="mb-5 grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap">
-          <input
-            className="col-span-2 sm:w-48"
-            placeholder="Buscar…"
-            aria-label="Buscar una tarea"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-          />
-          {/* Por persona, sólo cuando se están mirando las del equipo. */}
-          {puedeOrganizar && !soloMias && (
-            <select
-              value={responsable}
-              onChange={(e) => setResponsable(e.target.value)}
-              aria-label="Filtrar por responsable"
-            >
-              <option value="todos">Todos los responsables</option>
-              {gente.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre}
-                </option>
-              ))}
-            </select>
-          )}
-          <select
-            value={importancia}
-            onChange={(e) => setImportancia(e.target.value as Importancia | 'todas')}
-            aria-label="Filtrar por importancia"
-          >
-            <option value="todas">Toda importancia</option>
-            {(Object.keys(IMPORTANCIA) as Importancia[]).map((k) => (
-              <option key={k} value={k}>
-                {IMPORTANCIA[k].nombre}
-              </option>
-            ))}
-          </select>
-          {/* Vencida no es un período: es una fecha que ya pasó y sigue
-              abierta. Por eso queda aparte del filtro de fechas. */}
-          <button
-            onClick={() => setSoloVencidas((v) => !v)}
-            className={botonFiltro(soloVencidas)}
-          >
-            Vencidas
-          </button>
-          <label className="col-span-2 flex cursor-pointer items-center gap-2 text-meta font-semibold text-suave sm:col-auto">
-            <input
-              type="checkbox"
-              className="h-3.5 w-3.5 accent-[#C0392B]"
-              checked={incluirHechos}
-              onChange={(e) => setIncluirHechos(e.target.checked)}
-            />
-            Mostrar cerrados
-          </label>
-
-          {/* Sólo tiene sentido cuando hay grupos que armar */}
-          {vista === 'lista' && (
-            <>
-              <Etiqueta className="col-span-2 sm:ml-auto sm:col-auto">Agrupar por</Etiqueta>
-              {AGRUPACIONES.map(({ valor, texto }) => (
-                <button
-                  key={valor}
-                  onClick={() => setAgrupar(valor)}
-                  className={botonFiltro(agrupar === valor)}
-                >
-                  {texto}
-                </button>
-              ))}
-            </>
-          )}
         </div>
 
         {vista === 'tablero' ? (
