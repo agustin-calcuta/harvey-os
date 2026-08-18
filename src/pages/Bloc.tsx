@@ -162,7 +162,7 @@ export default function Bloc() {
                 { valor: 'lista', icono: List, texto: 'Lista' },
               ]}
             />
-            <Boton variante="solido" onClick={() => setAnotando(true)}>
+            <Boton variante="destacado" onClick={() => setAnotando(true)}>
               <Plus size={13} /> Crear nota
             </Boton>
           </>
@@ -189,7 +189,7 @@ export default function Bloc() {
             icono={<Inbox size={32} />}
             accion={
               filtrando ? undefined : (
-                <Boton variante="solido" onClick={() => setAnotando(true)}>
+                <Boton variante="destacado" onClick={() => setAnotando(true)}>
                   <Plus size={13} /> Crear la primera
                 </Boton>
               )

@@ -102,7 +102,7 @@ export default function Salas() {
         acciones={
           /* Abrir salas es de los socios; reuniones crea cualquiera. */
           puedeCrearSalas && (
-            <Boton variante="solido" onClick={() => setCreando(true)}>
+            <Boton variante="destacado" onClick={() => setCreando(true)}>
               <Plus size={13} /> Nueva sala
             </Boton>
           )
@@ -124,7 +124,7 @@ export default function Salas() {
             icono={<DoorOpen size={32} />}
             accion={
               puedeCrearSalas && (
-                <Boton variante="solido" onClick={() => setCreando(true)}>
+                <Boton variante="destacado" onClick={() => setCreando(true)}>
                   <Plus size={13} /> Crear la primera
                 </Boton>
               )

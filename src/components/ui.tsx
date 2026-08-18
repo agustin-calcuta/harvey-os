@@ -17,10 +17,15 @@ import { IMPORTANCIA, OBJETIVOS, type Importancia, type Objetivo } from '../type
 /* ── Botón ────────────────────────────────────────────────── */
 
 /**
- * `solido` es tinta: es el botón principal de una pantalla común.
  * `destacado` es el rojo de la marca y va **una vez por pantalla**,
- * para la acción que la define —crear la reunión, cerrarla, mandar
- * la minuta—. Cuando todo era rojo, el rojo no decía nada.
+ * para la acción que la define: crear la reunión en Reuniones, la
+ * tarea en Tareas, la nota en el bloc, la sala en Salas, y en una
+ * reunión abierta iniciarla, cerrarla o mandar la minuta.
+ *
+ * `solido` es tinta, para todo lo demás que igual es un botón fuerte
+ * —proponer un tema, aprobar, guardar un formulario—. Cuando todo era
+ * rojo, el rojo no decía nada; con uno por pantalla, dice dónde está
+ * lo que se viene a hacer.
  */
 type BotonProps = {
   variante?: 'destacado' | 'solido' | 'linea' | 'fantasma' | 'peligro'

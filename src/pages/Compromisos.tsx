@@ -222,7 +222,7 @@ export default function Compromisos() {
               ]}
             />
             {salasDondeSoyDelEquipo.length > 0 && (
-              <Boton variante="solido" onClick={() => setCreando(true)}>
+              <Boton variante="destacado" onClick={() => setCreando(true)}>
                 <Plus size={13} /> Nueva tarea
               </Boton>
             )}
