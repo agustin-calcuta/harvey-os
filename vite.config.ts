@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -20,6 +21,18 @@ const rutaPublica = (r: string) => (/^(data:|https?:)/.test(r) ? r : base + r)
 
 export default defineConfig({
   base,
+  resolve: {
+    alias: {
+      /*
+       * Los datos de demostración del cliente que se compila.
+       *
+       * Por alias y no por un `import` de los dos: el seed lleva
+       * nombres y correos de gente real, y el paquete de un cliente
+       * no tiene por qué contener el equipo del otro.
+       */
+      '@seed': fileURLToPath(new URL(`./src/lib/seed/${marca.id}.ts`, import.meta.url)),
+    },
+  },
   define: {
     /*
      * La marca entra al paquete como objeto literal, no como un

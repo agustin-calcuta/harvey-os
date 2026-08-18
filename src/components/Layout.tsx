@@ -137,8 +137,16 @@ export default function Layout() {
               className={({ isActive }) =>
                 cx(
                   'group mb-0.5 flex items-center gap-3 border-l-2 px-3 py-2.5 text-cuerpo font-semibold transition-all',
+                  /*
+                   * La marca del enlace activo va en `acento`, que
+                   * es el color que aparece poco y se nota mucho.
+                   * Sobre la barra oscura el lima de Calcuta se lee
+                   * perfecto —sobre las superficies claras no, por
+                   * eso no se usa en ningún otro lado—. En
+                   * Imporbamas `acento` es el mismo rojo de antes.
+                   */
                   isActive
-                    ? 'border-signal bg-white/8 text-white'
+                    ? 'border-acento bg-white/8 text-white'
                     : 'border-transparent text-white/55 hover:bg-white/5 hover:text-white',
                 )
               }
@@ -265,7 +273,7 @@ export default function Layout() {
         <footer className="border-t border-borde px-6 py-4">
           <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-tenue">
             <span>{nombre} · reuniones y minutas</span>
-            <span>Desarrollado por Calcuta</span>
+            {marca.credito && <span>{marca.credito}</span>}
           </div>
         </footer>
       </div>

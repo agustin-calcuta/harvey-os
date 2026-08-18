@@ -18,6 +18,7 @@ export const imporbamas: Marca = {
   titulo: 'Imporbamas — Reuniones y minutas',
   descripcion: 'Imporbamas — reuniones y minutas: temario, minuta y seguimiento de tareas.',
   kicker: 'Calcuta para Imporbamas',
+  credito: 'Desarrollado por Calcuta',
 
   colores: {
     fondo: '#f7f5f1',
@@ -73,6 +74,13 @@ export const imporbamas: Marca = {
 
     tituloPeso: 700,
     tituloTracking: '-0.01em',
+  },
+
+  ejemplos: {
+    tema: 'Definir proveedor de denim',
+    tarea: 'Cerrar contrato con el taller de denim',
+    correo: 'renata@harveywillys.com',
+    persona: 'Renata Sosa',
   },
 
   logos: {

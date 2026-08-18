@@ -95,7 +95,7 @@ export const repoNeon: Repo = {
     const refrescar = () =>
       void this.cargar()
         .then(cb)
-        .catch((e) => console.warn('[harvey] fallo al refrescar:', e))
+        .catch((e) => console.warn('[reuniones] fallo al refrescar:', e))
 
     const id = window.setInterval(refrescar, 12000)
     const alVolver = () => {
@@ -158,7 +158,7 @@ export const repoNeon: Repo = {
       .from('directorio_salas')
       .select('id,nombre,organizador,integrantes')
     if (error) {
-      console.warn('[harvey] no se pudo leer el directorio de salas:', error.message)
+      console.warn('[reuniones] no se pudo leer el directorio de salas:', error.message)
       return []
     }
     return (data ?? []) as SalaAjena[]

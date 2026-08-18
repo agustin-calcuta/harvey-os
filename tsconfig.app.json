@@ -10,6 +10,15 @@
 
     /* Bundler mode */
     "moduleResolution": "bundler",
+    /*
+     * `@seed` lo resuelve Vite al archivo del cliente que se esté
+     * compilando. Para TypeScript apunta siempre al de Imporbamas:
+     * los dos exportan lo mismo —`Seed`, en seed/tipos.ts—, así que
+     * alcanza para chequear a quien lo consume.
+     */
+    "paths": {
+      "@seed": ["./src/lib/seed/imporbamas.ts"]
+    },
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",

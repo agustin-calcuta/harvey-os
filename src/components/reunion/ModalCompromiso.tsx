@@ -9,6 +9,7 @@ import {
   type Importancia,
 } from '../../types'
 import { Boton, Campo, Modal, Segmentado } from '../ui'
+import { marca } from '../../marca'
 
 /*
  * Alta y edición de tareas: qué hay que hacer, quién y para cuándo.
@@ -112,7 +113,7 @@ export default function ModalCompromiso({
             className="w-full"
             value={accion}
             onChange={(e) => setAccion(e.target.value)}
-            placeholder="Ej.: Cerrar contrato con el taller de denim"
+            placeholder={`Ej.: ${marca.ejemplos.tarea}`}
             required
             autoFocus
           />

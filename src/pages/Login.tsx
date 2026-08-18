@@ -2,47 +2,27 @@ import { ArrowRight } from 'lucide-react'
 import { useApp } from '../store/AppContext'
 import { firebaseConfigurado } from '../lib/firebase'
 import { neonConfigurado } from '../lib/neon'
-import { ESTADO_INICIAL, S_GERENCIAL, S_MARKETING } from '../lib/seed'
+import { ESTADO_INICIAL, VISTAS } from '../lib/seed'
 import { logos, marca, rutaPublica } from '../marca'
 
 const CINTA =
   'TEMARIO · REUNIÓN · MINUTA EN VIVO · SEGUIMIENTO · TAREAS CON RESPONSABLE Y FECHA · '
 
 /*
- * Un recorrido por perfil. El de superadmin se ofrece para poder
- * mostrarlo, no porque el equipo lo vaya a usar todos los días.
+ * Los cuatro perfiles vienen del seed: qué cuentas se ofrecen
+ * depende de quién existe en los datos de cada cliente.
  */
-const VISTAS = [
-  {
-    id: 'u_matias',
-    sala: S_GERENCIAL,
-    nombre: 'Socio',
-    que: 'Abre salas, arma la agenda, aprueba temas y modera. Puede ver las tareas de todo su equipo.',
-  },
-  {
-    id: 'u_pedro',
-    sala: S_MARKETING,
-    nombre: 'Miembro',
-    que: 'Propone temas, crea y sigue sus tareas, y pide entrar a las salas donde quiera participar.',
-  },
-  {
-    id: 'u_agencia',
-    sala: S_MARKETING,
-    nombre: 'Externo',
-    que: 'Un proveedor de siempre. Propone temas para que los apruebe el socio y ve sólo las tareas a su nombre.',
-  },
-  {
-    id: 'u_superadmin',
-    sala: S_GERENCIAL,
-    nombre: 'Superadmin',
-    que: 'Ve todas las salas, todas las reuniones y todas las tareas. No pertenece a ningún equipo.',
-  },
-]
 
 export default function Login() {
   const { entrarComoDemo, entrarConGoogle } = useApp()
   const accesoReal = neonConfigurado || firebaseConfigurado
   const usuarios = ESTADO_INICIAL.usuarios
+  /*
+   * Una instancia que ya está en uso no tiene perfiles de
+   * demostración: se entra con la cuenta propia a los datos
+   * propios. Lo decide el seed del cliente, no una opción aparte.
+   */
+  const hayVistaPrevia = VISTAS.length > 0
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -104,7 +84,7 @@ export default function Login() {
           </div>
 
           <div className="relative text-[10px] font-semibold uppercase tracking-[0.16em] text-tenue">
-            Vista previa · {new Date().getFullYear()}
+            {hayVistaPrevia ? 'Vista previa' : marca.nombre} · {new Date().getFullYear()}
           </div>
         </div>
 
@@ -128,44 +108,57 @@ export default function Login() {
                 : 'El acceso con Google se activa al cargar las credenciales.'}
             </p>
 
-            <div className="my-7 flex items-center gap-3">
-              <div className="h-px flex-1 bg-borde" />
-              <span className="label">O mirá cómo se ve cada perfil</span>
-              <div className="h-px flex-1 bg-borde" />
-            </div>
+            {/*
+              El recorrido por perfil sólo existe donde hay perfiles
+              de demostración cargados. En una instancia que ya está
+              en uso —el equipo entra con su cuenta a sus datos
+              reales— no hay nada que previsualizar, y ofrecerlo
+              haría parecer que lo que se ve es de mentira.
+            */}
+            {hayVistaPrevia && (
+              <>
+                <div className="my-7 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-borde" />
+                  <span className="label">O mirá cómo se ve cada perfil</span>
+                  <div className="h-px flex-1 bg-borde" />
+                </div>
 
-            <p className="mb-4 text-xs leading-relaxed text-tenue">
-              Entrás sin iniciar sesión, con datos de ejemplo. Nada de lo que toques sale de este
-              navegador.
-            </p>
+                <p className="mb-4 text-xs leading-relaxed text-tenue">
+                  Entrás sin iniciar sesión, con datos de ejemplo. Nada de lo que toques sale de
+                  este navegador.
+                </p>
 
-            <div className="space-y-1.5">
-              {VISTAS.map((v) => {
-                const u = usuarios.find((x) => x.id === v.id)
-                if (!u) return null
-                return (
-                  <button
-                    key={u.id}
-                    onClick={() => entrarComoDemo(u.id, v.sala)}
-                    className="group flex w-full items-center gap-3 border border-borde bg-panel p-3 text-left transition-all hover:border-signal"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm">
-                        {v.nombre}
-                        {u.nombre !== v.nombre && (
-                          <span className="ml-2 text-meta text-tenue">{u.nombre}</span>
-                        )}
-                      </div>
-                      <div className="truncate text-[11px] leading-snug text-tenue">{v.que}</div>
-                    </div>
-                    <ArrowRight
-                      size={14}
-                      className="shrink-0 text-borde2 transition-colors group-hover:text-signal"
-                    />
-                  </button>
-                )
-              })}
-            </div>
+                <div className="space-y-1.5">
+                  {VISTAS.map((v) => {
+                    const u = usuarios.find((x) => x.id === v.id)
+                    if (!u) return null
+                    return (
+                      <button
+                        key={u.id}
+                        onClick={() => entrarComoDemo(u.id, v.sala)}
+                        className="group flex w-full items-center gap-3 border border-borde bg-panel p-3 text-left transition-all hover:border-signal"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm">
+                            {v.nombre}
+                            {u.nombre !== v.nombre && (
+                              <span className="ml-2 text-meta text-tenue">{u.nombre}</span>
+                            )}
+                          </div>
+                          <div className="truncate text-[11px] leading-snug text-tenue">
+                            {v.que}
+                          </div>
+                        </div>
+                        <ArrowRight
+                          size={14}
+                          className="shrink-0 text-borde2 transition-colors group-hover:text-signal"
+                        />
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

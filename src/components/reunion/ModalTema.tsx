@@ -3,6 +3,7 @@ import { useApp } from '../../store/AppContext'
 import { integrantes, llegaTarde } from '../../lib/utils'
 import { IMPORTANCIA, OBJETIVOS, type Importancia, type Objetivo, type Tema } from '../../types'
 import { Boton, Campo, Modal, Segmentado } from '../ui'
+import { marca } from '../../marca'
 
 /* ─────────────────────────────────────────────────────────────
    Alta y edición de un tema.
@@ -96,7 +97,7 @@ export default function ModalTema({
             className="w-full"
             value={titulo}
             onChange={(e) => setTitulo(e.target.value)}
-            placeholder="Ej.: Definir proveedor de denim"
+            placeholder={`Ej.: ${marca.ejemplos.tema}`}
             required
             autoFocus
           />

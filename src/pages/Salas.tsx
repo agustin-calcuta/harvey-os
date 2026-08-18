@@ -42,6 +42,7 @@ import {
   Segmentado,
   Vacio,
 } from '../components/ui'
+import { marca } from '../marca'
 
 /* ─────────────────────────────────────────────────────────────
    Las salas: un espacio por equipo, con su gente y sus reuniones.
@@ -1007,7 +1008,7 @@ function ModalInvitar({
                   className="w-full"
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
-                  placeholder="Renata Sosa"
+                  placeholder={marca.ejemplos.persona}
                   required
                 />
               </Campo>
@@ -1030,7 +1031,7 @@ function ModalInvitar({
                 className="w-full"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="renata@harveywillys.com"
+                placeholder={marca.ejemplos.correo}
                 required
               />
             </Campo>

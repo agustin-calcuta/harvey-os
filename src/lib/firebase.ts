@@ -38,7 +38,7 @@ if (firebaseConfigurado) {
     _auth = getAuth(app)
     _db = getFirestore(app)
   } catch (e) {
-    console.error('[harvey] no se pudo inicializar Firebase, sigue en modo demo:', e)
+    console.error('[reuniones] no se pudo inicializar Firebase, sigue en modo demo:', e)
     app = null
   }
 }

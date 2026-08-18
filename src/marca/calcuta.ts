@@ -137,6 +137,13 @@ export const calcuta: Marca = {
     tituloTracking: '-0.02em', // −2
   },
 
+  ejemplos: {
+    tema: 'Definir el alcance de la propuesta',
+    tarea: 'Preparar la propuesta y pasarla a revisión',
+    correo: 'nombre@calcuta.com',
+    persona: 'Nombre y apellido',
+  },
+
   logos: {
     isotipoClaro: 'marca/calcuta/isotipo-blanco.svg', // sobre la barra negra
     isotipoOscuro: 'marca/calcuta/isotipo-azul.svg',
