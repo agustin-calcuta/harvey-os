@@ -21,6 +21,7 @@ import { ESTADO_REUNION, RECURRENCIAS, type Recurrencia, type Reunion } from '..
 import { Avatares, Boton, Campo, Chip, Modal, Seccion, Vacio } from '../components/ui'
 import {
   BarraFiltros,
+  Buscador,
   FiltroFecha,
   FiltroSala,
   enRango,
@@ -130,6 +131,13 @@ export default function Reuniones() {
         </div>
 
         <BarraFiltros>
+          {vista === 'historial' && (
+            <Buscador
+              valor={busqueda}
+              onChange={setBusqueda}
+              placeholder="Buscar en las minutas…"
+            />
+          )}
           <FiltroSala valor={salaFiltro} onChange={setSalaFiltro} salas={misSalas} />
           <FiltroFecha
             valor={vista === 'historial' ? rangoHistorial : rango}
@@ -168,29 +176,6 @@ export default function Reuniones() {
           )
         ) : (
           <div className="space-y-4">
-            {/* ── Buscar en las minutas ── */}
-            <div className="card flex items-center gap-3 px-4 py-3">
-              <Search size={16} className="shrink-0 text-suave" aria-hidden />
-              {/* type="text" a propósito: en WebKit, `search` dibuja su
-                  propia cruz y quedaban dos, una al lado de la otra. */}
-              <input
-                type="text"
-                className="w-full border-0 bg-transparent p-0 focus:ring-0"
-                placeholder="Buscar una palabra en todas las minutas"
-                aria-label="Buscar una palabra en todas las minutas"
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-              />
-              {busqueda && (
-                <button
-                  onClick={() => setBusqueda('')}
-                  className="shrink-0 text-suave hover:text-tinta"
-                  aria-label="Limpiar la búsqueda"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
 
             {enBusqueda ? (
               coincidencias.length === 0 ? (
