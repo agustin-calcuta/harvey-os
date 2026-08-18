@@ -1,2 +1,5 @@
 node_modules
 .wrangler
+
+# Secrets de desarrollo: nunca al repo.
+.dev.vars
