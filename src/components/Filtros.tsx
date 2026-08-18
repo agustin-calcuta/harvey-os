@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { CalendarRange, DoorOpen, Filter } from 'lucide-react'
+import { CalendarRange, DoorOpen, Filter, Search, X } from 'lucide-react'
 import { cx } from '../lib/utils'
 import type { Sala } from '../types'
 
@@ -110,7 +110,14 @@ export function textoRango(r: Rango): string {
  * adelante, y el que está puesto se pinta en tinta para que se note
  * de un vistazo que la pantalla no está mostrando todo.
  */
-const selectCls = 'appearance-none border bg-panel py-2 pl-8 pr-7 text-cuerpo transition-colors'
+/*
+ * Compactos a propósito. Un filtro es una perilla, no un titular: con
+ * el alto y el cuerpo de un botón competían con el contenido en todas
+ * las pantallas. Tienen que verse —de ahí el ícono y el color cuando
+ * están puestos— sin pesar más que lo que filtran.
+ */
+const selectCls =
+  'appearance-none border bg-panel py-1 pl-7 pr-6 text-meta leading-5 transition-colors'
 
 const enReposo = 'border-borde2 text-suave hover:border-suave hover:text-tinta'
 const puesto = 'border-tinta font-semibold text-tinta'
@@ -119,9 +126,9 @@ const puesto = 'border-tinta font-semibold text-tinta'
 function ConIcono({ icono, children }: { icono: ReactNode; children: ReactNode }) {
   return (
     <div className="relative inline-flex items-center">
-      <span className="pointer-events-none absolute left-2.5 flex text-tenue">{icono}</span>
+      <span className="pointer-events-none absolute left-2 flex text-tenue">{icono}</span>
       {children}
-      <span className="pointer-events-none absolute right-2.5 text-meta text-tenue">▾</span>
+      <span className="pointer-events-none absolute right-2 text-[9px] text-tenue">▾</span>
     </div>
   )
 }
@@ -140,7 +147,7 @@ export function FiltroSala({
   if (salas.length < 2) return null
 
   return (
-    <ConIcono icono={<DoorOpen size={13} />}>
+    <ConIcono icono={<DoorOpen size={11} />}>
       <select
         value={valor}
         onChange={(e) => onChange(e.target.value)}
@@ -161,12 +168,16 @@ export function FiltroSala({
 export function FiltroFecha({ valor, onChange }: { valor: Rango; onChange: (v: Rango) => void }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <ConIcono icono={<CalendarRange size={13} />}>
+      <ConIcono icono={<CalendarRange size={11} />}>
         <select
           value={valor.periodo}
           onChange={(e) => onChange({ ...valor, periodo: e.target.value as Periodo })}
           aria-label="Filtrar por fecha"
-          className={cx(selectCls, valor.periodo === 'todo' ? enReposo : puesto)}
+          className={cx(
+            selectCls,
+            /* En tinta sólo si te saliste de lo que la app trae puesto. */
+            valor.periodo === RANGO_INICIAL.periodo ? enReposo : puesto,
+          )}
         >
           {PERIODOS.map((p) => (
             <option key={p.valor} value={p.valor}>
@@ -195,7 +206,7 @@ export function FiltroFecha({ valor, onChange }: { valor: Rango; onChange: (v: R
             min={valor.desde || undefined}
             onChange={(e) => onChange({ ...valor, hasta: e.target.value || undefined })}
             aria-label="Hasta"
-            className="text-xs"
+            className="px-2 py-1 text-meta"
           />
           {(valor.desde || valor.hasta) && (
             <button
@@ -212,13 +223,56 @@ export function FiltroFecha({ valor, onChange }: { valor: Rango; onChange: (v: R
   )
 }
 
+/**
+ * Buscar dentro de lo que la pantalla ya está mostrando.
+ *
+ * Va en la misma fila que los filtros porque es otro filtro: sirve
+ * para lo mismo, achicar la lista hasta lo que uno está buscando.
+ */
+export function Buscador({
+  valor,
+  onChange,
+  placeholder = 'Buscar…',
+}: {
+  valor: string
+  onChange: (v: string) => void
+  placeholder?: string
+}) {
+  return (
+    <div className="relative inline-flex items-center">
+      <Search size={11} className="pointer-events-none absolute left-2 text-tenue" aria-hidden />
+      {/* type="text" y no "search": en WebKit el segundo dibuja su
+          propia cruz y quedaban dos, una al lado de la otra. */}
+      <input
+        type="text"
+        value={valor}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        aria-label={placeholder}
+        className={cx(
+          'w-40 border bg-panel py-1 pl-7 text-meta leading-5 transition-colors sm:w-52',
+          valor ? 'border-tinta pr-7' : 'border-borde2 pr-2',
+        )}
+      />
+      {valor && (
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          aria-label="Limpiar la búsqueda"
+          className="absolute right-1.5 text-suave hover:text-tinta"
+        >
+          <X size={11} />
+        </button>
+      )}
+    </div>
+  )
+}
+
 /** La fila donde viven los filtros de una pantalla. */
 export function BarraFiltros({ children }: { children: ReactNode }) {
   return (
-    <div className="mb-5 flex flex-wrap items-center gap-2 border-y border-borde py-2.5">
-      <span className="mr-1 flex items-center gap-1.5 text-meta text-tenue">
-        <Filter size={12} /> Filtrar
-      </span>
+    <div className="mb-4 flex flex-wrap items-center gap-1.5 border-b border-borde pb-2.5">
+      <Filter size={11} className="mr-0.5 shrink-0 text-tenue" aria-hidden />
       {children}
     </div>
   )

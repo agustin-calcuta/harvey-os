@@ -36,7 +36,7 @@ import {
   SelectorVista,
   Vacio,
 } from '../components/ui'
-import { BarraFiltros, FiltroFecha, FiltroSala, enRango } from '../components/Filtros'
+import { BarraFiltros, Buscador, FiltroFecha, FiltroSala, enRango } from '../components/Filtros'
 import { useFiltros } from '../store/Filtros'
 
 /* ─────────────────────────────────────────────────────────────
@@ -84,6 +84,8 @@ export default function Bloc() {
   /* Los filtros son de toda la app: lo que ponés acá sigue puesto allá. */
   const { sala: salaFiltro, elegirSala: setSalaFiltro, rango, elegirRango: setRango } = useFiltros()
   const [anotando, setAnotando] = useState(params.get('nueva') === '1')
+  /* "¿ya anoté algo sobre esto?" es la pregunta que más se hace acá. */
+  const [busqueda, setBusqueda] = useState('')
   const [editando, setEditando] = useState<Tema | undefined>()
   const [porBorrar, setPorBorrar] = useState<Tema | undefined>()
   const [porAsignar, setPorAsignar] = useState<Tema | undefined>()
@@ -123,17 +125,25 @@ export default function Bloc() {
     const haciaAdelante = ['adelante', 'proximaSemana', 'proximoMes'].includes(rango.periodo)
     const enFecha = (t: Tema) => haciaAdelante || enRango(t.creadoEn, rango)
 
-    const filtrar = (temas: Tema[]) => temas.filter((t) => deLaSala(t) && enFecha(t))
+    /* Busca en el título y en el detalle, sin distinguir mayúsculas. */
+    const q = busqueda.trim().toLowerCase()
+    const coincide = (t: Tema) =>
+      !q ||
+      t.titulo.toLowerCase().includes(q) ||
+      (t.detalle ?? '').toLowerCase().includes(q)
+
+    const filtrar = (temas: Tema[]) =>
+      temas.filter((t) => deLaSala(t) && enFecha(t) && coincide(t))
 
     return {
       borradores: filtrar(temarioDe(estado, yo?.id)),
       pendientes: filtrar(temasSinTratar(estado, undefined, yo?.id)),
       asignados: filtrar(temasAsignados(estado, yo?.id)),
     }
-  }, [estado, yo, salaFiltro, rango])
+  }, [estado, yo, salaFiltro, rango, busqueda])
 
   const total = GRUPOS.reduce((n, g) => n + porGrupo[g.clave].length, 0)
-  const filtrando = salaFiltro !== 'todas'
+  const filtrando = salaFiltro !== 'todas' || busqueda.trim().length > 0
 
   const tarjeta = (t: Tema, grupo: Grupo) => (
     <Tarjeta
@@ -174,23 +184,37 @@ export default function Bloc() {
         </p>
 
         <BarraFiltros>
+          <Buscador
+            valor={busqueda}
+            onChange={setBusqueda}
+            placeholder="Buscar en mis notas…"
+          />
           <FiltroSala valor={salaFiltro} onChange={setSalaFiltro} salas={misSalas} />
           <FiltroFecha valor={rango} onChange={setRango} />
         </BarraFiltros>
 
         {total === 0 ? (
           <Vacio
-            titulo={filtrando ? 'Nada con esos filtros' : 'Todavía no anotaste nada'}
+            titulo={
+              busqueda.trim()
+                ? 'Nada con esa palabra'
+                : filtrando
+                  ? 'Nada con esos filtros'
+                  : 'Todavía no anotaste nada'
+            }
             texto={
-              filtrando
-                ? 'Ninguna nota tuya entra en lo que estás filtrando. Probá ampliándolo.'
-                : 'Cuando se te ocurra algo para hablar con alguno de tus equipos, anotalo acá y no se pierde.'
+              busqueda.trim()
+                ? `Ninguna nota tuya dice «${busqueda.trim()}». Si es algo que querés tratar, anotalo.`
+                : filtrando
+                  ? 'Ninguna nota tuya entra en lo que estás filtrando. Probá ampliándolo.'
+                  : 'Cuando se te ocurra algo para hablar con alguno de tus equipos, anotalo acá y no se pierde.'
             }
             icono={<Inbox size={32} />}
             accion={
-              filtrando ? undefined : (
+              /* Si buscaste y no está, lo más probable es que lo quieras anotar. */
+              filtrando && !busqueda.trim() ? undefined : (
                 <Boton variante="destacado" onClick={() => setAnotando(true)}>
-                  <Plus size={13} /> Crear la primera
+                  <Plus size={13} /> {busqueda.trim() ? 'Anotarlo' : 'Crear la primera'}
                 </Boton>
               )
             }
