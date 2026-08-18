@@ -71,7 +71,11 @@ create table if not exists public.membresias (
   id          text primary key,
   "salaId"    text not null references public.salas(id) on delete cascade,
   "usuarioId" text not null references public.usuarios(id) on delete cascade,
-  rol         text not null default 'miembro' check (rol in ('organizador', 'miembro')),
+  -- externo: proveedor o invitado permanente. Pertenece a la sala para
+  -- que lo puedan convocar y para seguir sus tareas, pero no es del
+  -- equipo: propone temas con aprobación y ve sólo lo suyo.
+  rol         text not null default 'miembro'
+              check (rol in ('organizador', 'miembro', 'externo')),
   desde       timestamptz not null default now(),
   unique ("salaId", "usuarioId")
 );
@@ -130,6 +134,11 @@ create table if not exists public.reuniones (
   "agendaCerradaEn"      timestamptz,
   "iniciadaEn"           timestamptz,
   "cerradaEn"            timestamptz,
+  -- El evento en Google Calendar, cuando se sincroniza. Con el id se
+  -- lo actualiza o se lo cancela; el resto es para mostrar el link.
+  "calendarEventoId"     text,
+  "calendarUrl"          text,
+  "meetUrl"              text,
   "creadoPor"            text,
   "creadoEn"             timestamptz not null default now()
 );

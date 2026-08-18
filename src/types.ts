@@ -22,7 +22,7 @@
  * migrar la base y las políticas— pero de cara a quien la usa son
  * **socio** y **miembro**, que es como se llaman entre ellos.
  */
-export type RolSala = 'organizador' | 'miembro'
+export type RolSala = 'organizador' | 'miembro' | 'externo'
 
 export const ROLES_SALA: Record<RolSala, { nombre: string; desc: string }> = {
   organizador: {
@@ -33,7 +33,20 @@ export const ROLES_SALA: Record<RolSala, { nombre: string; desc: string }> = {
     nombre: 'Miembro',
     desc: 'Propone temas, crea y sigue sus tareas, y pide entrar a las salas donde quiera participar.',
   },
+  /*
+   * Para el proveedor recurrente. Ariel no lo quiso de sólo lectura:
+   * *"si es un proveedor con el que trabajamos siempre, que pueda
+   * proponer temas o ver las tareas que le asignaron"*. Eso y nada
+   * más: no ve las tareas de los demás ni el resto de la sala.
+   */
+  externo: {
+    nombre: 'Externo',
+    desc: 'Proveedor o invitado permanente. Propone temas —los aprueba el socio— y ve las tareas que tiene a su nombre. No ve las de los demás.',
+  },
 }
+
+/** Los que son del equipo. El externo mira desde afuera. */
+export const ROLES_INTERNOS: RolSala[] = ['organizador', 'miembro']
 
 /**
  * Alcance de la cuenta, por encima de las salas.
@@ -214,7 +227,7 @@ export type EstadoTema =
   | 'tratado'
 
 export const ESTADO_TEMA: Record<EstadoTema, { nombre: string; color: string }> = {
-  banco: { nombre: 'En mi temario', color: 'text-cold' },
+  banco: { nombre: 'En mi bloc', color: 'text-cold' },
   propuesto: { nombre: 'Propuesto', color: 'text-suave' },
   aprobado: { nombre: 'En agenda', color: 'text-acid' },
   rechazado: { nombre: 'Rechazado', color: 'text-signal' },
@@ -333,6 +346,13 @@ export interface Reunion {
   agendaCerradaEn?: string
   iniciadaEn?: string
   cerradaEn?: string
+  /**
+   * El evento en Google Calendar, si se sincronizó. Con el id se lo
+   * actualiza o se lo cancela después; el resto es para mostrar.
+   */
+  calendarEventoId?: string
+  calendarUrl?: string
+  meetUrl?: string
   creadoPor: string
   creadoEn: string
 }

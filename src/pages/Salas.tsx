@@ -98,6 +98,7 @@ export default function Salas() {
 
       <Seccion
         titulo="Salas"
+        principal
         acciones={
           /* Abrir salas es de los socios; reuniones crea cualquiera. */
           puedeCrearSalas && (
@@ -154,7 +155,7 @@ export default function Salas() {
                             {pidiendo} {pidiendo === 1 ? 'pide entrar' : 'piden entrar'}
                           </Chip>
                         )}
-                        {s.cadencia && <span className="text-xs text-tenue">{s.cadencia}</span>}
+                        {s.cadencia && <span className="text-meta text-tenue">{s.cadencia}</span>}
                       </div>
                       <h3 className="text-lg">{s.nombre}</h3>
                       {s.descripcion && (
@@ -167,7 +168,7 @@ export default function Salas() {
                     />
                   </div>
 
-                  <div className="mb-4 flex flex-wrap gap-x-5 gap-y-1 text-xs text-tenue">
+                  <div className="mb-4 flex flex-wrap gap-x-5 gap-y-1 text-meta text-tenue">
                     <span>
                       {gente.length} {gente.length === 1 ? 'persona' : 'personas'}
                     </span>
@@ -245,7 +246,7 @@ export default function Salas() {
                       estado.salas.find((x) => x.id === s.salaId)?.nombre ??
                       'Sala'}
                   </div>
-                  <div className="text-xs text-tenue">
+                  <div className="text-meta text-tenue">
                     Enviado {relativo(s.creadaEn)} · esperando al organizador
                   </div>
                 </div>
@@ -301,10 +302,10 @@ function Pedidos() {
             <li key={s.id} className="card border-signal/40 p-4">
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <Chip tono="signal">{sala?.nombre ?? 'Sala'}</Chip>
-                <span className="text-[10px] text-tenue">{relativo(s.creadaEn)}</span>
+                <span className="text-meta text-tenue">{relativo(s.creadaEn)}</span>
               </div>
               <div className="mb-0.5 text-sm">{quien?.nombre ?? 'Alguien'}</div>
-              <div className="mb-2 text-xs text-tenue">
+              <div className="mb-2 text-meta text-tenue">
                 {quien?.cargo ? `${quien.cargo} · ` : ''}
                 {quien?.email}
               </div>
@@ -355,6 +356,7 @@ function ModalSala({
     actualizarSala,
     archivarSala,
     sumarAlaSala,
+    asegurarPersona,
     cargarDirectorio,
     pedirEntrar,
     misSolicitudes,
@@ -373,6 +375,15 @@ function ModalSala({
   const [insistir, setInsistir] = useState(false)
   /* A quiénes sumar de entrada. En la edición se maneja desde Equipo. */
   const [invitados, setInvitados] = useState<string[]>([])
+  /*
+   * Gente de afuera del directorio, cargada acá mismo: "aunque el
+   * sistema traiga las personas que ya están, tengo que poder sumar a
+   * alguien nuevo mientras armo la sala". Se dan de alta al guardar y
+   * el directorio queda actualizado.
+   */
+  const [nuevos, setNuevos] = useState<{ nombre: string; email: string }[]>([])
+  const [nuevoNombre, setNuevoNombre] = useState('')
+  const [nuevoEmail, setNuevoEmail] = useState('')
 
   /* Todo el mundo menos yo y menos las cuentas superadmin. */
   const disponibles = estado.usuarios.filter(
@@ -449,6 +460,10 @@ function ModalSala({
       const nueva = await crearSala(datos)
       if (nueva) {
         for (const id of invitados) await sumarAlaSala(nueva.id, id, 'miembro')
+        for (const n of nuevos) {
+          const persona = await asegurarPersona(n.nombre, n.email)
+          if (persona) await sumarAlaSala(nueva.id, persona.id, 'miembro')
+        }
         navegar('/')
       }
     }
@@ -493,7 +508,7 @@ function ModalSala({
                   >
                     <div className="min-w-0 flex-1">
                       <div className="text-sm">{s.nombre}</div>
-                      <div className="text-xs text-tenue">
+                      <div className="text-meta text-tenue">
                         Organiza {s.organizador} · {s.integrantes}{' '}
                         {s.integrantes === 1 ? 'persona' : 'personas'}
                       </div>
@@ -562,7 +577,7 @@ function ModalSala({
                   className={
                     invitados.includes(u.id)
                       ? 'flex items-center gap-2 border border-tinta/60 bg-hueco px-3 py-2 text-left text-xs'
-                      : 'flex items-center gap-2 border border-borde px-3 py-2 text-left text-xs text-suave transition-colors hover:border-suave'
+                      : 'flex items-center gap-2 border border-borde px-3 py-2 text-left text-meta text-suave transition-colors hover:border-suave'
                   }
                 >
                   <span
@@ -575,6 +590,67 @@ function ModalSala({
                   <span className="truncate">{u.nombre}</span>
                 </button>
               ))}
+            </div>
+          </Campo>
+        )}
+
+        {/* ── Alguien que todavía no está ──
+            Se da de alta con la sala y queda en el directorio. */}
+        {!sala && (
+          <Campo
+            etiqueta="Sumar a alguien que no está en la lista"
+            ayuda="Con el correo con el que va a entrar. Queda cargado para el resto de las salas."
+          >
+            {nuevos.length > 0 && (
+              <ul className="mb-2 space-y-1">
+                {nuevos.map((n, i) => (
+                  <li
+                    key={n.email}
+                    className="flex items-center gap-2 border border-borde bg-hueco px-3 py-2 text-xs"
+                  >
+                    <span className="min-w-0 flex-1 truncate">
+                      {n.nombre} · <span className="text-tenue">{n.email}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setNuevos((v) => v.filter((_, j) => j !== i))}
+                      className="shrink-0 text-suave hover:text-signal"
+                      aria-label={`Sacar a ${n.nombre}`}
+                    >
+                      <X size={12} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <input
+                className="min-w-0 flex-1"
+                placeholder="Nombre y apellido"
+                value={nuevoNombre}
+                onChange={(e) => setNuevoNombre(e.target.value)}
+              />
+              <input
+                type="email"
+                className="min-w-0 flex-1"
+                placeholder="correo@empresa.com"
+                value={nuevoEmail}
+                onChange={(e) => setNuevoEmail(e.target.value)}
+              />
+              <Boton
+                type="button"
+                tam="sm"
+                disabled={!nuevoEmail.trim()}
+                onClick={() => {
+                  const email = nuevoEmail.trim().toLowerCase()
+                  if (!email || nuevos.some((n) => n.email === email)) return
+                  setNuevos((v) => [...v, { nombre: nuevoNombre.trim() || email, email }])
+                  setNuevoNombre('')
+                  setNuevoEmail('')
+                }}
+              >
+                <Plus size={12} /> Sumar
+              </Boton>
             </div>
           </Campo>
         )}
@@ -754,9 +830,9 @@ function ModalEquipo({
                 <div className="min-w-0 flex-1">
                   <div className="text-sm">
                     {u.nombre}
-                    {soyYo && <span className="ml-2 text-xs text-tenue">vos</span>}
+                    {soyYo && <span className="ml-2 text-meta text-tenue">vos</span>}
                   </div>
-                  <div className="truncate text-xs text-tenue">{u.email}</div>
+                  <div className="truncate text-meta text-tenue">{u.email}</div>
                 </div>
                 <div className="flex gap-1">
                   {(Object.keys(ROLES_SALA) as RolSala[]).map((r) => (
@@ -766,8 +842,8 @@ function ModalEquipo({
                       title={ROLES_SALA[r].desc}
                       className={
                         rol === r
-                          ? 'border border-tinta bg-tinta px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-fondo'
-                          : 'border border-borde2 bg-panel px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-suave transition-colors hover:border-suave hover:text-tinta'
+                          ? 'border border-tinta bg-tinta px-2.5 py-1.5 text-[11px] font-semibold text-fondo'
+                          : 'border border-borde2 bg-panel px-2.5 py-1.5 text-[11px] font-semibold text-suave transition-colors hover:border-suave hover:text-tinta'
                       }
                     >
                       {ROLES_SALA[r].nombre}
@@ -789,8 +865,10 @@ function ModalEquipo({
         </ul>
 
         <p className="text-xs leading-relaxed text-tenue">
-          El organizador arma la agenda, aprueba temas y gestiona quién entra. El miembro propone
-          temas, participa y sigue sus propias tareas.
+          El socio arma la agenda, aprueba temas y gestiona quién entra. El miembro propone temas,
+          participa y sigue sus propias tareas. El externo —un proveedor, alguien de afuera— propone
+          temas para que los apruebe el socio y ve sólo las tareas que tiene a su nombre: no entra a
+          las reuniones a las que no lo convocan ni ve las tareas de los demás.
         </p>
       </div>
 
@@ -905,7 +983,7 @@ function ModalInvitar({
                   >
                     <div className="min-w-0 flex-1">
                       <div className="text-sm">{u.nombre}</div>
-                      <div className="truncate text-xs text-tenue">{u.email}</div>
+                      <div className="truncate text-meta text-tenue">{u.email}</div>
                     </div>
                     <Plus size={13} className="text-borde2 group-hover:text-signal" />
                   </button>

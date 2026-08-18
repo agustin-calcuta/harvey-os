@@ -87,7 +87,7 @@ export default function Admin() {
   return (
     <div className="space-y-10">
       {/* ── Salas ── */}
-      <Seccion kicker="Todo lo que hay" titulo="Salas">
+      <Seccion kicker="Todo lo que hay" titulo="Salas" principal>
         <ul className="card divide-y divide-borde">
           {estado.salas.map((s) => {
             const gente = integrantes(estado, s.id)
@@ -99,14 +99,14 @@ export default function Admin() {
                     {s.nombre}
                     {s.archivada && <Chip>Archivada</Chip>}
                   </div>
-                  <div className="truncate text-xs text-tenue">
+                  <div className="truncate text-meta text-tenue">
                     {gente.length} personas ·{' '}
                     {estado.reuniones.filter((r) => r.salaId === s.id).length} reuniones ·{' '}
                     {estado.temas.filter((t) => t.salaId === s.id && t.estado === 'banco').length}{' '}
                     en el banco
                   </div>
                 </div>
-                <span className="hidden text-xs text-tenue sm:block">
+                <span className="hidden text-meta text-tenue sm:block">
                   Desde {fechaCorta(s.creadaEn)}
                 </span>
               </li>
@@ -141,12 +141,12 @@ export default function Admin() {
                     <span className="text-sm">{u.nombre}</span>
                     {!u.activo && <Chip>Inactiva</Chip>}
                   </div>
-                  <div className="truncate text-xs text-tenue">
+                  <div className="truncate text-meta text-tenue">
                     {u.email}
                     {u.cargo && ` · ${u.cargo}`}
                   </div>
                 </div>
-                <span className="flex items-center gap-1.5 text-xs text-tenue">
+                <span className="flex items-center gap-1.5 text-meta text-tenue">
                   <Users size={11} />
                   {salas}
                 </span>
@@ -198,7 +198,7 @@ export default function Admin() {
             />
             <span>
               <span className="block text-sm">Correos automáticos</span>
-              <span className="block text-xs text-tenue">
+              <span className="block text-meta text-tenue">
                 Emitir el aviso al cerrar el temario y la minuta al cerrar la reunión.
               </span>
             </span>
@@ -249,7 +249,7 @@ export default function Admin() {
                 <Send size={13} className="text-tenue" />
                 <span className="text-sm">Envío de correo</span>
               </div>
-              <p className="mt-1 max-w-xl pl-5 text-xs text-tenue">
+              <p className="mt-1 max-w-xl pl-5 text-meta text-tenue">
                 {correoConfigurado
                   ? 'Salen solos al cerrar el temario y al cerrar la reunión. Probalo acá para confirmar que la casilla responde.'
                   : 'Los correos se componen siempre y quedan registrados y se pueden revisar desde acá, listos para copiar o abrir en el cliente de correo.'}
@@ -270,7 +270,7 @@ export default function Admin() {
           <div className="flex flex-wrap items-center justify-between gap-3 p-4">
             <div>
               <div className="text-sm">Datos de demostración</div>
-              <div className="text-xs text-tenue">
+              <div className="text-meta text-tenue">
                 {modo === 'neon'
                   ? 'Con base compartida el restablecimiento se hace desde el repositorio, corriendo db/seed.sql.'
                   : `Vuelve todo al estado original: ${estado.salas.length} salas, ${estado.reuniones.length} reuniones y ${estado.compromisos.length} compromisos.`}
@@ -341,7 +341,7 @@ function Fila({
           <Database size={13} className="text-tenue" />
           <span className="text-sm">{etiqueta}</span>
         </div>
-        {nota && <p className="mt-1 max-w-xl pl-5 text-xs text-tenue">{nota}</p>}
+        {nota && <p className="mt-1 max-w-xl pl-5 text-meta text-tenue">{nota}</p>}
       </div>
       <Chip tono={tono}>{valor}</Chip>
     </div>
@@ -459,7 +459,7 @@ function ModalPersona({
           />
           <span className="text-sm">
             Puede abrir salas
-            <span className="ml-2 text-xs text-tenue">
+            <span className="ml-2 text-meta text-tenue">
               Crear reuniones puede cualquiera; abrir una sala nueva, sólo quien esté marcado acá.
             </span>
           </span>
@@ -473,7 +473,7 @@ function ModalPersona({
           />
           <span className="text-sm">
             Activa
-            <span className="ml-2 text-xs text-tenue">
+            <span className="ml-2 text-meta text-tenue">
               Si no, deja de aparecer en los desplegables pero conserva el acceso.
             </span>
           </span>

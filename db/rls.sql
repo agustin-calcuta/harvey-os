@@ -6,8 +6,10 @@
 --
 -- Regla de oro: **sólo se ve lo de las salas a las que pertenecés**.
 -- Dentro de una sala, el organizador arma la agenda y el miembro
--- propone. El superadmin atraviesa todo, y es lo único que se
--- decide fuera de las salas.
+-- propone. El externo pertenece pero no es del equipo: propone temas
+-- —los aprueba el socio— y ve sólo las tareas a su nombre y las
+-- reuniones a las que lo convocan. El superadmin atraviesa todo, y es
+-- lo único que se decide fuera de las salas.
 -- ─────────────────────────────────────────────────────────────
 
 begin;
@@ -69,6 +71,24 @@ language sql stable security definer set search_path = public as $$
   select public.soy_superadmin() or exists (
     select 1 from public.membresias m
     where m."salaId" = sala and m."usuarioId" = public.mi_usuario_id()
+  )
+$$;
+
+/**
+ * ¿Soy del equipo de esta sala?
+ *
+ * El externo pertenece a la sala —para que lo puedan convocar y para
+ * seguir sus tareas— pero no es del equipo: *"si es un proveedor con
+ * el que trabajamos siempre, que pueda proponer temas o ver las tareas
+ * que le asignaron"*, y nada más. Todo lo que antes preguntaba
+ * `soy_de_la_sala` y significaba "soy del equipo" pregunta esto.
+ */
+create or replace function public.soy_del_equipo(sala text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select public.soy_superadmin() or exists (
+    select 1 from public.membresias m
+    where m."salaId" = sala and m."usuarioId" = public.mi_usuario_id()
+      and m.rol <> 'externo'
   )
 $$;
 
@@ -270,7 +290,7 @@ alter default privileges in schema public
   grant usage, select on sequences to authenticated;
 
 grant execute on function public.mi_usuario_id, public.mi_email, public.soy_superadmin,
-                          public.soy_de_la_sala, public.organizo_la_sala,
+                          public.soy_de_la_sala, public.soy_del_equipo, public.organizo_la_sala,
                           public.puedo_crear_salas, public.participo_de_la_reunion,
                           public.mis_salas, public.clave_nombre to authenticated;
 
@@ -450,9 +470,10 @@ create policy solicitudes_borrar on public.solicitudes
   );
 
 /*
- * reuniones ─ las minutas se ven por sala, salvo dos excepciones:
- * la reunión privada, que sólo ven quienes están en ella, y el
- * invitado de afuera, que ve esa reunión y nada más de la sala.
+ * reuniones ─ las minutas se ven por sala, salvo tres excepciones:
+ * la reunión privada, que sólo ven quienes están en ella; el
+ * invitado de afuera, que ve esa reunión y nada más de la sala; y
+ * el externo de la sala, que ve sólo aquellas a las que lo convocan.
  */
 
 drop policy if exists reuniones_leer   on public.reuniones;
@@ -464,14 +485,15 @@ create policy reuniones_leer on public.reuniones
   for select to authenticated
   using (
     public.soy_superadmin()
-    or (not privada and public.soy_de_la_sala("salaId"))
+    or (not privada and public.soy_del_equipo("salaId"))
     or public.mi_usuario_id() = any ("participantesIds")
     or "moderadorId" = public.mi_usuario_id()
   );
 
--- Crear reuniones puede cualquiera de la sala; crear salas, no.
+-- Crear reuniones puede cualquiera del equipo; crear salas, no. El
+-- externo participa de las que lo convocan: no arma la agenda.
 create policy reuniones_alta on public.reuniones
-  for insert to authenticated with check (public.soy_de_la_sala("salaId"));
+  for insert to authenticated with check (public.soy_del_equipo("salaId"));
 
 -- Modera quien organiza la sala, o quien esté designado moderador.
 create policy reuniones_editar on public.reuniones
@@ -500,16 +522,29 @@ create policy temas_leer on public.temas
   for select to authenticated
   using (
     ("salaId" is null and "propuestoPor" = public.mi_usuario_id())
-    or public.soy_de_la_sala("salaId")
+    or public.soy_del_equipo("salaId")
     or public.participo_de_la_reunion("reunionId")
+    or "propuestoPor" = public.mi_usuario_id()
   );
 
+/*
+ * El externo propone y espera: un tema suyo entra como `propuesto` y
+ * lo aprueba el socio. Que no pueda escribir 'aprobado' de entrada es
+ * lo que hace que "con aprobación" sea una regla y no una costumbre.
+ */
 create policy temas_alta on public.temas
   for insert to authenticated
   with check (
-    ("salaId" is null and "propuestoPor" = public.mi_usuario_id())
-    or public.soy_de_la_sala("salaId")
-    or public.participo_de_la_reunion("reunionId")
+    (
+      ("salaId" is null and "propuestoPor" = public.mi_usuario_id())
+      or public.soy_del_equipo("salaId")
+      or public.participo_de_la_reunion("reunionId")
+    )
+    and (
+      public.organizo_la_sala("salaId")
+      or "salaId" is null
+      or estado in ('propuesto', 'banco', 'diferido')
+    )
   );
 
 create policy temas_editar on public.temas
@@ -528,10 +563,11 @@ drop policy if exists compromisos_alta   on public.compromisos;
 drop policy if exists compromisos_editar on public.compromisos;
 drop policy if exists compromisos_borrar on public.compromisos;
 
+-- El externo llega acá sólo por las suyas: no ve el tablero del equipo.
 create policy compromisos_leer on public.compromisos
   for select to authenticated
   using (
-    public.soy_de_la_sala("salaId")
+    public.soy_del_equipo("salaId")
     or "responsableId" = public.mi_usuario_id()
     or public.participo_de_la_reunion("reunionId")
   );
@@ -539,7 +575,7 @@ create policy compromisos_leer on public.compromisos
 create policy compromisos_alta on public.compromisos
   for insert to authenticated
   with check (
-    public.soy_de_la_sala("salaId")
+    public.soy_del_equipo("salaId")
     or public.participo_de_la_reunion("reunionId")
   );
 
@@ -562,15 +598,17 @@ drop policy if exists notif_alta   on public.notificaciones;
 drop policy if exists notif_editar on public.notificaciones;
 drop policy if exists notif_borrar on public.notificaciones;
 
+-- El registro de lo que salió por correo es del equipo. El externo
+-- recibe los correos de las reuniones a las que va, no el registro.
 create policy notif_leer on public.notificaciones
-  for select to authenticated using (public.soy_de_la_sala("salaId"));
+  for select to authenticated using (public.soy_del_equipo("salaId"));
 
 create policy notif_alta on public.notificaciones
-  for insert to authenticated with check (public.soy_de_la_sala("salaId"));
+  for insert to authenticated with check (public.soy_del_equipo("salaId"));
 
 create policy notif_editar on public.notificaciones
   for update to authenticated
-  using (public.soy_de_la_sala("salaId")) with check (public.soy_de_la_sala("salaId"));
+  using (public.soy_del_equipo("salaId")) with check (public.soy_del_equipo("salaId"));
 
 create policy notif_borrar on public.notificaciones
   for delete to authenticated using (public.organizo_la_sala("salaId"));

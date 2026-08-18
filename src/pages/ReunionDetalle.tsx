@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Lock, Pencil, Play, Trash2, UserPlus } from 'lucide-react'
+import {
+  ArrowLeft,
+  CalendarDays,
+  Lock,
+  Pencil,
+  Play,
+  Square,
+  Trash2,
+  UserPlus,
+  Video,
+} from 'lucide-react'
 import { useApp } from '../store/AppContext'
 import { fechaLarga, hora, integrantes, lugaresDe, nombreDe, paraInputDateTime } from '../lib/utils'
 import {
@@ -36,7 +46,7 @@ function faseSugerida(e: EstadoReunion): Fase {
 export default function ReunionDetalle() {
   const { id } = useParams<{ id: string }>()
   const navegar = useNavigate()
-  const { estado, puedeModerar, puedeOrganizar, iniciarReunion, borrarReunion } = useApp()
+  const { estado, puedeModerar, organizoLa, iniciarReunion, borrarReunion } = useApp()
 
   const reunion = estado.reuniones.find((r) => r.id === id)
   const [fase, setFase] = useState<Fase>(() =>
@@ -44,6 +54,13 @@ export default function ReunionDetalle() {
   )
   const [editando, setEditando] = useState(false)
   const [porBorrar, setPorBorrar] = useState(false)
+  /*
+   * "Cerrar y generar minuta tiene que estar disponible siempre": el
+   * botón vive en la cabecera y se ve desde cualquiera de las tres
+   * pestañas. Abre el mismo diálogo de la reunión en curso, que es el
+   * que guarda las notas del tema abierto antes de cerrar.
+   */
+  const [pidiendoCierre, setPidiendoCierre] = useState(false)
 
   // Cuando la reunión avanza de etapa, la vista acompaña. Sólo ante un cambio
   // real de estado: si el usuario eligió otra pestaña a mano, se respeta.
@@ -71,6 +88,8 @@ export default function ReunionDetalle() {
   }
 
   const moderador = puedeModerar(reunion)
+  /* Editar o borrar la reunión es de quien organiza *esa* sala. */
+  const puedeOrganizar = organizoLa(reunion.salaId)
   const est = ESTADO_REUNION[reunion.estado]
 
   return (
@@ -112,15 +131,36 @@ export default function ReunionDetalle() {
               )}
             </div>
 
-            <h1 className="display text-2xl sm:text-3xl">{reunion.titulo}</h1>
+            <h1 className="display text-titulo">{reunion.titulo}</h1>
 
-            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-suave">
+            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-meta text-suave">
               <span>
                 {fechaLarga(reunion.fecha)} · {hora(reunion.fecha)}
               </span>
               {reunion.lugar && <span>{reunion.lugar}</span>}
               <span>Modera {nombreDe(estado, reunion.moderadorId)}</span>
               <span>{reunion.duracionPrevistaMin} min previstos</span>
+              {/* El Meet que armó Google al agendarla. */}
+              {reunion.meetUrl && (
+                <a
+                  href={reunion.meetUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 text-cold transition-colors hover:text-tinta"
+                >
+                  <Video size={12} /> Entrar por Meet
+                </a>
+              )}
+              {reunion.calendarUrl && (
+                <a
+                  href={reunion.calendarUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 transition-colors hover:text-tinta"
+                >
+                  <CalendarDays size={12} /> En el calendario
+                </a>
+              )}
             </div>
           </div>
 
@@ -138,7 +178,7 @@ export default function ReunionDetalle() {
                 moderador && (
                   <Boton
                     tam="sm"
-                    variante="solido"
+                    variante="destacado"
                     onClick={() => {
                       void iniciarReunion(reunion.id)
                       setFase('vivo')
@@ -147,6 +187,20 @@ export default function ReunionDetalle() {
                     <Play size={12} /> Iniciar reunión
                   </Boton>
                 )}
+              {/* Una reunión que nunca se inició no se cierra: para eso
+                  está iniciarla. */}
+              {reunion.estado === 'en_curso' && moderador && (
+                <Boton
+                  tam="sm"
+                  variante="destacado"
+                  onClick={() => {
+                    setFase('vivo')
+                    setPidiendoCierre(true)
+                  }}
+                >
+                  <Square size={11} /> Cerrar y generar minuta
+                </Boton>
+              )}
               {puedeOrganizar && (
                 <>
                   <Boton
@@ -188,7 +242,7 @@ export default function ReunionDetalle() {
               }
             >
               <span className={activa ? 'text-signal' : 'text-borde2'}>{f.num}</span>
-              <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
+              <span className="text-cuerpo font-semibold">
                 {f.texto}
               </span>
               {sugerida && !activa && (
@@ -204,7 +258,11 @@ export default function ReunionDetalle() {
         {fase === 'pre' && <FasePre reunion={reunion} />}
         {fase === 'vivo' &&
           (reunion.estado === 'en_curso' || reunion.estado === 'cerrada' ? (
-            <FaseVivo reunion={reunion} />
+            <FaseVivo
+              reunion={reunion}
+              pidiendoCierre={pidiendoCierre}
+              onCierreAtendido={() => setPidiendoCierre(false)}
+            />
           ) : (
             <Vacio
               titulo="La reunión todavía no empezó"
@@ -417,7 +475,7 @@ function ModalEditarReunion({
                 className={
                   participantes.includes(u.id)
                     ? 'flex items-center gap-2 border border-tinta/60 bg-hueco px-3 py-2 text-left text-xs'
-                    : 'flex items-center gap-2 border border-borde px-3 py-2 text-left text-xs text-suave transition-colors hover:border-suave'
+                    : 'flex items-center gap-2 border border-borde px-3 py-2 text-left text-meta text-suave transition-colors hover:border-suave'
                 }
               >
                 <span

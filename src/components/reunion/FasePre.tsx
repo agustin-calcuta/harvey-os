@@ -34,6 +34,7 @@ import {
   Chip,
   ChipImportancia,
   ChipObjetivo,
+  Colapsable,
   Confirmar,
   Vacio,
 } from '../ui'
@@ -53,7 +54,7 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
   const {
     estado,
     yo,
-    puedeOrganizar,
+    organizoLa,
     actualizarTema,
     borrarTema,
     reordenarTemas,
@@ -61,6 +62,9 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
     asignarAReunion,
     devolverAlTemario,
   } = useApp()
+
+  /* El rol es de cada sala: acá manda el de la sala de esta reunión. */
+  const puedeOrganizar = organizoLa(reunion.salaId)
 
   const [creando, setCreando] = useState(false)
   const [editando, setEditando] = useState<Tema | undefined>()
@@ -110,7 +114,7 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <ChipImportancia valor={t.importancia} />
             <ChipObjetivo valor={t.objetivo} />
-            <span className="ml-1 text-xs text-tenue">
+            <span className="ml-1 text-meta text-tenue">
               {deDonde === 'sinTratar'
                 ? `${nombreDe(estado, t.propuestoPor)} · ${t.motivoRechazo ?? 'no se llegó a hablar'}`
                 : `anotado ${relativo(t.creadoEn)}`}
@@ -131,7 +135,7 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
         <Boton variante="solido" onClick={() => setCreando(true)}>
           <Plus size={13} /> Proponer tema
         </Boton>
-        <span className="text-xs text-suave">
+        <span className="text-meta text-suave">
           {agenda.length} {agenda.length === 1 ? 'tema' : 'temas'} en agenda
           {puedeOrganizar && (
             <>
@@ -153,36 +157,34 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
 
       {/* ── Sin tratar de reuniones anteriores ── */}
       {puedeOrganizar && sinTratar.length > 0 && (
-        <section>
-          <h3 className="subtitulo">
-            No se llegaron a hablar en reuniones anteriores
-            <span className="cuenta">{sinTratar.length}</span>
-          </h3>
+        <Colapsable titulo="No se llegaron a hablar en reuniones anteriores" cuenta={sinTratar.length}>
           <ul className="space-y-2">{sinTratar.map((t) => paraIncluir(t, 'sinTratar'))}</ul>
-        </section>
+        </Colapsable>
       )}
 
-      {/* ── Mi temario ── */}
+      {/* ── Mi bloc de notas ── */}
       {mios.length > 0 && (
-        <section>
-          <h3 className="subtitulo">
-            De mi temario <span className="cuenta">{mios.length}</span>
-          </h3>
+        <Colapsable titulo="De mi bloc de notas" cuenta={mios.length}>
           <ul className="space-y-2">{mios.map((t) => paraIncluir(t, 'temario'))}</ul>
-        </section>
+        </Colapsable>
       )}
 
       {/* ── Por aprobar ── */}
       {propuestos.length > 0 && (
-        <section>
-          <h3 className="subtitulo">
-            Esperando aprobación <span className="cuenta">{propuestos.length}</span>
-          </h3>
-
+        <Colapsable
+          titulo="Esperando aprobación"
+          cuenta={propuestos.length}
+          abiertoPorDefecto={puedeOrganizar}
+        >
           <ul className="space-y-2">
             {propuestos.map((t) => (
               <li key={t.id} className="card p-4">
-                <FilaTema tema={t} onEditar={() => setEditando(t)} onBorrar={() => setPorBorrar(t)} />
+                <FilaTema
+                  tema={t}
+                  puedeOrganizar={puedeOrganizar}
+                  onEditar={() => setEditando(t)}
+                  onBorrar={() => setPorBorrar(t)}
+                />
                 {puedeOrganizar && (
                   <div className="mt-3 flex flex-wrap gap-2 border-t border-borde pt-3">
                     <Boton
@@ -212,22 +214,23 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
               </li>
             ))}
           </ul>
-        </section>
+        </Colapsable>
       )}
 
-      {/* ── Agenda ── */}
-      <section>
-        <h3 className="subtitulo justify-between">
-          <span>
-            Agenda de la reunión <span className="cuenta">{agenda.length}</span>
-          </span>
-          {puedeOrganizar && agenda.length > 1 && (
-            <span className="flex items-center gap-1.5 text-[10px] text-tenue">
+      {/* ── Agenda ──
+          La única que abre sola: es a lo que se viene a esta pantalla. */}
+      <Colapsable
+        titulo="Agenda de la reunión"
+        cuenta={agenda.length}
+        abiertoPorDefecto
+        acciones={
+          puedeOrganizar && agenda.length > 1 ? (
+            <span className="flex shrink-0 items-center gap-1.5 text-meta text-tenue">
               <GripVertical size={11} /> Arrastrá para cambiar el orden
             </span>
-          )}
-        </h3>
-
+          ) : undefined
+        }
+      >
         {agenda.length === 0 ? (
           <Vacio
             titulo="La agenda está vacía"
@@ -262,14 +265,11 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
             </SortableContext>
           </DndContext>
         )}
-      </section>
+      </Colapsable>
 
       {/* ── Rechazados ── */}
       {fuera.length > 0 && (
-        <section>
-          <h3 className="subtitulo">
-            Rechazados <span className="cuenta">{fuera.length}</span>
-          </h3>
+        <Colapsable titulo="Rechazados" cuenta={fuera.length}>
           <ul className="space-y-2">
             {fuera.map((t) => (
               <li
@@ -278,28 +278,28 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
               >
                 <Chip tono="signal">Rechazado</Chip>
                 <span className="min-w-0 flex-1 truncate text-sm">{t.titulo}</span>
-                <span className="text-xs text-tenue">{nombreDe(estado, t.propuestoPor)}</span>
+                <span className="text-meta text-tenue">{nombreDe(estado, t.propuestoPor)}</span>
                 {puedeOrganizar && (
                   <div className="flex gap-1">
                     <Boton tam="sm" onClick={() => actualizarTema(t.id, { estado: 'aprobado' })}>
                       Recuperar
                     </Boton>
                     <Boton tam="sm" variante="fantasma" onClick={() => devolverAlTemario(t.id)}>
-                      <Undo2 size={11} /> Al temario
+                      <Undo2 size={11} /> Al bloc
                     </Boton>
                   </div>
                 )}
               </li>
             ))}
           </ul>
-        </section>
+        </Colapsable>
       )}
 
       {/* ── Cerrar el temario ──
           Flotante: es el submit de esta pantalla y se perdía abajo de todo. */}
       {puedeOrganizar && reunion.estado === 'agenda_abierta' && (
         <BarraFlotante>
-          <label className="mr-auto flex items-center gap-2 text-xs text-suave">
+          <label className="mr-auto flex items-center gap-2 text-meta text-suave">
             <input
               type="checkbox"
               checked={avisar}
@@ -308,7 +308,7 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
             Avisar por correo a los {reunion.participantesIds.length} participantes
           </label>
           <Boton
-            variante="solido"
+            variante="destacado"
             onClick={() => setConfirmarCierre(true)}
             disabled={agenda.length === 0}
           >
@@ -335,7 +335,7 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
       <Confirmar
         abierto={!!porBorrar}
         titulo="Eliminar tema"
-        texto={`Se elimina «${porBorrar?.titulo}» de forma definitiva. Si querés guardarlo para más adelante, devolvelo al temario en vez de borrarlo.`}
+        texto={`Se elimina «${porBorrar?.titulo}» de forma definitiva. Si querés guardarlo para más adelante, devolvelo al bloc de notas en vez de borrarlo.`}
         textoBoton="Eliminar"
         peligro
         onCancelar={() => setPorBorrar(undefined)}
@@ -367,14 +367,16 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
 
 function FilaTema({
   tema,
+  puedeOrganizar,
   onEditar,
   onBorrar,
 }: {
   tema: Tema
   onEditar: () => void
   onBorrar: () => void
+  puedeOrganizar: boolean
 }) {
-  const { estado, puedeOrganizar, yo } = useApp()
+  const { estado, yo } = useApp()
   const propio = tema.propuestoPor === yo?.id
 
   return (
@@ -389,7 +391,7 @@ function FilaTema({
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <ChipImportancia valor={tema.importancia} />
           <ChipObjetivo valor={tema.objetivo} />
-          <span className="ml-1 text-xs text-tenue">{nombreDe(estado, tema.propuestoPor)}</span>
+          <span className="ml-1 text-meta text-tenue">{nombreDe(estado, tema.propuestoPor)}</span>
         </div>
       </div>
       {(puedeOrganizar || propio) && (
@@ -463,11 +465,16 @@ function TemaOrdenable({
             <GripVertical size={16} />
           </button>
         )}
-        <span className="mt-0.5 w-6 shrink-0 text-xs text-tenue">
+        <span className="mt-0.5 w-6 shrink-0 text-meta text-tenue">
           {String(indice + 1).padStart(2, '0')}
         </span>
         <div className="min-w-0 flex-1">
-          <FilaTema tema={tema} onEditar={onEditar} onBorrar={onBorrar} />
+          <FilaTema
+            tema={tema}
+            puedeOrganizar={puedeOrganizar}
+            onEditar={onEditar}
+            onBorrar={onBorrar}
+          />
 
           {puedeOrganizar && (
             <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-borde pt-3 sm:gap-2">
@@ -487,15 +494,15 @@ function TemaOrdenable({
               ))}
               <button
                 onClick={onDiferir}
-                className="ml-auto py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:text-amber"
+                className="ml-auto py-1.5 text-meta font-semibold text-suave transition-colors hover:text-amber"
               >
                 Para más adelante
               </button>
               <button
                 onClick={onAlTemario}
-                className="py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:text-cold"
+                className="py-1.5 text-meta font-semibold text-suave transition-colors hover:text-cold"
               >
-                Al temario
+                Al bloc
               </button>
             </div>
           )}

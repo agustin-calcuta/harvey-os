@@ -4,6 +4,7 @@ import type {
   Membresia,
   Notificacion,
   Reunion,
+  RolSala,
   Sala,
   Solicitud,
   Tema,
@@ -82,6 +83,11 @@ export const USUARIOS: Usuario[] = [
   // a la de socios y el pedido espera respuesta.
   socio('u_sofia', 'Sofía Ledesma', 'sofia@harveywillys.com', 'Gerencia · Operaciones'),
 
+  // Proveedor de siempre: entra a marketing como externo. Propone
+  // temas, se lo convoca a las reuniones donde hace falta y ve las
+  // tareas que le quedan a cargo. Nada más de la sala.
+  socio('u_agencia', 'Bruno Costas', 'bruno@estudiocostas.com', 'Estudio Costas · Fotografía'),
+
   /*
    * Superadmin: ve todas las salas y puede intervenir en cualquiera,
    * pero no pertenece a ningún equipo y queda fuera de las listas
@@ -156,7 +162,7 @@ export const SALAS: Sala[] = [
 
 /* ── Membresías ───────────────────────────────────────────── */
 
-const m = (salaId: string, usuarioId: string, rol: 'organizador' | 'miembro'): Membresia => ({
+const m = (salaId: string, usuarioId: string, rol: RolSala): Membresia => ({
   id: `mb_${salaId}_${usuarioId}`,
   salaId,
   usuarioId,
@@ -176,6 +182,8 @@ export const MEMBRESIAS: Membresia[] = [
   m(S_MARKETING, 'u_lucas', 'organizador'),
   m(S_MARKETING, 'u_pedro', 'miembro'),
   m(S_MARKETING, 'u_cami', 'miembro'),
+  // El fotógrafo, de afuera: propone temas y ve lo suyo.
+  m(S_MARKETING, 'u_agencia', 'externo'),
 ]
 
 /* ── Reuniones ────────────────────────────────────────────── */
@@ -306,7 +314,8 @@ export const REUNIONES: Reunion[] = [
     fecha: en(-4, 11, 0),
     duracionPrevistaMin: 45,
     moderadorId: 'u_lucas',
-    participantesIds: ['u_lucas', 'u_pedro', 'u_cami'],
+    // Al fotógrafo se lo convoca a esta y a nada más de la sala.
+    participantesIds: ['u_lucas', 'u_pedro', 'u_cami', 'u_agencia'],
     estado: 'cerrada',
     horasCierreAgenda: 24,
     cierreManual: true,
@@ -658,6 +667,14 @@ export const COMPROMISOS: Compromiso[] = [
     accion: 'Confirmar fecha nueva con el fotógrafo',
     responsableId: 'u_lucas', fechaLimite: en(-2), importancia: 'alta', estado: 'en_curso',
     avance: 'No contesta desde el martes.', creadoEn: en(-4),
+  },
+  // A nombre del externo: es lo único que ve de esta sala.
+  {
+    id: 'c_m4', salaId: S_MARKETING, reunionId: R_MKT, temaId: 't_m2',
+    accion: 'Pasar las fotos del drop cápsula editadas',
+    detalle: 'Selección de 20 tomas, formato para e-commerce y para redes.',
+    responsableId: 'u_agencia', fechaLimite: en(3), importancia: 'alta', estado: 'pendiente',
+    creadoEn: en(-4),
   },
 ]
 

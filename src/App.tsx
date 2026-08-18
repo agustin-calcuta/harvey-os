@@ -5,7 +5,7 @@ import Login from './pages/Login'
 import Panel from './pages/Panel'
 import Salas from './pages/Salas'
 import Reuniones from './pages/Reuniones'
-import Temario from './pages/Temario'
+import Bloc from './pages/Bloc'
 import ReunionDetalle from './pages/ReunionDetalle'
 import Compromisos from './pages/Compromisos'
 import Correos from './pages/Correos'
@@ -37,7 +37,7 @@ function Rutas() {
         <Route path="salas" element={<Salas />} />
         <Route path="reuniones" element={<Reuniones />} />
         <Route path="reuniones/:id" element={<ReunionDetalle />} />
-        <Route path="temario" element={<Temario />} />
+        <Route path="bloc" element={<Bloc />} />
         <Route path="compromisos" element={<Compromisos />} />
         {/*
           Correos salió de producción: mostraba vistas previas de mensajes
@@ -51,6 +51,8 @@ function Rutas() {
         <Route path="admin" element={<Admin />} />
         {/* La sección de pendientes pasó a ser una vista de Tareas. */}
         <Route path="pendientes" element={<Navigate to="/compromisos" replace />} />
+        {/* El temario se llama bloc de notas: "en realidad es eso". */}
+        <Route path="temario" element={<Navigate to="/bloc" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

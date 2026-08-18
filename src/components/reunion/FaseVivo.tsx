@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Check,
   ChevronLeft,
@@ -8,7 +8,6 @@ import {
   Play,
   Plus,
   RotateCcw,
-  Square,
 } from 'lucide-react'
 import { useApp } from '../../store/AppContext'
 import {
@@ -30,6 +29,8 @@ import {
 } from '../../types'
 import { Boton, Chip, Confirmar, Vacio } from '../ui'
 import ModalCompromiso from './ModalCompromiso'
+import Grabadora from './Grabadora'
+import type { MinutaSugerida } from '../../lib/ia'
 
 /* ─────────────────────────────────────────────────────────────
    La reunión, en vivo.
@@ -47,9 +48,22 @@ import ModalCompromiso from './ModalCompromiso'
 /** El seguimiento es el paso cero; los temas van del 0 en adelante. */
 const SEGUIMIENTO = -1
 
-export default function FaseVivo({ reunion }: { reunion: Reunion }) {
-  const { estado, actualizarTema, cerrarReunion, puedeModerar } = useApp()
+export default function FaseVivo({
+  reunion,
+  pidiendoCierre = false,
+  onCierreAtendido,
+}: {
+  reunion: Reunion
+  /** La cabecera pidió cerrar: se abre el mismo diálogo de acá. */
+  pidiendoCierre?: boolean
+  onCierreAtendido?: () => void
+}) {
+  const { estado, actualizarTema, actualizarReunion, cerrarReunion, puedeModerar } = useApp()
   const agenda = agendaDe(estado, reunion.id)
+
+  /* Para leer el estado del momento sin re-crear `volcarMinuta`. */
+  const ref = useRef(estado)
+  ref.current = estado
 
   const [indice, setIndice] = useState(SEGUIMIENTO)
   const [corriendo, setCorriendo] = useState(false)
@@ -57,6 +71,63 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
   const [notas, setNotas] = useState('')
   const [nuevaTarea, setNuevaTarea] = useState(false)
   const [confirmarCierre, setConfirmarCierre] = useState(false)
+
+  /* El botón de la cabecera abre este mismo diálogo. */
+  useEffect(() => {
+    if (pidiendoCierre) setConfirmarCierre(true)
+  }, [pidiendoCierre])
+
+  const cerrarDialogo = () => {
+    setConfirmarCierre(false)
+    onCierreAtendido?.()
+  }
+
+  /*
+   * Lo que propuso la IA entra como borrador: la conclusión de cada
+   * tema en su tema y el resto en la minuta, que es donde se revisa.
+   * Nada se da por bueno solo —de ahí `sugerida`—: quien modera lo
+   * lee antes de generar.
+   *
+   * Se emparejan por id cuando el modelo lo devolvió, y por título
+   * cuando no: es un modelo escuchando, no un formulario.
+   */
+  const volcarMinuta = useCallback(
+    (m: MinutaSugerida, transcripcion: string) => {
+      const deLaAgenda = agendaDe(ref.current, reunion.id)
+      for (const propuesta of m.porTema) {
+        const suyo =
+          deLaAgenda.find((t) => t.id === propuesta.temaId) ??
+          deLaAgenda.find(
+            (t) => t.titulo.trim().toLowerCase() === propuesta.titulo.trim().toLowerCase(),
+          )
+        if (!suyo || !propuesta.conclusion.trim()) continue
+        // Lo que ya escribió una persona gana: la IA no pisa notas.
+        if (suyo.conclusiones?.trim()) continue
+        void actualizarTema(suyo.id, { conclusiones: propuesta.conclusion.trim() })
+      }
+
+      const pasos = m.proximosPasos
+        .filter((p) => p.accion.trim())
+        .map((p) => `· ${p.accion.trim()}${p.responsable ? ` — ${p.responsable}` : ''}${
+          p.fechaLimite ? ` (${p.fechaLimite})` : ''
+        }`)
+
+      const observaciones = [
+        m.observaciones?.trim(),
+        pasos.length ? `Tareas que se escucharon en la reunión:\n${pasos.join('\n')}` : '',
+        `Transcripción de la grabación:\n${transcripcion.trim()}`,
+      ]
+        .filter(Boolean)
+        .join('\n\n')
+
+      void actualizarReunion(reunion.id, {
+        conclusionesGenerales:
+          reunion.conclusionesGenerales?.trim() || m.conclusionesGenerales.trim() || undefined,
+        observaciones: observaciones || undefined,
+      })
+    },
+    [reunion, actualizarTema, actualizarReunion],
+  )
 
   const tema = indice >= 0 ? agenda[indice] : undefined
   const moderador = puedeModerar(reunion)
@@ -108,20 +179,17 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
 
   return (
     <div className="space-y-5">
-      {/* ── Cabecera en vivo ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="pulse-dot h-2 w-2 rounded-full bg-signal" />
-          <span className="font-semibold text-[11px] uppercase tracking-[0.16em] text-signal">
-            Reunión en curso
-          </span>
-        </div>
-        {moderador && (
-          <Boton tam="sm" variante="solido" onClick={() => setConfirmarCierre(true)}>
-            <Square size={11} /> Cerrar y generar minuta
-          </Boton>
-        )}
+      {/* ── Cabecera en vivo ──
+          Sin el botón de cerrar: vive en la cabecera de la reunión,
+          donde se ve desde las tres pestañas y no aparece dos veces. */}
+      <div className="flex items-center gap-2">
+        <span className="pulse-dot h-2 w-2 rounded-full bg-signal" />
+        <span className="label text-signal">Reunión en curso</span>
       </div>
+
+      {/* ── Grabación ──
+          Sólo si el servicio está configurado; si no, no se dibuja. */}
+      {moderador && <Grabadora reunion={reunion} onMinuta={volcarMinuta} />}
 
       {/* ── Recorrido ──
           El seguimiento primero, después los temas con su título a la
@@ -183,7 +251,7 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
               <div className="flex flex-wrap items-start justify-between gap-4 border-b border-borde p-5">
                 <div className="min-w-0">
                   <h2 className="text-xl leading-snug sm:text-2xl">{tema.titulo}</h2>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-tenue">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-meta text-tenue">
                     <span
                       className="inline-block h-1.5 w-1.5 rounded-full"
                       style={{ background: IMPORTANCIA[tema.importancia].hex }}
@@ -249,7 +317,7 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
                 </div>
 
                 {delTema.length === 0 ? (
-                  <p className="text-xs text-tenue">
+                  <p className="text-meta text-tenue">
                     Todavía no hay ninguna. ¿Quién queda a cargo de qué?
                   </p>
                 ) : (
@@ -280,7 +348,7 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
                 onChange={(e) => setNotas(e.target.value)}
                 placeholder={OBJETIVOS[tema.objetivo].ejemploConclusion}
               />
-              <div className="mt-2 text-xs text-tenue">Se guarda solo mientras escribís</div>
+              <div className="mt-2 text-meta text-tenue">Se guarda solo mientras escribís</div>
             </div>
 
             {/* Navegación */}
@@ -288,7 +356,7 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
               <Boton onClick={() => guardarYSaltar(indice - 1)} disabled={indice < 0}>
                 <ChevronLeft size={13} /> Anterior
               </Boton>
-              <span className="text-xs text-tenue">
+              <span className="text-meta text-tenue">
                 {conNotas} de {agenda.length} con notas ·{' '}
                 {compromisosDe(estado, reunion.id).length} tareas
               </span>
@@ -319,11 +387,11 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
         titulo="Cerrar y generar minuta"
         texto={`Se arma el borrador de la minuta con ${agenda.length} temas y ${compromisosDe(estado, reunion.id).length} tareas. Vas a poder revisarlo entero antes de mandarlo.${
           agenda.length - conNotas > 0
-            ? ` Los ${agenda.length - conNotas} temas sin notas vuelven al temario de quien los propuso.`
+            ? ` Los ${agenda.length - conNotas} temas sin notas vuelven al bloc de notas de quien los propuso.`
             : ''
         }`}
         textoBoton="Cerrar y generar"
-        onCancelar={() => setConfirmarCierre(false)}
+        onCancelar={cerrarDialogo}
         onConfirmar={() => {
           if (tema) {
             void actualizarTema(tema.id, {
@@ -333,7 +401,7 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
           }
           // Sin correo: la minuta se manda al final, ya revisada.
           void cerrarReunion(reunion.id, false)
-          setConfirmarCierre(false)
+          cerrarDialogo()
         }}
       />
     </div>
@@ -351,7 +419,8 @@ export default function FaseVivo({ reunion }: { reunion: Reunion }) {
    ───────────────────────────────────────────────────────────── */
 
 function Seguimiento({ reunion }: { reunion: Reunion }) {
-  const { estado, moverCompromiso, asignarAReunion, puedeOrganizar } = useApp()
+  const { estado, moverCompromiso, asignarAReunion, organizoLa } = useApp()
+  const puedeOrganizar = organizoLa(reunion.salaId)
   const tareas = compromisosArrastrados(estado, reunion.id)
   const sinTratar = temasSinTratar(estado, reunion.salaId)
 
@@ -379,7 +448,7 @@ function Seguimiento({ reunion }: { reunion: Reunion }) {
                   />
                   <div className="min-w-0 flex-1">
                     <div className="text-sm leading-snug">{c.accion}</div>
-                    {c.avance && <p className="mt-1 text-xs text-suave">{c.avance}</p>}
+                    {c.avance && <p className="mt-1 text-meta text-suave">{c.avance}</p>}
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
                       <span className="text-tinta">{nombreDe(estado, c.responsableId)}</span>
                       <span className={estaVencido(c) ? 'text-signal' : ''}>
@@ -398,8 +467,8 @@ function Seguimiento({ reunion }: { reunion: Reunion }) {
                       aria-pressed={c.estado === s}
                       className={
                         c.estado === s
-                          ? 'border border-tinta bg-tinta px-3 py-1.5 font-semibold text-[10px] uppercase tracking-[0.12em] text-fondo'
-                          : 'border border-borde2 px-3 py-1.5 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
+                          ? 'border border-tinta bg-tinta px-3 py-1.5 font-semibold text-meta text-fondo'
+                          : 'border border-borde2 px-3 py-1.5 font-semibold text-meta text-suave transition-colors hover:border-suave hover:text-tinta'
                       }
                     >
                       {ESTADO_COMPROMISO[s].nombre}
@@ -422,7 +491,7 @@ function Seguimiento({ reunion }: { reunion: Reunion }) {
               <li key={t.id} className="flex flex-wrap items-center gap-3 p-4">
                 <Chip tono="amber">Sin tratar</Chip>
                 <span className="min-w-0 flex-1 text-sm">{t.titulo}</span>
-                <span className="text-xs text-tenue">{nombreDe(estado, t.propuestoPor)}</span>
+                <span className="text-meta text-tenue">{nombreDe(estado, t.propuestoPor)}</span>
                 {puedeOrganizar && (
                   <Boton tam="sm" onClick={() => asignarAReunion(t.id, reunion.id)}>
                     <Plus size={11} /> Incluir

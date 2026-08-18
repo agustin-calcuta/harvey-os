@@ -47,6 +47,10 @@ jobs:
           VITE_EMAILJS_TEMPLATE_ID: ${{ secrets.VITE_EMAILJS_TEMPLATE_ID }}
           VITE_EMAILJS_PUBLIC_KEY: ${{ secrets.VITE_EMAILJS_PUBLIC_KEY }}
           VITE_EMAIL_ENDPOINT: ${{ secrets.VITE_EMAIL_ENDPOINT }}
+          # Transcripción y resumen: la URL del Worker de worker/.
+          VITE_IA_ENDPOINT: ${{ secrets.VITE_IA_ENDPOINT }}
+          # Google Calendar. El client_id es público por diseño.
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
         run: npm run build
 
       - name: Evitar que Pages procese el build con Jekyll

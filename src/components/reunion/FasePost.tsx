@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Download, Mail, Pencil, Plus, RotateCcw, Send, Trash2 } from 'lucide-react'
+import {
+  Check,
+  Download,
+  FileCheck,
+  Mail,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Send,
+  Trash2,
+} from 'lucide-react'
 import { useApp } from '../../store/AppContext'
 import { generarMinutaPDF } from '../../lib/pdf'
 import { correoMinuta } from '../../lib/email'
@@ -42,6 +52,11 @@ import ModalCompromiso from './ModalCompromiso'
    antes hay que pasar por todo: "me debería obligar a ver todo
    esto, como un supermercado que te obliga a pasar por todo, y
    recién cuando llego acá la podés descargar o enviar".
+
+   Y al final, un solo botón: **generar**. Recién después aparecen
+   descargar y enviar. Es el orden del comprobante del banco —"que
+   la acción principal sea generar la minuta, y después ofrecer las
+   opciones"—: mientras tanto son un borrador, no una minuta.
 
    Los pendientes de reuniones anteriores dejaron de ser una
    sección aparte —"esto tiene que volar todo, confunde"—: las
@@ -87,6 +102,14 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
   const [porBorrar, setPorBorrar] = useState<Compromiso | undefined>()
   const [verCorreo, setVerCorreo] = useState(false)
   const [confirmarEnvio, setConfirmarEnvio] = useState(false)
+  /*
+   * Una minuta ya emitida no se vuelve a "generar": si alguna vez
+   * salió por correo, la pantalla abre directamente con las opciones.
+   */
+  const yaSalio = estado.notificaciones.some(
+    (n) => n.reunionId === reunion.id && n.tipo === 'minuta',
+  )
+  const [generada, setGenerada] = useState(yaSalio)
 
   /* ── El recorrido obligatorio ── */
   const [vistos, setVistos] = useState<Set<PasoId>>(new Set())
@@ -147,8 +170,8 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
             onClick={() => irA(p.id)}
             className={
               vistos.has(p.id)
-                ? 'flex flex-1 items-center justify-center gap-2 bg-panel px-3 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-acid'
-                : 'flex flex-1 items-center justify-center gap-2 bg-panel px-3 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:text-tinta'
+                ? 'flex flex-1 items-center justify-center gap-2 bg-panel px-3 py-3 text-meta font-semibold text-acid'
+                : 'flex flex-1 items-center justify-center gap-2 bg-panel px-3 py-3 text-meta font-semibold text-suave transition-colors hover:text-tinta'
             }
           >
             {vistos.has(p.id) ? (
@@ -230,7 +253,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-3">
-                      <span className="font-semibold text-xs text-tenue">
+                      <span className="font-semibold text-meta text-tenue">
                         {String(i + 1).padStart(2, '0')}
                       </span>
                       <h4 className="text-base">{t.titulo}</h4>
@@ -244,7 +267,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
                     </div>
                   </div>
                   {t.duracionRealSeg ? (
-                    <div className="shrink-0 text-right font-semibold text-xs text-suave">
+                    <div className="shrink-0 text-right font-semibold text-meta text-suave">
                       {mmss(t.duracionRealSeg)}
                     </div>
                   ) : null}
@@ -316,7 +339,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
                       <span className="font-semibold text-[9px] uppercase tracking-[0.16em] text-suave">
                         Siguen abiertas de reuniones anteriores
                       </span>
-                      <span className="ml-2 text-[10px] text-tenue">
+                      <span className="ml-2 text-meta text-tenue">
                         Tildá las que quieras sumar al PDF
                       </span>
                     </td>
@@ -366,20 +389,34 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
 
       {/* ── El cierre ── */}
       <BarraFlotante>
-        <span className="mr-auto text-xs text-suave">
-          {listo
-            ? 'Recorriste toda la minuta.'
-            : `Falta mirar: ${faltan.map((p) => p.nombre.toLowerCase()).join(', ')}.`}
-        </span>
-        <Boton
-          disabled={!listo}
-          onClick={() => generarMinutaPDF(estado, reunion, { pendientesIncluidos: [...enElPDF] })}
-        >
-          <Download size={13} /> Descargar
-        </Boton>
-        <Boton variante="solido" disabled={!listo} onClick={() => setConfirmarEnvio(true)}>
-          <Send size={13} /> Enviar minuta
-        </Boton>
+        {generada ? (
+          <>
+            <span className="mr-auto text-meta text-suave">
+              Minuta generada. Descargala o mandala a los participantes.
+            </span>
+            <Boton
+              onClick={() =>
+                generarMinutaPDF(estado, reunion, { pendientesIncluidos: [...enElPDF] })
+              }
+            >
+              <Download size={13} /> Descargar
+            </Boton>
+            <Boton variante="destacado" onClick={() => setConfirmarEnvio(true)}>
+              <Send size={13} /> Enviar minuta
+            </Boton>
+          </>
+        ) : (
+          <>
+            <span className="mr-auto text-meta text-suave">
+              {listo
+                ? 'Recorriste toda la minuta. Ya se puede generar.'
+                : `Falta mirar: ${faltan.map((p) => p.nombre.toLowerCase()).join(', ')}.`}
+            </span>
+            <Boton variante="destacado" disabled={!listo} onClick={() => setGenerada(true)}>
+              <FileCheck size={13} /> Generar minuta
+            </Boton>
+          </>
+        )}
       </BarraFlotante>
 
       {/* ── Modales ── */}
@@ -463,16 +500,16 @@ function Fila({
           )}
           <div>
             <div>{c.accion}</div>
-            {c.detalle && <div className="mt-0.5 text-xs text-tenue">{c.detalle}</div>}
+            {c.detalle && <div className="mt-0.5 text-meta text-tenue">{c.detalle}</div>}
           </div>
         </div>
       </td>
-      <td className="p-3 text-xs text-suave">{nombreDe(estado, c.responsableId)}</td>
+      <td className="p-3 text-meta text-suave">{nombreDe(estado, c.responsableId)}</td>
       <td
         className={
           estaVencido(c)
             ? 'p-3 font-semibold text-xs text-signal'
-            : 'p-3 font-semibold text-xs text-suave'
+            : 'p-3 font-semibold text-meta text-suave'
         }
       >
         {fechaCorta(c.fechaLimite)}

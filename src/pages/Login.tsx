@@ -25,6 +25,12 @@ const VISTAS = [
     que: 'Propone temas, crea y sigue sus tareas, y pide entrar a las salas donde quiera participar.',
   },
   {
+    id: 'u_agencia',
+    sala: S_MARKETING,
+    nombre: 'Externo',
+    que: 'Un proveedor de siempre. Propone temas para que los apruebe el socio y ve sólo las tareas a su nombre.',
+  },
+  {
     id: 'u_superadmin',
     sala: S_GERENCIAL,
     nombre: 'Superadmin',
@@ -131,7 +137,7 @@ export default function Login() {
                       <div className="truncate text-sm">
                         {v.nombre}
                         {u.nombre !== v.nombre && (
-                          <span className="ml-2 text-[11px] text-tenue">{u.nombre}</span>
+                          <span className="ml-2 text-meta text-tenue">{u.nombre}</span>
                         )}
                       </div>
                       <div className="truncate text-[11px] leading-snug text-tenue">{v.que}</div>

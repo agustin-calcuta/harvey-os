@@ -10,6 +10,27 @@
    Los nombres son semánticos a propósito (fondo, panel, tinta) y
    no descriptivos: si alguna vez se invierte el esquema, cambian
    los valores acá y el resto de la aplicación no se toca.
+
+   ── Sobre el volumen ──────────────────────────────────────────
+   Ariel, dos reuniones seguidas: *"la app sigue gritando; todos
+   los títulos tienen la misma jerarquía"*. Tenía razón, y era
+   medible: había setenta y pico de `uppercase` repartidos por la
+   interfaz, un solo tamaño de titular usado para la pantalla y
+   para cada sección de adentro, y nada en el medio entre ese
+   titular de 30 px y el texto de 14.
+
+   Lo que se hizo, en orden de cuánto baja el volumen:
+
+   1. Las mayúsculas quedan para lo que es una **etiqueta**: el
+      `[ KICKER ]` de la marca y los chips de estado, de dos
+      palabras. Los botones y los títulos pasan a caja mixta —una
+      línea en mayúsculas se lee más lento, y puesta en todos
+      lados deja de destacar—.
+   2. Una escala de cinco pasos, del titular a la etiqueta, con un
+      escalón nuevo para los títulos de sección.
+   3. El rojo vuelve a significar algo: la acción principal de
+      cada pantalla y lo vencido. El resto de los botones sólidos
+      pasan a tinta.
    ───────────────────────────────────────────────────────────── */
 @theme {
   /* Superficies, de la más al fondo a la más cercana */
@@ -42,6 +63,25 @@
   --font-display: 'Almarai', 'Inter', sans-serif;
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /*
+   * La escala. Cinco pasos y ninguno más: el título de la pantalla,
+   * el de una sección, el de una tarjeta, el texto y la etiqueta.
+   * Que estén acá es lo que evita que aparezca un sexto tamaño
+   * puesto a mano en una pantalla suelta.
+   */
+  --text-titulo: 1.875rem;      /* 30px — uno por pantalla */
+  --text-titulo--line-height: 1.06;
+  --text-seccion: 1.25rem;      /* 20px — cada bloque de la pantalla */
+  --text-seccion--line-height: 1.2;
+  --text-tarjeta: 0.9375rem;    /* 15px — el encabezado de una tarjeta */
+  --text-tarjeta--line-height: 1.35;
+  --text-cuerpo: 0.875rem;      /* 14px */
+  --text-cuerpo--line-height: 1.55;
+  --text-meta: 0.75rem;         /* 12px — fechas, autores, contadores */
+  --text-meta--line-height: 1.4;
+  --text-etiqueta: 0.625rem;    /* 10px — kickers y chips, en mayúsculas */
+  --text-etiqueta--line-height: 1.2;
 }
 
 @layer base {
@@ -100,11 +140,27 @@
    * Titular de la marca: Almarai en su peso más alto y bien
    * apretado. Da el aire de cartel sin traer una condensada ajena
    * al sistema tipográfico de Harvey.
+   *
+   * Va **una vez por pantalla**, en el h1. Repetido en cada sección
+   * dejaba de ordenar y se volvía ruido: para eso está `.titulo`.
    */
   .display {
     font-family: var(--font-display);
     font-weight: 800;
     @apply uppercase tracking-[-0.02em] leading-[1.06];
+  }
+
+  /*
+   * El escalón que faltaba: título de una sección de la pantalla.
+   *
+   * Caja mixta y Almarai en un peso más bajo. Pesa lo suficiente
+   * para abrir un bloque y lo suficientemente poco para no competir
+   * con el titular de arriba.
+   */
+  .titulo {
+    font-family: var(--font-display);
+    font-weight: 700;
+    @apply text-seccion tracking-[-0.01em];
   }
 
   /* [ ETIQUETA ] — el recurso gráfico que usan en toda la web */
@@ -115,22 +171,20 @@
     content: ' ]';
   }
 
+  /* La etiqueta es lo único que sigue en mayúsculas por sistema. */
   .label {
-    @apply text-[10px] font-semibold uppercase tracking-[0.16em] text-suave;
+    @apply text-etiqueta font-semibold uppercase tracking-[0.16em] text-suave;
   }
 
   /*
-   * Encabezado de una sección interior.
-   *
-   * El `display` es para el título de la pantalla y nada más: puesto
-   * cinco veces en la misma página deja de ordenar y grita. Adentro
-   * alcanza con una línea de separación y un poco de peso.
+   * Encabezado de un bloque de adentro de una sección: un escalón
+   * por debajo de `.titulo`, con una línea que lo separa.
    */
   .subtitulo {
-    @apply mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-borde pb-2 text-sm;
+    @apply mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-borde pb-2 text-tarjeta font-semibold;
   }
   .subtitulo > .cuenta {
-    @apply text-xs text-tenue;
+    @apply text-meta font-normal text-tenue;
   }
 
   .card {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '../../store/AppContext'
-import { integrantes, paraInputDate } from '../../lib/utils'
+import { integrantes, paraInputDate, reunion as buscarReunion } from '../../lib/utils'
 import {
   ESTADO_COMPROMISO,
   IMPORTANCIA,
@@ -10,7 +10,13 @@ import {
 } from '../../types'
 import { Boton, Campo, Modal, Segmentado } from '../ui'
 
-/* Alta y edición de tareas: qué hay que hacer, quién y para cuándo. */
+/*
+ * Alta y edición de tareas: qué hay que hacer, quién y para cuándo.
+ *
+ * La sala sale de la reunión cuando la tarea nace en una; si nace
+ * suelta desde Tareas, se elige acá, porque ya no hay una sala activa
+ * de la que heredarla.
+ */
 
 export default function ModalCompromiso({
   abierto,
@@ -25,8 +31,15 @@ export default function ModalCompromiso({
   temaId?: string
   compromiso?: Compromiso
 }) {
-  const { estado, crearCompromiso, actualizarCompromiso, salaActiva } = useApp()
-  const gente = salaActiva ? integrantes(estado, salaActiva.id) : []
+  const { estado, crearCompromiso, actualizarCompromiso, salasDondeSoyDelEquipo: misSalas } =
+    useApp()
+
+  /* De la reunión, de la tarea que se edita, o la que se elija. */
+  const salaDeLaReunion = buscarReunion(estado, compromiso?.reunionId ?? reunionId)?.salaId
+  const salaFija = compromiso?.salaId ?? salaDeLaReunion
+  const [salaId, setSalaId] = useState(salaFija ?? misSalas[0]?.id ?? '')
+  const laSala = salaFija ?? salaId
+  const gente = laSala ? integrantes(estado, laSala) : []
 
   const [accion, setAccion] = useState('')
   const [detalle, setDetalle] = useState('')
@@ -39,6 +52,7 @@ export default function ModalCompromiso({
   const primero = gente[0]?.id
   useEffect(() => {
     if (!abierto) return
+    if (salaFija) setSalaId(salaFija)
     setAccion(compromiso?.accion ?? '')
     setDetalle(compromiso?.detalle ?? '')
     setResponsableId(compromiso?.responsableId ?? primero ?? '')
@@ -46,11 +60,12 @@ export default function ModalCompromiso({
     setImportancia(compromiso?.importancia ?? 'media')
     setEst(compromiso?.estado ?? 'pendiente')
     setAvance(compromiso?.avance ?? '')
-  }, [abierto, compromiso, primero])
+  }, [abierto, compromiso, primero, salaFija])
 
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault()
     const datos = {
+      salaId: laSala,
       reunionId: compromiso?.reunionId ?? reunionId,
       temaId: compromiso?.temaId ?? temaId,
       accion: accion.trim(),
@@ -75,6 +90,23 @@ export default function ModalCompromiso({
       titulo={compromiso ? 'Editar tarea' : 'Nueva tarea'}
     >
       <form onSubmit={enviar} className="space-y-5">
+        {!salaFija && misSalas.length > 1 && (
+          <Campo etiqueta="Sala" ayuda="De acá salen las personas que pueden quedar a cargo.">
+            <select
+              className="w-full"
+              value={salaId}
+              onChange={(e) => setSalaId(e.target.value)}
+              required
+            >
+              {misSalas.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre}
+                </option>
+              ))}
+            </select>
+          </Campo>
+        )}
+
         <Campo etiqueta="Qué hay que hacer">
           <input
             className="w-full"

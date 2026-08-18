@@ -32,9 +32,10 @@ export default function ModalTema({
   tema?: Tema
   entraDirecto?: boolean
 }) {
-  const { yo, estado, proponerTema, actualizarTema, puedeOrganizar } = useApp()
+  const { yo, estado, proponerTema, actualizarTema, organizoLa } = useApp()
   const sala = estado.salas.find((s) => s.id === salaId)
   const reunion = estado.reuniones.find((r) => r.id === reunionId)
+  const puedeOrganizar = organizoLa(salaId ?? reunion?.salaId)
   const gente = salaId ? integrantes(estado, salaId) : yo ? [yo] : []
 
   const [titulo, setTitulo] = useState('')
@@ -155,7 +156,7 @@ export default function ModalTema({
         {!tema && (
           <p className="border border-borde bg-hueco p-3 text-xs leading-relaxed text-suave">
             {alTemario
-              ? 'Queda en tu temario, sin sala y sin fecha. Sólo lo ves vos, y lo asignás a la reunión que quieras cuando quieras.'
+              ? 'Queda en tu bloc de notas, sin sala y sin fecha. Sólo lo ves vos, y lo asignás a la reunión que quieras cuando quieras.'
               : tarde
                 ? 'El temario de esta reunión ya se cerró, pero el tema entra igual: se suma al final y el que modera decide si se llega a hablar.'
                 : entraDirecto
@@ -172,7 +173,7 @@ export default function ModalTema({
             {tema
               ? 'Guardar'
               : alTemario
-                ? 'Guardar en mi temario'
+                ? 'Guardar en mi bloc'
                 : entraDirecto
                   ? 'Agregar a la agenda'
                   : 'Proponer tema'}

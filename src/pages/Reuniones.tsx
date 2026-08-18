@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CalendarPlus, Lock, Plus, Search, UserPlus, X } from 'lucide-react'
 import { useApp } from '../store/AppContext'
@@ -14,10 +14,20 @@ import {
   nombreDe,
   paraInputDateTime,
   proximasReuniones,
+  sala,
   temasDe,
 } from '../lib/utils'
 import { ESTADO_REUNION, RECURRENCIAS, type Recurrencia, type Reunion } from '../types'
 import { Avatares, Boton, Campo, Chip, Modal, Seccion, Vacio } from '../components/ui'
+import {
+  BarraFiltros,
+  FiltroFecha,
+  FiltroSala,
+  RANGO_INICIAL,
+  enRango,
+  textoRango,
+  type Rango,
+} from '../components/Filtros'
 
 /* ─────────────────────────────────────────────────────────────
    Reuniones.
@@ -26,12 +36,18 @@ import { Avatares, Boton, Campo, Chip, Modal, Seccion, Vacio } from '../componen
    reuniones y reuniones que ya ocurrieron". De una serie que se
    repite se muestra sólo la primera, y el historial se recorre
    como un extracto, con un buscador que entra en las minutas.
+
+   Trae todas mis salas de entrada, y el buscador también: "que
+   el buscador abarque todas las salas y que se vea de cuál sale
+   cada minuta". Después se filtra por sala y por fecha.
    ───────────────────────────────────────────────────────────── */
 
 type Vista = 'proximas' | 'historial'
 
 export default function Reuniones() {
-  const { estado, yo, salaActiva, misSalas } = useApp()
+  const { estado, yo, misSalas, salasDondeSoyDelEquipo } = useApp()
+  /* El externo participa de las reuniones a las que lo convocan; no las arma. */
+  const puedeCrearReuniones = salasDondeSoyDelEquipo.length > 0
   const [params, setParams] = useSearchParams()
 
   const [vista, setVista] = useState<Vista>(
@@ -39,7 +55,8 @@ export default function Reuniones() {
   )
   const [creando, setCreando] = useState(params.get('nueva') === '1')
   const [busqueda, setBusqueda] = useState('')
-  const [soloEstaSala, setSoloEstaSala] = useState(true)
+  const [salaFiltro, setSalaFiltro] = useState('todas')
+  const [rango, setRango] = useState<Rango>(RANGO_INICIAL)
 
   /* El panel entra acá con la vista ya elegida. */
   useEffect(() => {
@@ -50,24 +67,42 @@ export default function Reuniones() {
     }
   }, [params, setParams])
 
-  const salaFiltro = soloEstaSala ? salaActiva?.id : undefined
-  const proximas = proximasReuniones(estado, yo, salaFiltro)
-  const historial = historialReuniones(estado, yo, salaFiltro)
+  /*
+   * El historial mira para atrás, así que "de hoy en adelante" lo
+   * dejaría vacío: ahí el filtro de fecha arranca sin recorte y el
+   * usuario elige si quiere la última semana o el último mes.
+   */
+  const rangoHistorial = useMemo<Rango>(
+    () => (rango.periodo === 'adelante' ? { periodo: 'todo' } : rango),
+    [rango],
+  )
+
+  const unaSala = salaFiltro === 'todas' ? undefined : salaFiltro
+  const proximas = proximasReuniones(estado, yo, unaSala).filter((r) => enRango(r.fecha, rango))
+  const historial = historialReuniones(estado, yo, unaSala).filter((r) =>
+    enRango(r.fecha, rangoHistorial),
+  )
   const coincidencias = useMemo(
-    () => buscarEnMinutas(estado, busqueda, yo, salaFiltro),
-    [estado, busqueda, yo, salaFiltro],
+    () =>
+      buscarEnMinutas(estado, busqueda, yo, unaSala).filter((c) =>
+        enRango(c.reunion.fecha, rangoHistorial),
+      ),
+    [estado, busqueda, yo, unaSala, rangoHistorial],
   )
   const enBusqueda = busqueda.trim().length >= 2
 
   return (
     <div className="space-y-6">
       <Seccion
-        kicker={salaActiva?.nombre ?? 'Agenda del equipo'}
+        kicker="Agenda de mis equipos"
         titulo="Reuniones"
+        principal
         acciones={
-          <Boton variante="solido" onClick={() => setCreando(true)}>
-            <Plus size={13} /> Crear reunión
-          </Boton>
+          puedeCrearReuniones ? (
+            <Boton variante="destacado" onClick={() => setCreando(true)}>
+              <Plus size={13} /> Crear reunión
+            </Boton>
+          ) : undefined
         }
       >
         {/* ── Próximas / Historial ── */}
@@ -85,33 +120,43 @@ export default function Reuniones() {
               onClick={() => setVista(v)}
               className={
                 vista === v
-                  ? 'border border-tinta bg-tinta px-4 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-fondo'
-                  : 'border border-borde2 px-4 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
+                  ? 'border border-tinta bg-tinta px-4 py-2 font-semibold text-meta text-fondo'
+                  : 'border border-borde2 px-4 py-2 font-semibold text-meta text-suave transition-colors hover:border-suave hover:text-tinta'
               }
             >
               {texto}
             </button>
           ))}
-          {misSalas.length > 1 && (
-            <button
-              onClick={() => setSoloEstaSala((v) => !v)}
-              className="ml-auto border border-borde2 px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta"
-            >
-              {soloEstaSala ? 'Ver todas mis salas' : `Sólo ${salaActiva?.nombre ?? 'esta sala'}`}
-            </button>
-          )}
         </div>
+
+        <BarraFiltros>
+          <FiltroSala valor={salaFiltro} onChange={setSalaFiltro} salas={misSalas} />
+          <FiltroFecha
+            valor={vista === 'historial' ? rangoHistorial : rango}
+            onChange={setRango}
+          />
+        </BarraFiltros>
 
         {vista === 'proximas' ? (
           proximas.length === 0 ? (
             <Vacio
               titulo="No hay reuniones a la vista"
-              texto="Creá la próxima para que el equipo empiece a cargar temas."
+              texto={
+                rango.periodo !== 'adelante' || salaFiltro !== 'todas'
+                  ? `Ninguna reunión ${textoRango(rango)}${
+                      salaFiltro === 'todas' ? '' : ' en esa sala'
+                    }. Probá ampliando los filtros.`
+                  : puedeCrearReuniones
+                    ? 'Creá la próxima para que el equipo empiece a cargar temas.'
+                    : 'Cuando te convoquen a una, la vas a ver acá.'
+              }
               icono={<CalendarPlus size={32} />}
               accion={
-                <Boton variante="solido" onClick={() => setCreando(true)}>
-                  <Plus size={13} /> Crear reunión
-                </Boton>
+                puedeCrearReuniones ? (
+                  <Boton variante="destacado" onClick={() => setCreando(true)}>
+                    <Plus size={13} /> Crear reunión
+                  </Boton>
+                ) : undefined
               }
             />
           ) : (
@@ -156,7 +201,7 @@ export default function Reuniones() {
                 />
               ) : (
                 <>
-                  <p className="text-xs text-suave">
+                  <p className="text-meta text-suave">
                     {coincidencias.length}{' '}
                     {coincidencias.length === 1 ? 'minuta menciona' : 'minutas mencionan'} «
                     {busqueda.trim()}».
@@ -171,7 +216,13 @@ export default function Reuniones() {
             ) : historial.length === 0 ? (
               <Vacio
                 titulo="Todavía no hay historial"
-                texto="Acá van a quedar todas las reuniones cerradas, de la más nueva a la más vieja."
+                texto={
+                  rangoHistorial.periodo === 'todo' && salaFiltro === 'todas'
+                    ? 'Acá van a quedar todas las reuniones cerradas, de la más nueva a la más vieja.'
+                    : `Ninguna reunión cerrada ${textoRango(rangoHistorial)}${
+                        salaFiltro === 'todas' ? '' : ' en esa sala'
+                      }.`
+                }
                 icono={<CalendarPlus size={32} />}
               />
             ) : (
@@ -182,14 +233,14 @@ export default function Reuniones() {
                       to={`/reuniones/${r.id}`}
                       className="flex flex-wrap items-center gap-x-4 gap-y-1 p-4 transition-colors hover:bg-hueco"
                     >
-                      <span className="w-20 shrink-0 font-semibold text-[11px] text-tenue">
+                      <span className="w-20 shrink-0 font-semibold text-meta text-tenue">
                         {fechaCorta(r.fecha)}
                       </span>
                       <span className="min-w-0 flex-1 basis-[60%] truncate text-sm sm:basis-auto">
                         {r.titulo}
                       </span>
-                      {!soloEstaSala && (
-                        <span className="text-xs text-tenue">
+                      {salaFiltro === 'todas' && (
+                        <span className="text-meta text-tenue">
                           {estado.salas.find((s) => s.id === r.salaId)?.nombre}
                         </span>
                       )}
@@ -225,6 +276,7 @@ function Fila({ reunion: r, donde }: { reunion: Reunion; donde?: string[] }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex flex-wrap items-center gap-2">
+            <Chip>{sala(estado, r.salaId)?.nombre ?? 'Sin sala'}</Chip>
             <Chip
               tono={
                 r.estado === 'en_curso'
@@ -252,7 +304,7 @@ function Fila({ reunion: r, donde }: { reunion: Reunion; donde?: string[] }) {
             {r.titulo}
           </h3>
 
-          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-suave">
+          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-suave">
             <span>
               {fechaLarga(r.fecha)} · {hora(r.fecha)}
             </span>
@@ -261,7 +313,7 @@ function Fila({ reunion: r, donde }: { reunion: Reunion; donde?: string[] }) {
           </div>
 
           {donde && donde.length > 0 && (
-            <p className="mt-2 text-xs text-tenue">Aparece en: {donde.slice(0, 3).join(' · ')}</p>
+            <p className="mt-2 text-meta text-tenue">Aparece en: {donde.slice(0, 3).join(' · ')}</p>
           )}
         </div>
 
@@ -289,12 +341,22 @@ function Fila({ reunion: r, donde }: { reunion: Reunion; donde?: string[] }) {
 
 const OTRO = '__otro__'
 
+/**
+ * Alta de reunión.
+ *
+ * Con el selector de sala fuera de la barra lateral, la sala es lo
+ * primero que se elige acá: de ella salen los participantes, los
+ * lugares habituales y la duración de siempre.
+ */
 function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {
-  const { estado, crearReunion, asegurarPersona, salaActiva, yo } = useApp()
+  const { estado, crearReunion, asegurarPersona, salasDondeSoyDelEquipo: misSalas, yo } = useApp()
   const navegar = useNavigate()
 
-  const gente = salaActiva ? integrantes(estado, salaActiva.id) : []
-  const lugares = lugaresDe(estado, salaActiva?.id)
+  const [salaId, setSalaId] = useState(misSalas[0]?.id ?? '')
+  const laSala = misSalas.find((s) => s.id === salaId) ?? misSalas[0]
+
+  const gente = laSala ? integrantes(estado, laSala.id) : []
+  const lugares = lugaresDe(estado, laSala?.id)
 
   const proximoLunes = () => {
     const d = new Date()
@@ -303,10 +365,9 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
     return paraInputDateTime(d.toISOString())
   }
 
-  const siguiente = estado.reuniones.filter((r) => r.salaId === salaActiva?.id).length + 1
-  const [titulo, setTitulo] = useState(`${salaActiva?.nombre ?? 'Reunión'} · #${siguiente}`)
+  const [titulo, setTitulo] = useState('')
   const [fecha, setFecha] = useState(proximoLunes())
-  const [duracion, setDuracion] = useState(salaActiva?.duracionReunionDefaultMin ?? 60)
+  const [duracion, setDuracion] = useState(laSala?.duracionReunionDefaultMin ?? 60)
   const [lugar, setLugar] = useState(lugares[0] ?? OTRO)
   const [otroLugar, setOtroLugar] = useState('')
   const [moderadorId, setModeradorId] = useState(yo?.id ?? gente[0]?.id ?? '')
@@ -318,6 +379,23 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
   const [sumandoInvitado, setSumandoInvitado] = useState(false)
   const [nuevoNombre, setNuevoNombre] = useState('')
   const [nuevoEmail, setNuevoEmail] = useState('')
+
+  /*
+   * Al abrir, y cada vez que se cambia de sala, se rearma lo que
+   * depende de ella: el título numerado, la duración y el lugar. El
+   * título se respeta si ya lo escribieron a mano.
+   */
+  const sugerido = laSala
+    ? `${laSala.nombre} · #${estado.reuniones.filter((r) => r.salaId === laSala.id).length + 1}`
+    : ''
+  const tituloPropio = useRef(false)
+  useEffect(() => {
+    if (!abierto || !laSala) return
+    if (!tituloPropio.current) setTitulo(sugerido)
+    setDuracion(laSala.duracionReunionDefaultMin)
+    setLugar(lugaresDe(estado, laSala.id)[0] ?? OTRO)
+    setParticipantes([])
+  }, [abierto, laSala, sugerido, estado])
 
   const alternar = (id: string) =>
     setParticipantes((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
@@ -340,6 +418,7 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
       if (persona && !ids.includes(persona.id)) ids.push(persona.id)
     }
     const r = await crearReunion({
+      salaId: laSala?.id,
       titulo,
       fecha: new Date(fecha).toISOString(),
       duracionPrevistaMin: duracion,
@@ -357,11 +436,31 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
   return (
     <Modal abierto={abierto} onCerrar={onCerrar} titulo="Crear reunión">
       <form onSubmit={enviar} className="space-y-4">
+        {misSalas.length > 1 && (
+          <Campo etiqueta="Sala" ayuda="De acá salen los participantes y los lugares de siempre.">
+            <select
+              className="w-full"
+              value={salaId}
+              onChange={(e) => setSalaId(e.target.value)}
+              required
+            >
+              {misSalas.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre}
+                </option>
+              ))}
+            </select>
+          </Campo>
+        )}
+
         <Campo etiqueta="Título">
           <input
             className="w-full"
             value={titulo}
-            onChange={(e) => setTitulo(e.target.value)}
+            onChange={(e) => {
+              tituloPropio.current = true
+              setTitulo(e.target.value)
+            }}
             required
           />
         </Campo>
@@ -432,8 +531,8 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
                 onClick={() => setRecurrencia(r)}
                 className={
                   recurrencia === r
-                    ? 'border border-tinta bg-tinta px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-fondo'
-                    : 'border border-borde2 px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
+                    ? 'border border-tinta bg-tinta px-3 py-2 font-semibold text-meta text-fondo'
+                    : 'border border-borde2 px-3 py-2 font-semibold text-meta text-suave transition-colors hover:border-suave hover:text-tinta'
                 }
               >
                 {RECURRENCIAS[r].nombre}
@@ -457,7 +556,7 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
                 className={
                   participantes.includes(u.id)
                     ? 'flex items-center gap-2 border border-tinta/60 bg-hueco px-3 py-2 text-left text-xs'
-                    : 'flex items-center gap-2 border border-borde px-3 py-2 text-left text-xs text-suave transition-colors hover:border-suave'
+                    : 'flex items-center gap-2 border border-borde px-3 py-2 text-left text-meta text-suave transition-colors hover:border-suave'
                 }
               >
                 <span
@@ -513,7 +612,7 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
             <button
               type="button"
               onClick={() => setSumandoInvitado(true)}
-              className="mt-2 flex items-center gap-1.5 border border-dashed border-borde2 px-3 py-2 font-semibold text-[10px] uppercase tracking-[0.12em] text-suave transition-colors hover:border-signal hover:text-signal"
+              className="mt-2 flex items-center gap-1.5 border border-dashed border-borde2 px-3 py-2 font-semibold text-meta text-suave transition-colors hover:border-signal hover:text-signal"
             >
               <UserPlus size={12} /> Sumar a alguien de afuera
             </button>

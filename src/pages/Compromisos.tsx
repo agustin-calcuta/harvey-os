@@ -29,6 +29,7 @@ import {
   integrantes,
   nombreDe,
   relativo,
+  sala,
   venceProximo,
 } from '../lib/utils'
 import {
@@ -36,10 +37,12 @@ import {
   ESTADO_COMPROMISO,
   IMPORTANCIA,
   type Compromiso,
+  type Estado,
   type EstadoCompromiso,
   type Importancia,
 } from '../types'
-import { Avatar, Boton, Chip, Etiqueta, Seccion, Vacio } from '../components/ui'
+import { Avatar, Boton, Chip, Etiqueta, Seccion, SelectorVista, Vacio } from '../components/ui'
+import { BarraFiltros, FiltroFecha, FiltroSala, enRango, type Rango } from '../components/Filtros'
 import { generarPendientesPDF } from '../lib/pdf'
 import ModalCompromiso from '../components/reunion/ModalCompromiso'
 
@@ -53,13 +56,17 @@ import ModalCompromiso from '../components/reunion/ModalCompromiso'
    Quien no organiza ve solamente lo suyo: "acá no debería existir
    el filtro de todos los responsables; solo veo las mías". El
    filtro por persona aparece únicamente para quien conduce el
-   equipo.
+   equipo, y ahora sala por sala: puedo conducir una y ser uno más
+   en otra.
+
+   Trae todas mis salas juntas. El filtro de fecha arranca sin
+   recorte a propósito: una tarea vencida tiene fecha vieja, y
+   esconder justo lo atrasado sería lo peor que puede hacer esta
+   pantalla.
    ───────────────────────────────────────────────────────────── */
 
 type Vista = 'tablero' | 'lista'
 type Agrupacion = 'responsable' | 'reunion' | 'vencimiento'
-/** Recorte por plazo. Los tres son excluyentes entre sí. */
-type Plazo = 'todos' | 'vencidos' | 'semana'
 
 const CLAVE_VISTA = 'harvey-os:vista-compromisos'
 
@@ -70,8 +77,15 @@ const AGRUPACIONES: { valor: Agrupacion; texto: string }[] = [
 ]
 
 export default function Compromisos() {
-  const { estado, yo, moverCompromiso, compromisosVisibles, puedeOrganizar, salaActiva } = useApp()
-  const gente = salaActiva ? integrantes(estado, salaActiva.id) : []
+  const {
+    estado,
+    yo,
+    moverCompromiso,
+    compromisosVisibles,
+    puedeOrganizar,
+    misSalas,
+    salasDondeSoyDelEquipo,
+  } = useApp()
 
   // Las métricas del panel entran acá con el filtro ya puesto.
   const [params] = useSearchParams()
@@ -88,8 +102,10 @@ export default function Compromisos() {
    */
   const [responsable, setResponsable] = useState<string>(yo?.id ?? 'todos')
   const [importancia, setImportancia] = useState<Importancia | 'todas'>('todas')
-  const [plazo, setPlazo] = useState<Plazo>(
-    filtroInicial === 'vencidos' ? 'vencidos' : filtroInicial === 'semana' ? 'semana' : 'todos',
+  const [soloVencidas, setSoloVencidas] = useState(filtroInicial === 'vencidos')
+  const [salaFiltro, setSalaFiltro] = useState('todas')
+  const [rango, setRango] = useState<Rango>(() =>
+    filtroInicial === 'semana' ? { periodo: 'proximaSemana' } : { periodo: 'todo' },
   )
   const [incluirHechos, setIncluirHechos] = useState(filtroInicial !== 'abiertos')
   const [busqueda, setBusqueda] = useState('')
@@ -107,31 +123,46 @@ export default function Compromisos() {
    * llega otro `?filtro=`, hay que reaplicarlo a mano.
    */
   useEffect(() => {
-    setPlazo(
-      filtroInicial === 'vencidos' ? 'vencidos' : filtroInicial === 'semana' ? 'semana' : 'todos',
-    )
+    setSoloVencidas(filtroInicial === 'vencidos')
+    setRango(filtroInicial === 'semana' ? { periodo: 'proximaSemana' } : { periodo: 'todo' })
     setIncluirHechos(filtroInicial !== 'abiertos')
     if (filtroInicial === 'equipo') setResponsable('todos')
     else if (yo) setResponsable(yo.id)
   }, [filtroInicial, yo])
 
+  /* El filtro por persona ofrece a todos los de las salas que se miran. */
+  const gente = useMemo(() => {
+    const salas = salaFiltro === 'todas' ? misSalas.map((s) => s.id) : [salaFiltro]
+    const vistos = new Map<string, (typeof estado.usuarios)[number]>()
+    for (const sId of salas) for (const u of integrantes(estado, sId)) vistos.set(u.id, u)
+    return [...vistos.values()].sort((a, b) => a.nombre.localeCompare(b.nombre))
+  }, [estado, misSalas, salaFiltro])
+
+  const deLasSalas = useMemo(
+    () =>
+      salaFiltro === 'todas'
+        ? compromisosVisibles
+        : compromisosVisibles.filter((c) => c.salaId === salaFiltro),
+    [compromisosVisibles, salaFiltro],
+  )
+
   const soloMias = responsable === yo?.id
-  const propias = compromisosVisibles.filter((c) => c.responsableId === yo?.id)
+  const propias = deLasSalas.filter((c) => c.responsableId === yo?.id)
   /* El alcance de las cifras acompaña a lo que se está mirando. */
-  const alcance = soloMias ? propias : compromisosVisibles
+  const alcance = soloMias ? propias : deLasSalas
 
   const filtrados = useMemo(
     () =>
-      compromisosVisibles.filter((c) => {
+      deLasSalas.filter((c) => {
         if (responsable !== 'todos' && c.responsableId !== responsable) return false
         if (importancia !== 'todas' && c.importancia !== importancia) return false
-        if (plazo === 'vencidos' && !estaVencido(c)) return false
-        if (plazo === 'semana' && !venceProximo(c)) return false
+        if (soloVencidas && !estaVencido(c)) return false
+        if (!enRango(c.fechaLimite, rango)) return false
         if (!incluirHechos && c.estado === 'hecho') return false
         if (busqueda && !c.accion.toLowerCase().includes(busqueda.toLowerCase())) return false
         return true
       }),
-    [compromisosVisibles, responsable, importancia, plazo, incluirHechos, busqueda],
+    [deLasSalas, responsable, importancia, soloVencidas, rango, incluirHechos, busqueda],
   )
 
   const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
@@ -151,41 +182,37 @@ export default function Compromisos() {
 
   const botonFiltro = (activo: boolean) =>
     activo
-      ? 'border border-tinta bg-tinta px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-fondo'
-      : 'border border-borde2 bg-panel px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave transition-colors hover:border-suave hover:text-tinta'
+      ? 'border border-tinta bg-tinta px-3 py-2 text-meta font-semibold text-fondo'
+      : 'border border-borde2 bg-panel px-3 py-2 text-meta font-semibold text-suave transition-colors hover:border-suave hover:text-tinta'
 
   return (
     <div className="space-y-6">
       <Seccion
         titulo="Tareas"
+        principal
         acciones={
           <>
-            <div className="flex border border-borde2">
-              {(
-                [
-                  ['tablero', LayoutGrid, 'Tablero'],
-                  ['lista', List, 'Lista'],
-                ] as const
-              ).map(([v, Icono, texto]) => (
-                <button
-                  key={v}
-                  onClick={() => cambiarVista(v)}
-                  className={cx(
-                    'flex items-center gap-2 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors',
-                    vista === v ? 'bg-tinta text-fondo' : 'bg-panel text-suave hover:text-tinta',
-                  )}
-                >
-                  <Icono size={12} />
-                  {texto}
-                </button>
-              ))}
-            </div>
-            <Boton variante="solido" onClick={() => setCreando(true)}>
-              <Plus size={13} /> Nueva tarea
-            </Boton>
+            <SelectorVista
+              valor={vista}
+              onChange={cambiarVista}
+              opciones={[
+                { valor: 'tablero', icono: LayoutGrid, texto: 'Tablero' },
+                { valor: 'lista', icono: List, texto: 'Lista' },
+              ]}
+            />
+            {salasDondeSoyDelEquipo.length > 0 && (
+              <Boton variante="solido" onClick={() => setCreando(true)}>
+                <Plus size={13} /> Nueva tarea
+              </Boton>
+            )}
           </>
         }
       >
+        <BarraFiltros>
+          <FiltroSala valor={salaFiltro} onChange={setSalaFiltro} salas={misSalas} />
+          <FiltroFecha valor={rango} onChange={setRango} />
+        </BarraFiltros>
+
         {/* ── Mías / del equipo ──
             Sólo para el socio: el miembro ve lo suyo y no hay nada que
             elegir. Las cifras de al lado acompañan a lo que se mira. */}
@@ -202,7 +229,7 @@ export default function Compromisos() {
                   key={valor}
                   onClick={() => setResponsable(valor)}
                   className={cx(
-                    'px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors',
+                    'px-4 py-2 text-meta font-semibold transition-colors',
                     responsable === valor
                       ? 'bg-tinta text-fondo'
                       : 'bg-panel text-suave hover:text-tinta',
@@ -213,7 +240,7 @@ export default function Compromisos() {
               ))}
             </div>
           )}
-          <span className="text-xs text-suave">
+          <span className="text-meta text-suave">
             {alcance.filter((c) => c.estado !== 'hecho').length}{' '}
             {alcance.filter((c) => c.estado !== 'hecho').length === 1 ? 'abierta' : 'abiertas'}
             {alcance.filter((c) => estaVencido(c)).length > 0 && (
@@ -267,19 +294,15 @@ export default function Compromisos() {
               </option>
             ))}
           </select>
+          {/* Vencida no es un período: es una fecha que ya pasó y sigue
+              abierta. Por eso queda aparte del filtro de fechas. */}
           <button
-            onClick={() => setPlazo((p) => (p === 'vencidos' ? 'todos' : 'vencidos'))}
-            className={botonFiltro(plazo === 'vencidos')}
+            onClick={() => setSoloVencidas((v) => !v)}
+            className={botonFiltro(soloVencidas)}
           >
             Vencidas
           </button>
-          <button
-            onClick={() => setPlazo((p) => (p === 'semana' ? 'todos' : 'semana'))}
-            className={botonFiltro(plazo === 'semana')}
-          >
-            Vencen esta semana
-          </button>
-          <label className="col-span-2 flex cursor-pointer items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-suave sm:col-auto">
+          <label className="col-span-2 flex cursor-pointer items-center gap-2 text-meta font-semibold text-suave sm:col-auto">
             <input
               type="checkbox"
               className="h-3.5 w-3.5 accent-[#C0392B]"
@@ -329,7 +352,7 @@ export default function Compromisos() {
               </DragOverlay>
             </DndContext>
 
-            <p className="mt-4 text-xs text-tenue">
+            <p className="mt-4 text-meta text-tenue">
               <span className="hidden md:inline">
                 Arrastrá las tarjetas entre columnas para cambiar el estado
               </span>
@@ -343,14 +366,8 @@ export default function Compromisos() {
         )}
       </Seccion>
 
-      <ModalCompromiso
-        abierto={creando}
-        onCerrar={() => setCreando(false)}
-        reunionId={
-          estado.reuniones.find((r) => r.salaId === salaActiva?.id && r.estado !== 'cerrada')?.id ??
-          undefined
-        }
-      />
+      {/* Nace suelta: la sala se elige en el formulario, no se adivina. */}
+      <ModalCompromiso abierto={creando} onCerrar={() => setCreando(false)} />
       <ModalCompromiso
         abierto={!!editando}
         onCerrar={() => setEditando(undefined)}
@@ -359,6 +376,16 @@ export default function Compromisos() {
       />
     </div>
   )
+}
+
+/**
+ * Cómo titular un listado que puede venir de varias salas: si son
+ * todas de la misma, se nombra; si no, se dice cuántas.
+ */
+function nombreDeLasSalas(estado: Estado, items: Compromiso[]) {
+  const ids = [...new Set(items.map((c) => c.salaId))]
+  if (ids.length === 1) return sala(estado, ids[0])?.nombre
+  return `${ids.length} salas`
 }
 
 /* ── Vista de lista, agrupada ─────────────────────────────── */
@@ -372,7 +399,7 @@ function VistaLista({
   agrupar: Agrupacion
   onEditar: (c: Compromiso) => void
 }) {
-  const { estado, moverCompromiso, salaActiva, puedeOrganizar } = useApp()
+  const { estado, moverCompromiso, puedeOrganizar } = useApp()
 
   const grupos = useMemo(() => {
     const m = new Map<string, Compromiso[]>()
@@ -401,7 +428,7 @@ function VistaLista({
           <div className="mb-2 flex items-center gap-3">
             {agrupar === 'responsable' && <Avatar nombre={clave} tam="sm" />}
             <h3 className="text-sm">{clave}</h3>
-            <span className="text-xs text-tenue">{items.length}</span>
+            <span className="text-meta text-tenue">{items.length}</span>
             {items.some((c) => estaVencido(c)) && (
               <Chip tono="signal">{items.filter((c) => estaVencido(c)).length} vencidos</Chip>
             )}
@@ -411,10 +438,15 @@ function VistaLista({
             {agrupar === 'responsable' && puedeOrganizar && (
               <button
                 onClick={() =>
-                  generarPendientesPDF(estado, items[0].responsableId, lista, salaActiva?.nombre)
+                  generarPendientesPDF(
+                    estado,
+                    items[0].responsableId,
+                    lista,
+                    nombreDeLasSalas(estado, items),
+                  )
                 }
                 title={`Descargar los pendientes de ${clave}`}
-                className="flex shrink-0 items-center gap-1.5 border border-borde2 bg-panel px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-suave transition-colors hover:border-signal hover:text-signal"
+                className="flex shrink-0 items-center gap-1.5 border border-borde2 bg-panel px-2.5 py-1.5 text-[11px] font-semibold text-suave transition-colors hover:border-signal hover:text-signal"
               >
                 <Download size={11} /> PDF
               </button>
@@ -438,13 +470,14 @@ function VistaLista({
                     >
                       {c.accion}
                     </div>
-                    {c.detalle && <p className="mt-1 text-xs text-suave">{c.detalle}</p>}
+                    {c.detalle && <p className="mt-1 text-meta text-suave">{c.detalle}</p>}
                     {c.avance && (
-                      <p className="mt-1 border-l border-borde2 pl-2 text-xs text-tenue">
+                      <p className="mt-1 border-l border-borde2 pl-2 text-meta text-tenue">
                         {c.avance}
                       </p>
                     )}
-                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-tenue">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-tenue">
+                      <span className="font-semibold text-suave">{sala(estado, c.salaId)?.nombre}</span>
                       {agrupar !== 'responsable' && (
                         <span>{nombreDe(estado, c.responsableId)}</span>
                       )}
@@ -473,8 +506,8 @@ function VistaLista({
                         title={ESTADO_COMPROMISO[s].nombre}
                         className={
                           c.estado === s
-                            ? 'truncate border border-tinta bg-tinta px-2 py-1.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-fondo'
-                            : 'truncate border border-borde2 bg-panel px-2 py-1.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-suave transition-colors hover:border-suave hover:text-tinta'
+                            ? 'truncate border border-tinta bg-tinta px-2 py-1.5 text-[11px] font-semibold text-fondo'
+                            : 'truncate border border-borde2 bg-panel px-2 py-1.5 text-[11px] font-semibold text-suave transition-colors hover:border-suave hover:text-tinta'
                         }
                       >
                         {ESTADO_COMPROMISO[s].nombre}
@@ -537,7 +570,7 @@ function Columna({
             {meta.nombre}
           </span>
         </div>
-        <span className="text-[10px] text-tenue">{compromisos.length}</span>
+        <span className="text-meta text-tenue">{compromisos.length}</span>
       </div>
 
       <div className="flex-1 space-y-2 p-2">
@@ -601,8 +634,11 @@ function Tarjeta({
           style={{ background: IMPORTANCIA[c.importancia].hex }}
         />
         <div className="min-w-0 flex-1">
-          <div className="text-xs leading-snug">{c.accion}</div>
-          {c.avance && <div className="mt-1 text-[11px] text-tenue">{c.avance}</div>}
+          <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-tenue">
+            {sala(estado, c.salaId)?.nombre}
+          </div>
+          <div className="mt-0.5 text-xs leading-snug">{c.accion}</div>
+          {c.avance && <div className="mt-1 text-meta text-tenue">{c.avance}</div>}
         </div>
         {/* En táctil no hay hover: el lápiz queda siempre visible. */}
         <button
@@ -634,7 +670,7 @@ function Tarjeta({
       {reunion && (
         <Link
           to={`/reuniones/${reunion.id}`}
-          className="mt-2 block truncate pl-[26px] text-[9px] font-semibold uppercase tracking-[0.12em] text-borde2 transition-colors hover:text-suave"
+          className="mt-2 block truncate pl-[26px] text-meta text-borde2 transition-colors hover:text-suave"
         >
           {reunion.titulo}
         </Link>
@@ -650,7 +686,7 @@ function Tarjeta({
             <button
               key={s}
               onClick={() => moverCompromiso(c.id, s)}
-              className="border border-borde2 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-suave transition-colors hover:border-suave hover:text-tinta"
+              className="border border-borde2 px-2 py-1 text-[11px] font-semibold text-suave transition-colors hover:border-suave hover:text-tinta"
             >
               → {ESTADO_COMPROMISO[s].nombre}
             </button>

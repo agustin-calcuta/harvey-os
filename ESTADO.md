@@ -9,12 +9,12 @@
 ## Dónde estamos
 
 La plataforma está **funcionando y publicada**, con base de datos real y acceso
-con Google. Los cambios que pidieron los socios el 14 de agosto **están
-aplicados, migrados y en línea** desde el 15.
+con Google. Los cambios del 14 de agosto están en línea desde el 15, y los del
+repaso del 18 **están aplicados y esperando la migración**.
 
-> **Lo que sigue:** el martes 18 a las 11:00, repaso interno con Ariel, Denise y
-> Fran. Después, presentación a Mati y Nanu el jueves 20 o viernes 21, que Fran
-> agenda por el grupo.
+> **Lo que sigue:** correr `db/migracion-2026-08-18.sql` y `db/rls.sql` contra la
+> base —el rol externo cambió las políticas— y publicar. Después, presentación a
+> Mati y Nanu el jueves 20 o viernes 21, que Fran agenda por el grupo.
 
 Nace de la reunión del 5 de agosto con Francisco Lebermann: son cuatro socios,
 se reúnen seguido y las reuniones se dispersan. La respuesta es el ciclo de tres
@@ -24,6 +24,27 @@ cargado con anticipación y cada tarea con responsable y fecha.
 En la reunión del 7 de agosto con Francisco y Ariel el alcance creció: la
 herramienta deja de ser el tablero de los socios y pasa a servir a **cualquier
 equipo de la empresa**, cada uno con su espacio.
+
+### Lo que cambió el 18 de agosto
+
+Repaso interno con Ariel, Denise y Fran. Salieron **47 puntos**, detallados en
+**[PLAN-CAMBIOS-18-08.md](PLAN-CAMBIOS-18-08.md)**. Dos quejas de fondo los
+ordenan, las dos de Ariel:
+
+- ***"Entro y veo una sola sala."*** La sala activa se fue del sidebar. Panel,
+  Reuniones, Tareas y el bloc traen lo de **todas las salas de las que sos
+  parte**, cada cosa dice de cuál viene, y cada sección filtra por sala y por
+  fecha. Es el cambio más de fondo: los permisos pasaron a preguntarse sala por
+  sala, porque podés conducir una y ser uno más en otra.
+- ***"Sigue gritando."*** Había setenta y pico de `uppercase` y un solo tamaño
+  de titular para la pantalla y para cada sección. Ahora hay una escala de cinco
+  pasos, las mayúsculas quedaron para las etiquetas, y el rojo es de la acción
+  principal de cada pantalla y de lo vencido.
+
+Además: el temario personal pasó a llamarse **bloc de notas** y se mira en tres
+columnas —borradores, pendientes y asignados—; apareció el rol **externo** para
+el proveedor recurrente; y quedaron desarrolladas la **grabación con IA** y
+**Google Calendar**, listas para enchufar con una clave y un `client_id`.
 
 ### Lo que cambió el 14 de agosto
 

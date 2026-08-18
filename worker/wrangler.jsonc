@@ -1,0 +1,38 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "harvey-ia",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-01",
+  "observability": { "enabled": true },
+
+  "vars": {
+    /*
+     * Quién puede llamar al Worker. Separados por coma, sin barra final.
+     * Esto es lo único que impide que un tercero con la URL gaste la
+     * cuota de Gemini de la cuenta: hay que ponerlo antes de producción.
+     */
+    "ORIGENES_PERMITIDOS": "http://localhost:5173,https://agustin-calcuta.github.io",
+
+    /*
+     * JWKS de Neon Auth, para verificar el token de sesión de quien
+     * llama. Está en la consola de Neon, en Auth > Configuration; suele
+     * terminar en `/.well-known/jwks.json`.
+     *
+     * Vacío = no se valida a nadie. Sirve para probar en local y el
+     * Worker lo avisa por consola en cada pedido.
+     */
+    "NEON_JWKS_URL": "",
+
+    /*
+     * Gemini procesa el audio y devuelve la minuta en una sola llamada.
+     * Si el modelo cambia de nombre, se cambia acá y se vuelve a
+     * desplegar: no hay nada más que tocar.
+     */
+    "MODELO": "gemini-2.5-flash",
+
+    /* Tope de audio por pedido, en MB. Ver la nota en src/index.js. */
+    "MAX_MB": "18"
+  }
+
+  /* La clave va por secret, nunca acá:  npx wrangler secret put GEMINI_API_KEY */
+}

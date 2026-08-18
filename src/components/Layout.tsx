@@ -3,9 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   AlertTriangle,
   CalendarDays,
-  Check,
   CheckCircle2,
-  ChevronDown,
   DoorOpen,
   Eye,
   Inbox,
@@ -19,7 +17,7 @@ import {
 } from 'lucide-react'
 import { useApp } from '../store/AppContext'
 import { cx, estaVencido, proximasReuniones, temarioDe, temasSinTratar } from '../lib/utils'
-import { ESTADO_REUNION, ROLES_SALA } from '../types'
+import { ESTADO_REUNION } from '../types'
 
 /*
  * «Correos» salió del menú: mostraba vistas previas de mensajes sin
@@ -29,7 +27,7 @@ import { ESTADO_REUNION, ROLES_SALA } from '../types'
 const NAV = [
   { a: '/', icono: LayoutDashboard, texto: 'Panel', exacto: true },
   { a: '/reuniones', icono: CalendarDays, texto: 'Reuniones' },
-  { a: '/temario', icono: Inbox, texto: 'Temario' },
+  { a: '/bloc', icono: Inbox, texto: 'Bloc de notas' },
   { a: '/compromisos', icono: ListChecks, texto: 'Tareas' },
   { a: '/salas', icono: DoorOpen, texto: 'Salas' },
 ]
@@ -40,22 +38,16 @@ export default function Layout() {
     estado,
     salir,
     vistaPrevia,
-    misSalas,
-    salaActiva,
-    elegirSala,
-    miRol,
     esSuperadmin,
     compromisosVisibles,
     solicitudesPendientes,
   } = useApp()
 
   const [abierto, setAbierto] = useState(false)
-  const [salasAbiertas, setSalasAbiertas] = useState(false)
   const navegar = useNavigate()
   const ruta = useLocation()
 
   useEffect(() => setAbierto(false), [ruta.pathname])
-  useEffect(() => setSalasAbiertas(false), [ruta.pathname, salaActiva?.id])
   useEffect(() => {
     if (!abierto) return
     const previo = document.body.style.overflow
@@ -69,11 +61,11 @@ export default function Layout() {
     (c) => c.responsableId === yo?.id && c.estado !== 'hecho',
   )
   const vencidos = compromisosVisibles.filter((c) => estaVencido(c))
-  // Por `proximasReuniones` y no por la primera de la sala: una reunión
+  // Por `proximasReuniones` y no por la primera de la lista: una reunión
   // privada no tiene que asomar acá para quien no participa.
-  const proxima = salaActiva ? proximasReuniones(estado, yo, salaActiva.id)[0] : undefined
-  // El temario es personal: cuenta lo mío, no lo de la sala.
-  const enTemario =
+  const proxima = proximasReuniones(estado, yo)[0]
+  // El bloc de notas es personal: cuenta lo mío, no lo de la sala.
+  const enElBloc =
     temarioDe(estado, yo?.id).length + temasSinTratar(estado, undefined, yo?.id).length
 
   const enlaces = esSuperadmin
@@ -108,55 +100,12 @@ export default function Layout() {
           </button>
         </div>
 
-        {/* ── Sala activa ──
-            Todo lo que se ve abajo pertenece a esta sala. */}
-        <div className="px-3 pb-3">
-          <button
-            onClick={() => setSalasAbiertas((v) => !v)}
-            className="flex w-full items-center gap-2 border border-[--color-nocheborde] px-3 py-2.5 text-left transition-colors hover:border-white/30"
-          >
-            <DoorOpen size={14} className="shrink-0 text-white/50" />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm text-white/90">
-                {salaActiva?.nombre ?? 'Sin sala'}
-              </span>
-              <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">
-                {esSuperadmin ? 'Superadmin' : miRol ? ROLES_SALA[miRol].nombre : '—'}
-              </span>
-            </span>
-            <ChevronDown
-              size={14}
-              className={cx(
-                'shrink-0 text-white/50 transition-transform',
-                salasAbiertas && 'rotate-180',
-              )}
-            />
-          </button>
-
-          {salasAbiertas && (
-            <div className="mt-1 border border-[--color-nocheborde] bg-black/30">
-              {misSalas.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => elegirSala(s.id)}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-white/70 transition-colors hover:bg-white/5 hover:text-white"
-                >
-                  <Check
-                    size={12}
-                    className={cx('shrink-0', s.id === salaActiva?.id ? 'text-signal' : 'opacity-0')}
-                  />
-                  <span className="truncate">{s.nombre}</span>
-                </button>
-              ))}
-              <button
-                onClick={() => navegar('/salas')}
-                className="flex w-full items-center gap-2 border-t border-[--color-nocheborde] px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-white/50 transition-colors hover:text-white"
-              >
-                Ver todas las salas
-              </button>
-            </div>
-          )}
-        </div>
+        {/*
+          Acá vivía el selector de sala. Se fue: ninguna pantalla
+          depende ya de una sala activa —todas traen lo de todas mis
+          salas y filtran adentro—, así que un selector global no
+          elegía nada y sólo confundía.
+        */}
 
         <nav className="flex-1 overflow-y-auto px-3">
           {enlaces.map((n) => (
@@ -167,7 +116,7 @@ export default function Layout() {
               onClick={() => setAbierto(false)}
               className={({ isActive }) =>
                 cx(
-                  'group mb-0.5 flex items-center gap-3 border-l-2 px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] transition-all',
+                  'group mb-0.5 flex items-center gap-3 border-l-2 px-3 py-2.5 text-cuerpo font-semibold transition-all',
                   isActive
                     ? 'border-signal bg-white/8 text-white'
                     : 'border-transparent text-white/55 hover:bg-white/5 hover:text-white',
@@ -192,12 +141,12 @@ export default function Layout() {
                     </span>
                   )
                 ))}
-              {n.a === '/temario' && enTemario > 0 && (
+              {n.a === '/bloc' && enElBloc > 0 && (
                 <span
                   className="bg-white/15 px-1.5 py-0.5 text-[9px] text-white"
-                  title={`${enTemario} temas anotados`}
+                  title={`${enElBloc} temas anotados`}
                 >
-                  {enTemario}
+                  {enElBloc}
                 </span>
               )}
               {/* Alguien esperando entrar a una sala que organizo. */}
@@ -271,17 +220,14 @@ export default function Layout() {
           <button onClick={() => navegar('/')} className="display text-lg">
             {marca}
           </button>
-          <span className="ml-auto truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-suave">
-            {salaActiva?.nombre ?? ''}
-          </span>
         </header>
 
         {vistaPrevia && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber/40 bg-amber/10 px-4 py-2.5 sm:px-6">
             <span className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber">
               <Eye size={12} />
-              Vista previa como {esSuperadmin ? 'Superadmin' : miRol ? ROLES_SALA[miRol].nombre : '—'}{' '}
-              · datos de ejemplo, sólo en este navegador
+              Vista previa como {esSuperadmin ? 'Superadmin' : (yo?.nombre ?? '—')} · datos de
+              ejemplo, sólo en este navegador
             </span>
             <button
               onClick={salir}

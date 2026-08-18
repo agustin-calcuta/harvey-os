@@ -1,23 +1,16 @@
 import { Link } from 'react-router-dom'
-import {
-  AlertTriangle,
-  ArrowRight,
-  CalendarPlus,
-  FileText,
-  Inbox,
-  Search,
-  Users,
-} from 'lucide-react'
+import { AlertTriangle, ArrowRight, CalendarPlus, Inbox, Search, Users } from 'lucide-react'
 import { useApp } from '../store/AppContext'
 import {
   agendaDe,
+  cx,
   estaVencido,
   fechaCorta,
   fechaLarga,
-  historialReuniones,
   hora,
   nombreDe,
   proximasReuniones,
+  sala,
   temarioDe,
   temasDe,
   temasSinTratar,
@@ -41,14 +34,19 @@ import {
    orden — los accesos directos, la próxima reunión y lo que
    tengo yo a mi nombre—. Los pendientes de otras personas y el
    historial se fueron: viven en Tareas y en Reuniones.
+
+   Lo que muestra es de todas las salas y en orden cronológico:
+   "entro y veo una sola sala" era tener que adivinar en cuál
+   está lo que viene. Cada cosa dice de dónde sale.
    ───────────────────────────────────────────────────────────── */
 
 export default function Panel() {
-  const { estado, yo, salaActiva, compromisosVisibles } = useApp()
+  const { estado, yo, compromisosVisibles, salasDondeSoyDelEquipo } = useApp()
+  /* El externo participa de las reuniones a las que lo convocan; no las arma. */
+  const puedeCrearReuniones = salasDondeSoyDelEquipo.length > 0
 
-  const proximas = proximasReuniones(estado, yo, salaActiva?.id)
+  const proximas = proximasReuniones(estado, yo)
   const proxima = proximas[0]
-  const ultimaMinuta = historialReuniones(estado, yo, salaActiva?.id)[0]
 
   const misAbiertas = compromisosVisibles
     .filter((c) => c.responsableId === yo?.id && c.estado !== 'hecho')
@@ -76,21 +74,27 @@ export default function Panel() {
       {/* ── Encabezado ── */}
       <div>
         <div className="label bracket mb-2">
-          {salaActiva?.nombre ?? ''} ·{' '}
           {new Date().toLocaleDateString('es-AR', {
             weekday: 'long',
             day: 'numeric',
             month: 'long',
           })}
         </div>
-        <h1 className="display text-3xl sm:text-4xl">Hola, {yo?.nombre.split(' ')[0]}</h1>
+        <h1 className="display text-titulo">Hola, {yo?.nombre.split(' ')[0]}</h1>
         <p className="mt-2 max-w-xl text-sm text-suave">{saludo}</p>
       </div>
 
-      {/* ── Accesos directos ── */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* ── Accesos directos ──
+          Tres y no cuatro: "Última minuta" se fue por redundante,
+          si querés la última entrás por Reuniones. */}
+      <div
+        className={cx(
+          'grid gap-3 sm:grid-cols-2',
+          puedeCrearReuniones ? 'lg:grid-cols-3' : 'lg:grid-cols-2',
+        )}
+      >
         <Atajo
-          a="/temario"
+          a="/bloc"
           icono={<Inbox size={18} />}
           titulo="Anotar un tema"
           detalle={
@@ -100,23 +104,21 @@ export default function Panel() {
           }
         />
         <Atajo
-          a="/reuniones?nueva=1"
-          icono={<CalendarPlus size={18} />}
-          titulo="Crear reunión"
-          detalle="Fecha, lugar y a quiénes convocás"
-        />
-        <Atajo
           a="/reuniones?vista=historial"
           icono={<Search size={18} />}
           titulo="Buscar en minutas"
           detalle="Una palabra y aparece en qué reunión se habló"
         />
-        <Atajo
-          a={ultimaMinuta ? `/reuniones/${ultimaMinuta.id}` : '/reuniones?vista=historial'}
-          icono={<FileText size={18} />}
-          titulo="Última minuta"
-          detalle={ultimaMinuta ? ultimaMinuta.titulo : 'Todavía no hay ninguna cerrada'}
-        />
+        {/* Último y a la derecha: es el que hace algo, no una puerta. */}
+        {puedeCrearReuniones && (
+          <Atajo
+            a="/reuniones?nueva=1"
+            icono={<CalendarPlus size={18} />}
+            titulo="Crear reunión"
+            detalle="Fecha, lugar y a quiénes convocás"
+            destacado
+          />
+        )}
       </div>
 
       {/* ── Próxima reunión ── */}
@@ -125,16 +127,19 @@ export default function Panel() {
           <div className="card">
             <div className="flex flex-wrap items-start justify-between gap-4 border-b border-borde p-5">
               <div className="min-w-0">
-                <Chip tono={proxima.estado === 'agenda_abierta' ? 'acid' : 'amber'}>
-                  {ESTADO_REUNION[proxima.estado].nombre}
-                </Chip>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Chip>{sala(estado, proxima.salaId)?.nombre ?? 'Sin sala'}</Chip>
+                  <Chip tono={proxima.estado === 'agenda_abierta' ? 'acid' : 'amber'}>
+                    {ESTADO_REUNION[proxima.estado].nombre}
+                  </Chip>
+                </div>
                 <Link
                   to={`/reuniones/${proxima.id}`}
-                  className="display mt-2 block text-xl transition-colors hover:text-signal sm:text-2xl"
+                  className="titulo mt-2 block transition-colors hover:text-signal"
                 >
                   {proxima.titulo}
                 </Link>
-                <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-suave">
+                <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-meta text-suave">
                   <span>
                     {fechaLarga(proxima.fecha)} · {hora(proxima.fecha)}
                   </span>
@@ -161,7 +166,7 @@ export default function Panel() {
               <ul className="divide-y divide-borde">
                 {agenda.map((t, i) => (
                   <li key={t.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
-                    <span className="hidden w-6 shrink-0 font-semibold text-[11px] text-tenue sm:block">
+                    <span className="hidden w-6 shrink-0 font-semibold text-meta text-tenue sm:block">
                       {String(i + 1).padStart(2, '0')}
                     </span>
                     <span
@@ -200,7 +205,8 @@ export default function Panel() {
                     className="flex flex-wrap items-center gap-x-3 gap-y-1 p-4 transition-colors hover:text-signal"
                   >
                     <span className="min-w-0 flex-1 truncate text-sm">{r.titulo}</span>
-                    <span className="text-xs text-suave">
+                    <span className="text-meta text-tenue">{sala(estado, r.salaId)?.nombre}</span>
+                    <span className="text-meta text-suave">
                       {fechaCorta(r.fecha)} · {hora(r.fecha)}
                     </span>
                   </Link>
@@ -212,14 +218,20 @@ export default function Panel() {
       ) : (
         <Vacio
           titulo="No hay reuniones a la vista"
-          texto="Creá la próxima para que el equipo empiece a cargar temas."
+          texto={
+            puedeCrearReuniones
+              ? 'Creá la próxima para que el equipo empiece a cargar temas.'
+              : 'Cuando te convoquen a una, la vas a ver acá.'
+          }
           icono={<Users size={32} />}
           accion={
-            <Link to="/reuniones?nueva=1">
-              <Boton variante="solido">
-                <CalendarPlus size={13} /> Crear reunión
-              </Boton>
-            </Link>
+            puedeCrearReuniones ? (
+              <Link to="/reuniones?nueva=1">
+                <Boton variante="destacado">
+                  <CalendarPlus size={13} /> Crear reunión
+                </Boton>
+              </Link>
+            ) : undefined
           }
         />
       )}
@@ -246,8 +258,11 @@ export default function Panel() {
                   style={{ background: IMPORTANCIA[c.importancia].hex }}
                 />
                 <div className="min-w-0 flex-1 basis-[70%] sm:basis-auto">
+                  <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-tenue">
+                    {sala(estado, c.salaId)?.nombre}
+                  </div>
                   <div className="text-sm">{c.accion}</div>
-                  {c.avance && <div className="mt-0.5 truncate text-xs text-tenue">{c.avance}</div>}
+                  {c.avance && <div className="mt-0.5 truncate text-meta text-tenue">{c.avance}</div>}
                 </div>
                 <Chip tono={c.estado === 'en_curso' ? 'amber' : 'neutro'}>
                   {ESTADO_COMPROMISO[c.estado].nombre}

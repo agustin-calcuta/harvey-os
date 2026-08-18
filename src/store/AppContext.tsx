@@ -18,6 +18,12 @@ import { entrarConGoogleNeon, neonConfigurado, salirDeNeon, sesionActual } from 
 import { correoAgendaCerrada, correoMinuta, enviarCorreo } from '../lib/email'
 import { ESTADO_INICIAL } from '../lib/seed'
 import { agendaDe, rolEnSala, salasDe, uid } from '../lib/utils'
+import {
+  actualizarEvento,
+  calendarConfigurado,
+  cancelarEvento,
+  crearEvento,
+} from '../lib/calendar'
 import { RECURRENCIAS } from '../types'
 import type {
   Compromiso,
@@ -43,11 +49,13 @@ import {
 } from './repo'
 
 /* ─────────────────────────────────────────────────────────────
-   Estado global: sesión, sala activa, datos y acciones.
+   Estado global: sesión, datos y acciones.
 
-   Todo lo que se ve está recortado por la sala activa. Los
-   permisos se resuelven contra la membresía en esa sala, no
-   contra un rol global.
+   Lo que se ve es de todas mis salas a la vez: el recorte por
+   sala es un filtro de cada pantalla, no un estado global. Los
+   permisos siguen siendo de cada sala —se resuelven contra la
+   membresía en la sala de cada cosa, no contra un rol global—,
+   y por eso se preguntan con `organizoLa(salaId)`.
    ───────────────────────────────────────────────────────────── */
 
 const CLAVE_SESION = 'harvey-os:sesion:v1'
@@ -93,14 +101,26 @@ interface Ctx {
   /** Mis pedidos todavía sin respuesta. */
   misSolicitudes: Solicitud[]
 
-  // permisos, siempre relativos a la sala activa
+  // permisos
   esSuperadmin: boolean
   miRol: RolSala | undefined
+  /**
+   * Si organizo esa sala. El rol es de cada sala, no de la persona:
+   * puedo conducir Socios y ser uno más en Marketing. Sin sala,
+   * responde si organizo alguna.
+   */
+  organizoLa(salaId?: string): boolean
+  /** Si organizo al menos una de mis salas. */
   puedeOrganizar: boolean
+  /**
+   * Mis salas menos aquellas donde soy externo. Es donde puedo crear
+   * reuniones y tareas: el proveedor participa, no arma la agenda.
+   */
+  salasDondeSoyDelEquipo: Sala[]
   puedeModerar(r: Reunion): boolean
   /** Abrir salas es de los socios. Reuniones crea cualquiera. */
   puedeCrearSalas: boolean
-  /** El organizador ve las tareas de todos; el miembro, sólo las suyas. */
+  /** De todas mis salas: en las que organizo, todo; en el resto, lo mío. */
   compromisosVisibles: Compromiso[]
 
   // reuniones
@@ -136,7 +156,10 @@ interface Ctx {
   devolverAlTemario(temaId: string): Promise<void>
 
   // compromisos
-  crearCompromiso(datos: Omit<Compromiso, 'id' | 'creadoEn' | 'salaId'>): Promise<void>
+  /** La sala sale de la reunión de la tarea, o se pasa a mano. */
+  crearCompromiso(
+    datos: Omit<Compromiso, 'id' | 'creadoEn' | 'salaId'> & { salaId?: string },
+  ): Promise<void>
   actualizarCompromiso(id: string, cambios: Partial<Compromiso>): Promise<void>
   borrarCompromiso(id: string): Promise<void>
   moverCompromiso(id: string, estado: EstadoCompromiso): Promise<void>
@@ -155,6 +178,23 @@ interface Ctx {
 }
 
 const AppCtx = createContext<Ctx | null>(null)
+
+/**
+ * Si un cambio se nota en el calendario.
+ *
+ * Cambiar el estado de la reunión o sus conclusiones no toca el
+ * evento; mover la fecha, el lugar o a quién se convoca, sí.
+ */
+function tocaAlCalendario(actual: Reunion, cambios: Partial<Reunion>): boolean {
+  const campos = ['titulo', 'fecha', 'duracionPrevistaMin', 'lugar', 'moderadorId'] as const
+  if (campos.some((c) => c in cambios && cambios[c] !== actual[c])) return true
+  if (cambios.participantesIds) {
+    const antes = [...actual.participantesIds].sort().join()
+    const ahora = [...cambios.participantesIds].sort().join()
+    return antes !== ahora
+  }
+  return false
+}
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [estado, setEstado] = useState<Estado>(ESTADO_INICIAL)
@@ -363,7 +403,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () => (esSuperadmin ? 'organizador' : rolEnSala(estado, salaId ?? undefined, yo?.id)),
     [estado, salaId, yo, esSuperadmin],
   )
-  const puedeOrganizar = miRol === 'organizador'
+
+  /*
+   * Con las vistas mostrando todas las salas a la vez, preguntar "¿soy
+   * organizador?" a secas dejó de tener respuesta: depende de cuál.
+   * Cada pantalla que muestra algo de una sala pregunta por esa sala.
+   */
+  const organizoLa = useCallback(
+    (sId?: string) => {
+      if (esSuperadmin) return true
+      if (!sId) return misSalas.some((s) => rolEnSala(estado, s.id, yo?.id) === 'organizador')
+      return rolEnSala(estado, sId, yo?.id) === 'organizador'
+    },
+    [estado, misSalas, yo, esSuperadmin],
+  )
+
+  const puedeOrganizar = useMemo(() => organizoLa(), [organizoLa])
+
+  const salasDondeSoyDelEquipo = useMemo(
+    () =>
+      esSuperadmin
+        ? misSalas
+        : misSalas.filter((s) => rolEnSala(estado, s.id, yo?.id) !== 'externo'),
+    [estado, misSalas, yo, esSuperadmin],
+  )
 
   const puedeModerar = useCallback(
     (r: Reunion) =>
@@ -381,13 +444,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const puedeCrearSalas = esSuperadmin || yo?.puedeCrearSalas === true
 
   /*
-   * Un miembro ve sólo lo suyo. Lo pidió Fran mirando la pantalla:
-   * "si yo entro, soy un empleado, debería haber sólo mis pendientes".
+   * Todas mis salas, no la activa: "abro la plataforma y quiero ver
+   * todas las tareas que tengo, de todas las salas". El recorte por
+   * sala pasó a ser un filtro de cada pantalla.
+   *
+   * Lo que no cambia es quién ve qué. Un miembro ve sólo lo suyo —lo
+   * pidió Fran mirando la pantalla: "si yo entro, soy un empleado,
+   * debería haber sólo mis pendientes"—, y como el rol es de cada
+   * sala, se pregunta sala por sala: puedo organizar Socios y ser un
+   * miembro más en Marketing.
    */
   const compromisosVisibles = useMemo(() => {
-    const deLaSala = estado.compromisos.filter((c) => c.salaId === salaId)
-    return puedeOrganizar ? deLaSala : deLaSala.filter((c) => c.responsableId === yo?.id)
-  }, [estado.compromisos, salaId, puedeOrganizar, yo])
+    const mias = new Set(misSalas.map((s) => s.id))
+    return estado.compromisos.filter((c) => {
+      if (!mias.has(c.salaId)) return false
+      if (esSuperadmin) return true
+      if (rolEnSala(estado, c.salaId, yo?.id) === 'organizador') return true
+      return c.responsableId === yo?.id
+    })
+  }, [estado, misSalas, esSuperadmin, yo])
 
   /* ── Salas: acciones ────────────────────────────────────── */
 
@@ -684,6 +759,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       await persistir('reuniones', r)
       avisar('Reunión creada. Ya se pueden cargar temas.')
+
+      /*
+       * Y en el calendario de todos, si está enchufado. Va después de
+       * guardar y sin bloquear: si Google falla o el usuario no da el
+       * permiso, la reunión existe igual. La sincronización es un
+       * agregado, no un requisito para armar una reunión.
+       */
+      if (calendarConfigurado) {
+        void crearEvento(ref.current, r)
+          .then((ev) => {
+            if (!ev) return
+            void persistir('reuniones', {
+              ...r,
+              calendarEventoId: ev.id,
+              calendarUrl: ev.url,
+              meetUrl: ev.meet,
+            })
+            avisar('Quedó en el calendario, con su link de Meet.')
+          })
+          .catch((e) => {
+            console.warn('[harvey] no se pudo crear el evento:', e)
+            avisar('La reunión quedó creada, pero no se pudo agendar en Google.', 'info')
+          })
+      }
+
       return r
     },
     [salaId, persistir, yo, avisar],
@@ -740,13 +840,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async (id: string, cambios: Partial<Reunion>) => {
       const actual = ref.current.reuniones.find((r) => r.id === id)
       if (!actual) return
-      await persistir('reuniones', { ...actual, ...cambios })
+      const nueva = { ...actual, ...cambios }
+      await persistir('reuniones', nueva)
+
+      /*
+       * Si cambió algo que el calendario muestra, el evento acompaña.
+       * Sin esto la integración es peor que no tenerla: una reunión
+       * movida que en el calendario de todos sigue a la hora vieja.
+       *
+       * Sin permiso vigente no se pide de nuevo: abrir una ventana de
+       * Google porque alguien corrigió el título sería peor.
+       */
+      if (nueva.calendarEventoId && tocaAlCalendario(actual, cambios)) {
+        void actualizarEvento(ref.current, nueva, nueva.calendarEventoId).catch((e) =>
+          console.warn('[harvey] no se pudo actualizar el evento:', e),
+        )
+      }
     },
     [persistir],
   )
 
   const borrarReunion = useCallback(
     async (id: string) => {
+      // Se cancela en el calendario antes de perder el id del evento.
+      const eventoId = ref.current.reuniones.find((r) => r.id === id)?.calendarEventoId
+      if (eventoId) {
+        void cancelarEvento(eventoId).catch((e) =>
+          console.warn('[harvey] no se pudo cancelar el evento:', e),
+        )
+      }
       // Los temas no se pierden: vuelven al temario de quien los escribió.
       for (const t of ref.current.temas.filter((t) => t.reunionId === id)) {
         await persistir('temas', {
@@ -758,7 +880,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })
       }
       await eliminar('reuniones', id)
-      avisar('Reunión eliminada. Los temas volvieron al temario de cada uno.', 'info')
+      avisar('Reunión eliminada. Los temas volvieron al bloc de notas de cada uno.', 'info')
     },
     [eliminar, persistir, avisar],
   )
@@ -887,8 +1009,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (sinTratar > 0) {
         avisar(
           sinTratar === 1
-            ? 'Un tema no se llegó a hablar: volvió al temario de quien lo propuso.'
-            : `${sinTratar} temas no se llegaron a hablar: volvieron al temario de cada uno.`,
+            ? 'Un tema no se llegó a hablar: volvió al bloc de notas de quien lo propuso.'
+            : `${sinTratar} temas no se llegaron a hablar: volvieron al bloc de notas de cada uno.`,
           'info',
         )
       }
@@ -959,7 +1081,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await persistir('temas', t)
       avisar(
         t.estado === 'banco'
-          ? 'Anotado en tu temario. Lo asignás a la reunión que quieras cuando quieras.'
+          ? 'Anotado en tu bloc de notas. Lo asignás a la reunión que quieras cuando quieras.'
           : t.estado === 'aprobado'
             ? 'Tema agregado a la agenda.'
             : 'Tema propuesto. Queda esperando que el organizador lo apruebe.',
@@ -1028,25 +1150,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
         estado: 'banco',
         orden: 0,
       })
-      avisar('Tema devuelto al temario de quien lo propuso.', 'info')
+      avisar('Tema devuelto al bloc de notas de quien lo propuso.', 'info')
     },
     [persistir, avisar],
   )
 
   /* ── Compromisos ────────────────────────────────────────── */
 
+  /*
+   * La sala viene con la tarea: la de su reunión, o la que se eligió
+   * al crearla suelta. Ya no hay una sala activa de la que sacarla.
+   */
   const crearCompromiso = useCallback(
-    async (datos: Omit<Compromiso, 'id' | 'creadoEn' | 'salaId'>) => {
-      if (!salaId) return
+    async (datos: Omit<Compromiso, 'id' | 'creadoEn' | 'salaId'> & { salaId?: string }) => {
+      const deLaReunion = datos.reunionId
+        ? ref.current.reuniones.find((r) => r.id === datos.reunionId)?.salaId
+        : undefined
+      const sId = datos.salaId ?? deLaReunion
+      if (!sId) return
       await persistir('compromisos', {
         ...datos,
-        salaId,
+        salaId: sId,
         id: uid('c'),
         creadoEn: new Date().toISOString(),
       })
       avisar('Tarea registrada.')
     },
-    [salaId, persistir, avisar],
+    [persistir, avisar],
   )
 
   const actualizarCompromiso = useCallback(
@@ -1188,7 +1318,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       sumarAlaSala, cambiarRolEnSala, sacarDeLaSala, salirDeSala,
       cargarDirectorio, pedirEntrar, retirarSolicitud, resolverSolicitud,
       solicitudesPendientes, misSolicitudes,
-      esSuperadmin, miRol, puedeOrganizar, puedeModerar, puedeCrearSalas, compromisosVisibles,
+      esSuperadmin, miRol, organizoLa, puedeOrganizar, salasDondeSoyDelEquipo,
+      puedeModerar, puedeCrearSalas, compromisosVisibles,
       crearReunion, actualizarReunion, borrarReunion,
       abrirAgenda, cerrarAgenda, iniciarReunion, cerrarReunion, reabrirReunion,
       sumarInvitado, asegurarPersona, enviarMinuta,
@@ -1201,7 +1332,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }),
     [
       yo, cargando, vistaPrevia, estado, misSalas, salaActiva, esSuperadmin, miRol,
-      puedeOrganizar, puedeModerar, puedeCrearSalas, compromisosVisibles, avisos,
+      organizoLa, puedeOrganizar, salasDondeSoyDelEquipo,
+      puedeModerar, puedeCrearSalas, compromisosVisibles, avisos,
       entrarComoDemo, entrarConGoogle, salir, elegirSala,
       crearSala, actualizarSala, archivarSala, sumarAlaSala, cambiarRolEnSala, sacarDeLaSala,
       salirDeSala, cargarDirectorio, pedirEntrar, retirarSolicitud, resolverSolicitud,

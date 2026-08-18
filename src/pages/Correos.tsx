@@ -15,17 +15,19 @@ const TIPO: Record<TipoNotificacion, { nombre: string; fase: string }> = {
 }
 
 export default function Correos() {
-  const { estado, avisar, reenviarNotificacion, salaActiva } = useApp()
+  const { estado, avisar, reenviarNotificacion, misSalas } = useApp()
   const [viendo, setViendo] = useState<Notificacion | undefined>()
 
+  /* De todas mis salas: es el registro de lo que salió, no de una sala. */
+  const mias = new Set(misSalas.map((s) => s.id))
   const lista = estado.notificaciones
-    .filter((n) => n.salaId === salaActiva?.id)
+    .filter((n) => mias.has(n.salaId))
     .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn))
   const hayProveedor = correoConfigurado
 
   return (
     <div className="space-y-6">
-      <Seccion titulo="Correos emitidos">
+      <Seccion titulo="Correos emitidos" principal>
         <p className="mb-5 max-w-2xl text-sm leading-relaxed text-suave">
           La plataforma emite dos correos por reunión: uno al cerrarse el temario y otro al
           cerrarse la sesión, con conclusiones y compromisos. Acá queda el registro de todos.
@@ -109,7 +111,7 @@ export default function Correos() {
 
                       {n.error && <p className="mt-2 text-xs text-signal">{n.error}</p>}
 
-                      <div className="mt-2 truncate text-[11px] text-tenue">
+                      <div className="mt-2 truncate text-meta text-tenue">
                         {n.destinatarios.join(', ')}
                       </div>
                     </div>

@@ -262,11 +262,32 @@ export const temasSinTratar = (e: Estado, salaId?: string, usuarioId?: string): 
     )
     .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn))
 
+/**
+ * Los que ya mandé a una reunión y todavía no se hablaron.
+ *
+ * Salían del bloc de notas al asignarlos y no se veían más desde ahí:
+ * *"quiero ver mis borradores, los asignados y los que quedaron
+ * pendientes"*. Los tratados no vuelven —ésos ya están en una minuta—
+ * y los rechazados tampoco.
+ */
+export const temasAsignados = (e: Estado, usuarioId?: string): Tema[] =>
+  e.temas
+    .filter(
+      (t) =>
+        t.propuestoPor === usuarioId &&
+        !!t.reunionId &&
+        (t.estado === 'propuesto' || t.estado === 'aprobado'),
+    )
+    .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn))
+
 export const agendaDe = (e: Estado, reunionId: string): Tema[] =>
   temasDe(e, reunionId).filter((t) => t.estado === 'aprobado' || t.estado === 'tratado')
 
 export const compromisosDe = (e: Estado, reunionId: string): Compromiso[] =>
   e.compromisos.filter((c) => c.reunionId === reunionId)
+
+export const reunion = (e: Estado, id?: string): Reunion | undefined =>
+  id ? e.reuniones.find((r) => r.id === id) : undefined
 
 export const reunionesDe = (e: Estado, salaId?: string): Reunion[] =>
   e.reuniones.filter((r) => !salaId || r.salaId === salaId)
@@ -320,7 +341,13 @@ export function puedeVerReunion(e: Estado, r: Reunion, yo?: Usuario | null): boo
   if (yo.alcance === 'superadmin') return true
   if (r.moderadorId === yo.id || r.participantesIds.includes(yo.id)) return true
   if (r.privada) return false
-  return e.membresias.some((m) => m.salaId === r.salaId && m.usuarioId === yo.id)
+  /*
+   * El externo entra sólo a las reuniones a las que lo convocan: es un
+   * proveedor, no parte del equipo. Estar en la sala le sirve para que
+   * lo puedan sumar y para seguir sus tareas, no para leer todo.
+   */
+  const mia = membresia(e, r.salaId, yo.id)
+  return !!mia && mia.rol !== 'externo'
 }
 
 /**

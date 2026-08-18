@@ -1,0 +1,14 @@
+{
+  "name": "harvey-ia",
+  "private": true,
+  "version": "0.0.0",
+  "description": "De la grabación de una reunión a un borrador de minuta. Vive fuera de la app porque es lo único que ve la clave de Gemini.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.42.0"
+  }
+}
