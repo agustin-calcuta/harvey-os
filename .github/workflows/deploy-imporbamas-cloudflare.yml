@@ -1,0 +1,67 @@
+# ─────────────────────────────────────────────────────────────
+# Imporbamas en Cloudflare Pages.
+#
+# Convive con `deploy.yml`, que sigue publicando la misma instancia
+# a GitHub Pages. Los dos salen del mismo `main` y del mismo código:
+# lo único distinto es el destino y el `VITE_BASE`.
+#
+# ── Por qué los dos a la vez ──────────────────────────────────
+# Mover la dirección de una herramienta que el equipo ya usa rompe
+# los enlaces de las minutas ya enviadas por correo: cada uno apunta
+# a una reunión puntual del dominio viejo. Con los dos publicando,
+# la gente migra cuando quiere y los correos viejos siguen abriendo.
+#
+# Cuando ya nadie use la dirección de GitHub Pages, se borra
+# `deploy.yml` y listo. Mientras tanto no cuesta nada: son dos
+# compilaciones del mismo commit.
+#
+# ── Secrets ───────────────────────────────────────────────────
+# Usa los de Imporbamas, que son los que no llevan prefijo, más los
+# dos de Cloudflare, que son de la cuenta y los comparte con Calcuta.
+# ─────────────────────────────────────────────────────────────
+name: Deploy Imporbamas a Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: pages-imporbamas-cf
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        env:
+          VITE_MARCA: imporbamas
+          # Cloudflare sirve en la raíz; GitHub Pages cuelga el sitio
+          # de /<repo>/. Es la única diferencia entre los dos destinos.
+          VITE_BASE: /
+          VITE_NEON_AUTH_URL: ${{ secrets.VITE_NEON_AUTH_URL }}
+          VITE_NEON_DATA_API_URL: ${{ secrets.VITE_NEON_DATA_API_URL }}
+          VITE_EMAILJS_SERVICE_ID: ${{ secrets.VITE_EMAILJS_SERVICE_ID }}
+          VITE_EMAILJS_TEMPLATE_ID: ${{ secrets.VITE_EMAILJS_TEMPLATE_ID }}
+          VITE_EMAILJS_PUBLIC_KEY: ${{ secrets.VITE_EMAILJS_PUBLIC_KEY }}
+          VITE_EMAIL_ENDPOINT: ${{ secrets.VITE_EMAIL_ENDPOINT }}
+          VITE_IA_ENDPOINT: ${{ secrets.VITE_IA_ENDPOINT }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+        run: npm run build
+
+      - name: Publicar en Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=imporbamas-reuniones --branch=main

@@ -1,6 +1,13 @@
-# La instancia de Imporbamas. La de Calcuta se publica en
-# Cloudflare Pages desde deploy-calcuta.yml, con el mismo código y
-# otra VITE_MARCA.
+# La instancia de Imporbamas, en GitHub Pages.
+#
+# La misma instancia se publica además a Cloudflare Pages desde
+# `deploy-imporbamas-cloudflare.yml`. Los dos salen de este mismo
+# `main`: conviven mientras el equipo se muda de dirección, porque
+# los enlaces de las minutas ya enviadas apuntan acá.
+#
+# Cuando ya nadie use esta dirección, este archivo se borra.
+#
+# Calcuta va por `deploy-calcuta.yml`, mismo código y otra VITE_MARCA.
 name: Deploy Imporbamas a GitHub Pages
 
 on:
