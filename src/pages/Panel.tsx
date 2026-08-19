@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { AlertTriangle, ArrowRight, CalendarPlus, Inbox, Search, Users } from 'lucide-react'
 import { useApp } from '../store/AppContext'
+import Campana from '../components/Campana'
 import {
   agendaDe,
   cx,
@@ -79,16 +80,20 @@ export default function Panel() {
   return (
     <div className="space-y-10">
       {/* ── Encabezado ── */}
-      <div>
-        <div className="label bracket mb-2">
-          {new Date().toLocaleDateString('es-AR', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-          })}
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="label bracket mb-2">
+            {new Date().toLocaleDateString('es-AR', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+            })}
+          </div>
+          <h1 className="display text-titulo">Hola, {yo?.nombre.split(' ')[0]}</h1>
+          <p className="mt-2 max-w-xl text-sm text-suave">{saludo}</p>
         </div>
-        <h1 className="display text-titulo">Hola, {yo?.nombre.split(' ')[0]}</h1>
-        <p className="mt-2 max-w-xl text-sm text-suave">{saludo}</p>
+        {/* Lo que te están esperando, en la primera pantalla que abrís. */}
+        <Campana destacada />
       </div>
 
       {/* El filtro vive acá arriba y vale para toda la app. */}

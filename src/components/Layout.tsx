@@ -19,7 +19,6 @@ import { useApp } from '../store/AppContext'
 import { cx, estaVencido, proximasReuniones, temarioDe, temasSinTratar } from '../lib/utils'
 import { ESTADO_REUNION } from '../types'
 import { logos, marca, rutaPublica } from '../marca'
-import Campana from './Campana'
 
 /*
  * «Correos» salió del menú: mostraba vistas previas de mensajes sin
@@ -239,8 +238,6 @@ export default function Layout() {
                 {esSuperadmin ? 'Superadmin' : (yo?.cargo ?? '')}
               </div>
             </div>
-            {/* Al lado del nombre: es lo que a uno le toca responder. */}
-            <Campana />
             <button
               onClick={salir}
               title="Cerrar sesión"

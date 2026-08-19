@@ -243,6 +243,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   )
   const [yo, setYo] = useState<Usuario | null>(null)
   const [cargando, setCargando] = useState(true)
+  /*
+   * Si la primera lectura de la base ya llegó.
+   *
+   * Sin esto, la pantalla de carga se levantaba al resolver la
+   * sesión —que es lo primero que termina— y la aplicación aparecía
+   * con todo vacío hasta que llegaban los datos. Quien entra ve sus
+   * tareas en cero y recarga, y recién ahí las ve: nadie tiene por
+   * qué saber que hay que recargar.
+   *
+   * Sin base remota no hay nada que esperar.
+   */
+  const [datosListos, setDatosListos] = useState(!hayBaseRemota)
   const [salaId, setSalaId] = useState<string | null>(
     () => localStorage.getItem(CLAVE_SALA),
   )
@@ -293,12 +305,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (!vivo) return
         setEstado(local)
         if (u) setYo(u)
+        /*
+         * En vista previa los datos son locales y ya están: no hay
+         * suscripción remota que los marque como llegados, así que se
+         * marca acá. Sin esto la aplicación se quedaba esperando una
+         * lectura que nunca iba a ocurrir.
+         */
+        setDatosListos(true)
         setCargando(false)
         return
       }
       if (!hayBaseRemota) {
         const inicial = await repo.cargar()
-        if (vivo) setEstado(inicial)
+        if (vivo) {
+          setEstado(inicial)
+          setDatosListos(true)
+        }
       }
       if (vivo && !neonConfigurado) setCargando(false)
     })()
@@ -310,8 +332,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   /* Refresco periódico: sólo con sesión real sobre base remota. */
   useEffect(() => {
     if (!hayBaseRemota || vistaPrevia || !yo) return
-    return repo.suscribir(setEstado, (motivo) =>
-      avisar(`No se pudieron traer los datos: ${motivo}`, 'error'),
+    return repo.suscribir(
+      (e) => {
+        setEstado(e)
+        setDatosListos(true)
+      },
+      (motivo) => {
+        /*
+         * Si falla, tampoco se puede dejar la pantalla de carga
+         * puesta para siempre: se muestra la aplicación con el aviso
+         * del error, que al menos se puede leer y accionar.
+         */
+        setDatosListos(true)
+        avisar(`No se pudieron traer los datos: ${motivo}`, 'error')
+      },
     )
   }, [yo, vistaPrevia, avisar])
 
@@ -1553,7 +1587,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const valor = useMemo<Ctx>(
     () => ({
-      yo, cargando, modo: repo.modo, vistaPrevia,
+      yo,
+      /* Cargando es «todavía no puedo mostrar nada útil»: sesión o datos. */
+      cargando: cargando || (!!yo && !datosListos),
+      modo: repo.modo, vistaPrevia,
       entrarComoDemo, entrarConGoogle, salir,
       estado,
       misSalas, salaActiva, elegirSala,
@@ -1576,7 +1613,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       avisos, avisar, descartarAviso,
     }),
     [
-      yo, cargando, vistaPrevia, estado, misSalas, salaActiva, esSuperadmin, miRol,
+      yo, cargando, datosListos, vistaPrevia, estado, misSalas, salaActiva, esSuperadmin, miRol,
       organizoLa, puedeOrganizar, salasDondeSoyDelEquipo,
       puedeModerar, puedeCrearSalas, compromisosVisibles, avisos,
       entrarComoDemo, entrarConGoogle, salir, elegirSala,

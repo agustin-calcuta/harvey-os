@@ -103,7 +103,7 @@ export default function Compromisos() {
   } = useApp()
 
   // Las métricas del panel entran acá con el filtro ya puesto.
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const filtroInicial = params.get('filtro')
 
   const [vista, setVista] = useState<Vista>(
@@ -125,6 +125,24 @@ export default function Compromisos() {
   const [creando, setCreando] = useState(false)
   const [editando, setEditando] = useState<Compromiso | undefined>()
   const [porBorrar, setPorBorrar] = useState<Compromiso | undefined>()
+
+  /*
+   * Llegando desde una mención: `?tarea=<id>` abre esa tarea con su
+   * conversación, que es a donde apunta el aviso. Se limpia el
+   * parámetro para que recargar no la vuelva a abrir sola.
+   *
+   * Espera a que la tarea exista: entrando de una, los datos de la
+   * base todavía pueden estar en camino.
+   */
+  const idBuscada = params.get('tarea')
+  useEffect(() => {
+    if (!idBuscada) return
+    const t = estado.compromisos.find((c) => c.id === idBuscada)
+    if (!t) return
+    setEditando(t)
+    params.delete('tarea')
+    setParams(params, { replace: true })
+  }, [idBuscada, estado.compromisos, params, setParams])
   const [cliente, setCliente] = useState('todos')
 
   /*
