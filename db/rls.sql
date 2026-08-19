@@ -637,4 +637,61 @@ create policy config_editar on public.config
   for update to authenticated
   using (public.soy_superadmin()) with check (public.soy_superadmin());
 
+/* clientes ─ la lista es común a todo el estudio */
+
+-- La ve y la amplía cualquiera. Si el alta fuera sólo de los socios,
+-- el resto escribiría el nombre a mano y volveríamos al problema que
+-- la tabla resuelve: «Lucky Tours» y «lucky tours» como dos clientes.
+alter table public.clientes enable row level security;
+
+drop policy if exists clientes_leer   on public.clientes;
+drop policy if exists clientes_alta   on public.clientes;
+drop policy if exists clientes_editar on public.clientes;
+
+create policy clientes_leer on public.clientes
+  for select to authenticated using (true);
+
+create policy clientes_alta on public.clientes
+  for insert to authenticated with check (public.mi_usuario_id() is not null);
+
+create policy clientes_editar on public.clientes
+  for update to authenticated
+  using (public.mi_usuario_id() is not null)
+  with check (public.mi_usuario_id() is not null);
+
+/* comentarios ─ se ven si se ve la tarea */
+
+alter table public.comentarios enable row level security;
+
+drop policy if exists comentarios_leer   on public.comentarios;
+drop policy if exists comentarios_alta   on public.comentarios;
+drop policy if exists comentarios_editar on public.comentarios;
+drop policy if exists comentarios_borrar on public.comentarios;
+
+-- Se apoya en que `compromisos_leer` ya decide qué tareas son asunto
+-- de cada uno: si acá se repitiera esa condición, con el tiempo las
+-- dos definiciones de «esta tarea es mía» se separarían.
+create policy comentarios_leer on public.comentarios
+  for select to authenticated
+  using (exists (select 1 from public.compromisos c where c.id = "compromisoId"));
+
+create policy comentarios_alta on public.comentarios
+  for insert to authenticated
+  with check (
+    "autorId" = public.mi_usuario_id()
+    and exists (select 1 from public.compromisos c where c.id = "compromisoId")
+  );
+
+-- Editar es sobre todo marcar leído, que lo hace quien lee y no quien
+-- escribió. Que nadie reescriba el texto ajeno lo cuida la
+-- aplicación: acá haría falta comparar contra la fila anterior.
+create policy comentarios_editar on public.comentarios
+  for update to authenticated
+  using (exists (select 1 from public.compromisos c where c.id = "compromisoId"))
+  with check (exists (select 1 from public.compromisos c where c.id = "compromisoId"));
+
+create policy comentarios_borrar on public.comentarios
+  for delete to authenticated
+  using ("autorId" = public.mi_usuario_id());
+
 commit;

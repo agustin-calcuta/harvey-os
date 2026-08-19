@@ -123,6 +123,8 @@ export const repoFirebase: Repo = {
       reuniones: [],
       temas: [],
       compromisos: [],
+      comentarios: [],
+      clientes: [],
       notificaciones: [],
       config: ESTADO_INICIAL.config,
     }
@@ -138,6 +140,8 @@ export const repoFirebase: Repo = {
       reuniones: [],
       temas: [],
       compromisos: [],
+      comentarios: [],
+      clientes: [],
       notificaciones: [],
       config: ESTADO_INICIAL.config,
     }

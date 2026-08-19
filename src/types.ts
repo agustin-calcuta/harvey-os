@@ -431,6 +431,8 @@ export interface Compromiso {
   fechaLimite?: string
   importancia: Importancia
   estado: EstadoCompromiso
+  /** Para qué cliente es. Opcional: hay trabajo interno que no es de nadie. */
+  clienteId?: string
   avance?: string
   completadoEn?: string
   creadoEn: string
@@ -463,6 +465,63 @@ export interface Config {
 
 /* ── Snapshot completo del estado ─────────────────────────── */
 
+/* ── Clientes ─────────────────────────────────────────────── */
+
+/**
+ * Para quién es el trabajo.
+ *
+ * Es transversal a las salas y no de una: Digital Lab y Comercial
+ * pueden estar los dos sobre el mismo cliente, y una sala trabaja
+ * para varios. Por eso la lista es del estudio.
+ *
+ * Existe como entidad y no como un campo de texto porque el punto no
+ * es escribirlo sino **filtrar por él**: «Lucky Tours», «lucky tours»
+ * y «LuckyTours» son tres clientes distintos para cualquier búsqueda,
+ * y con eso se pierde lo único que hacía valer la pena cargarlo.
+ */
+export interface Cliente {
+  id: string
+  nombre: string
+  /** Se archivan en vez de borrarse: el trabajo viejo sigue siendo suyo. */
+  activo: boolean
+  creadoEn: string
+}
+
+/* ── Comentarios ──────────────────────────────────────────── */
+
+/**
+ * Un mensaje en el hilo de una tarea.
+ *
+ * La conversación sobre una tarea vivía en otro lado —un chat, un
+ * correo— y ahí se pierde: al que se suma dos semanas después le
+ * falta justo lo que se dijo. Acá queda pegada a la tarea.
+ */
+export interface Comentario {
+  id: string
+  compromisoId: string
+  autorId: string
+  texto: string
+  /**
+   * A quiénes se arrobó, ya resueltos a ids.
+   *
+   * Se guardan aparte del texto en vez de reinterpretarlo cada vez:
+   * si alguien cambia de nombre, las menciones viejas siguen
+   * apuntando a la persona correcta.
+   */
+  menciones: string[]
+  /**
+   * Quiénes ya lo vieron.
+   *
+   * Los avisos sin leer salen de acá y no de una tabla de
+   * notificaciones aparte: un aviso es un comentario que me menciona
+   * y que todavía no abrí. Una tabla más sería otro lugar donde el
+   * estado se desincroniza.
+   */
+  leidoPor: string[]
+  creadoEn: string
+  editadoEn?: string
+}
+
 export interface Estado {
   usuarios: Usuario[]
   salas: Sala[]
@@ -471,6 +530,8 @@ export interface Estado {
   reuniones: Reunion[]
   temas: Tema[]
   compromisos: Compromiso[]
+  comentarios: Comentario[]
+  clientes: Cliente[]
   notificaciones: Notificacion[]
   config: Config
 }

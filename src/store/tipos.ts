@@ -11,6 +11,8 @@ export type Coleccion =
   | 'reuniones'
   | 'temas'
   | 'compromisos'
+  | 'comentarios'
+  | 'clientes'
   | 'notificaciones'
 
 /** Orden de escritura: respeta las claves foráneas. */
@@ -22,6 +24,9 @@ export const COLECCIONES: Coleccion[] = [
   'reuniones',
   'temas',
   'compromisos',
+  /* Los comentarios van después de los compromisos: los referencian. */
+  'comentarios',
+  'clientes',
   'notificaciones',
 ]
 

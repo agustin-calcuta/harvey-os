@@ -20,6 +20,8 @@ const FECHAS: Record<Coleccion, string[]> = {
   usuarios: ['creadoEn'],
   salas: ['creadaEn'],
   membresias: ['desde'],
+  comentarios: ['creadoEn', 'editadoEn'],
+  clientes: ['creadoEn'],
   solicitudes: ['creadaEn', 'resueltaEn'],
   reuniones: [
     'fecha',

@@ -229,6 +229,8 @@ export const ESTADO_INICIAL: Estado = {
   reuniones: [],
   temas: [],
   compromisos: [],
+  comentarios: [],
+  clientes: [],
   notificaciones: [],
   config: {
     organizacion: 'Calcuta',

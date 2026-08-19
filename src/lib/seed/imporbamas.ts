@@ -737,6 +737,8 @@ export const ESTADO_INICIAL: Estado = {
   reuniones: REUNIONES,
   temas: TEMAS,
   compromisos: COMPROMISOS,
+  comentarios: [],
+  clientes: [],
   notificaciones: NOTIFICACIONES,
   config: {
     organizacion: 'Imporbamas',

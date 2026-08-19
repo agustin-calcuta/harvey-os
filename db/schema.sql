@@ -207,6 +207,9 @@ create table if not exists public.compromisos (
   -- en curso.
   estado          text not null default 'pendiente'
                     check (estado in ('pendiente','en_curso','hecho')),
+  -- Para qué cliente es. Opcional: hay trabajo interno que no es de
+  -- ninguno, y obligar a elegir hace que se cargue cualquier cosa.
+  "clienteId"     text,
   avance          text,
   "completadoEn"  timestamptz,
   "creadoEn"      timestamptz not null default now()
@@ -250,5 +253,39 @@ create index if not exists temas_temario_idx       on public.temas ("propuestoPo
 create index if not exists compromisos_sala_idx    on public.compromisos ("salaId");
 create index if not exists compromisos_resp_idx    on public.compromisos ("responsableId");
 create index if not exists notif_sala_idx          on public.notificaciones ("salaId");
+
+/* ── Clientes ─────────────────────────────────────────────── */
+
+-- Para quién es el trabajo. Transversal a las salas: dos salas
+-- distintas pueden estar sobre el mismo cliente, y una sala trabaja
+-- para varios. La lista es del estudio, no del equipo.
+create table if not exists public.clientes (
+  id          text primary key,
+  nombre      text not null,
+  activo      boolean not null default true,
+  "creadoEn"  timestamptz not null default now()
+);
+
+/* ── Comentarios de las tareas ────────────────────────────── */
+
+create table if not exists public.comentarios (
+  id             text primary key,
+  "compromisoId" text not null references public.compromisos(id) on delete cascade,
+  "autorId"      text not null references public.usuarios(id),
+  texto          text not null,
+  -- Menciones ya resueltas a ids: si alguien cambia de nombre, la
+  -- mención vieja sigue apuntando a la persona correcta.
+  menciones      text[] not null default '{}',
+  -- Quiénes lo vieron. Los avisos sin leer salen de acá y no de una
+  -- tabla aparte: un aviso es un comentario que me menciona y que
+  -- todavía no abrí.
+  "leidoPor"     text[] not null default '{}',
+  "creadoEn"     timestamptz not null default now(),
+  "editadoEn"    timestamptz
+);
+
+create index if not exists comentarios_compromiso on public.comentarios ("compromisoId");
+create index if not exists comentarios_menciones on public.comentarios using gin (menciones);
+create index if not exists compromisos_cliente on public.compromisos ("clienteId");
 
 commit;
