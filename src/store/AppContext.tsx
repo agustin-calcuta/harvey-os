@@ -211,8 +211,36 @@ function tocaAlCalendario(actual: Reunion, cambios: Partial<Reunion>): boolean {
   return false
 }
 
+/**
+ * El estado con el que arranca la aplicación contra una base real.
+ *
+ * Vacío, y no el seed. Con el seed de arranque, un fallo al leer la
+ * base dejaba a la vista datos que parecen reales —el equipo entero,
+ * todos con rol de socio, cero tareas— y quien lo mira concluye que
+ * perdió su trabajo. Vacío no se confunde con nada, y además obliga
+ * a que el problema se note.
+ *
+ * El seed sigue siendo el estado del modo de demostración, que es
+ * para lo que se escribió.
+ */
+const ESTADO_VACIO: Estado = {
+  usuarios: [],
+  salas: [],
+  membresias: [],
+  solicitudes: [],
+  reuniones: [],
+  temas: [],
+  compromisos: [],
+  comentarios: [],
+  clientes: [],
+  notificaciones: [],
+  config: ESTADO_INICIAL.config,
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [estado, setEstado] = useState<Estado>(ESTADO_INICIAL)
+  const [estado, setEstado] = useState<Estado>(
+    hayBaseRemota ? ESTADO_VACIO : ESTADO_INICIAL,
+  )
   const [yo, setYo] = useState<Usuario | null>(null)
   const [cargando, setCargando] = useState(true)
   const [salaId, setSalaId] = useState<string | null>(
@@ -282,8 +310,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   /* Refresco periódico: sólo con sesión real sobre base remota. */
   useEffect(() => {
     if (!hayBaseRemota || vistaPrevia || !yo) return
-    return repo.suscribir(setEstado)
-  }, [yo, vistaPrevia])
+    return repo.suscribir(setEstado, (motivo) =>
+      avisar(`No se pudieron traer los datos: ${motivo}`, 'error'),
+    )
+  }, [yo, vistaPrevia, avisar])
 
   /* ── Sesión ─────────────────────────────────────────────── */
 

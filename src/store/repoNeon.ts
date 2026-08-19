@@ -92,12 +92,24 @@ export const repoNeon: Repo = {
    * intervalo: alcanza para que varias personas trabajen sobre la
    * misma reunión sin pisarse.
    */
-  suscribir(cb) {
+  suscribir(cb, alFallar) {
     if (!neon) return () => {}
+    /*
+     * Un fallo al leer no puede quedarse en la consola.
+     *
+     * Sin datos la aplicación se ve vacía, y vacía es exactamente lo
+     * que se ve cuando alguien perdió su trabajo: quien lo mira no
+     * tiene forma de distinguir «no cargó» de «no está». El aviso es
+     * la diferencia entre recargar la página y dar por perdido un mes
+     * de reuniones.
+     */
     const refrescar = () =>
       void this.cargar()
         .then(cb)
-        .catch((e) => console.warn('[reuniones] fallo al refrescar:', e))
+        .catch((e) => {
+          console.warn('[reuniones] fallo al refrescar:', e)
+          alFallar?.(e instanceof Error ? e.message : String(e))
+        })
 
     /*
      * La primera carga va ya, no dentro de doce segundos.
