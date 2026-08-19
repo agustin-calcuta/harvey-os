@@ -1,14 +1,23 @@
-# La instancia de Imporbamas, en GitHub Pages.
+# ─────────────────────────────────────────────────────────────
+# GitHub Pages ya no publica la aplicación: sólo una redirección
+# a Cloudflare Pages, que es donde vive ahora.
 #
-# La misma instancia se publica además a Cloudflare Pages desde
-# `deploy-imporbamas-cloudflare.yml`. Los dos salen de este mismo
-# `main`: conviven mientras el equipo se muda de dirección, porque
-# los enlaces de las minutas ya enviadas apuntan acá.
+# ── Por qué no se borra y ya ──────────────────────────────────
+# Todas las minutas que se enviaron por correo llevan un enlace a
+# `agustin-calcuta.github.io/harvey-os/#/reuniones/<id>`. Apagar esta
+# dirección deja muertos esos enlaces: quien busque una reunión de
+# hace un mes se encuentra con un 404 y no tiene forma de saber a
+# dónde se mudó.
 #
-# Cuando ya nadie use esta dirección, este archivo se borra.
+# La redirección conserva el `#/reuniones/<id>`, así que un correo
+# viejo sigue abriendo exactamente la reunión que abría antes.
 #
-# Calcuta va por `deploy-calcuta.yml`, mismo código y otra VITE_MARCA.
-name: Deploy Imporbamas a GitHub Pages
+# Cuando ya no queden correos viejos dando vueltas —seis meses, un
+# año— este archivo se borra y listo.
+#
+# La aplicación se compila en `deploy-imporbamas-cloudflare.yml`.
+# ─────────────────────────────────────────────────────────────
+name: Redirección de la dirección vieja de Imporbamas
 
 on:
   push:
@@ -30,49 +39,60 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - run: npm ci
-
-      - name: Build
-        env:
-          # De qué cliente es este despliegue. Explícito y no por
-          # omisión: si algún día cambia el valor por defecto, este
-          # sitio no tiene que enterarse.
-          VITE_MARCA: imporbamas
-          # GitHub Pages sirve el sitio bajo /<repo>/
-          VITE_BASE: /${{ github.event.repository.name }}/
-          # Neon: Auth con Google + Data API sobre Postgres.
-          # Sin estas variables la app arranca en modo demo.
-          VITE_NEON_AUTH_URL: ${{ secrets.VITE_NEON_AUTH_URL }}
-          VITE_NEON_DATA_API_URL: ${{ secrets.VITE_NEON_DATA_API_URL }}
-          # Alternativa Firebase, si alguna vez se migra.
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
-          # Envío de correo desde el navegador vía EmailJS.
-          VITE_EMAILJS_SERVICE_ID: ${{ secrets.VITE_EMAILJS_SERVICE_ID }}
-          VITE_EMAILJS_TEMPLATE_ID: ${{ secrets.VITE_EMAILJS_TEMPLATE_ID }}
-          VITE_EMAILJS_PUBLIC_KEY: ${{ secrets.VITE_EMAILJS_PUBLIC_KEY }}
-          VITE_EMAIL_ENDPOINT: ${{ secrets.VITE_EMAIL_ENDPOINT }}
-          # Transcripción y resumen: la URL del Worker de worker/.
-          VITE_IA_ENDPOINT: ${{ secrets.VITE_IA_ENDPOINT }}
-          # Google Calendar. El client_id es público por diseño.
-          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
-        run: npm run build
-
-      - name: Evitar que Pages procese el build con Jekyll
-        run: touch dist/.nojekyll
+      - name: Armar la página de redirección
+        run: |
+          mkdir -p sitio
+          cat > sitio/index.html <<'HTML'
+          <!doctype html>
+          <html lang="es-AR">
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <meta name="robots" content="noindex" />
+              <title>Imporbamas — Reuniones y minutas</title>
+              <script>
+                // Se conserva el hash: un enlace viejo a
+                // `#/reuniones/<id>` sigue abriendo esa misma reunión.
+                var destino = 'https://imporbamas-reuniones.pages.dev/' + (location.hash || '')
+                location.replace(destino)
+              </script>
+              <style>
+                body {
+                  font-family: system-ui, sans-serif;
+                  display: grid;
+                  place-items: center;
+                  min-height: 100vh;
+                  margin: 0;
+                  background: #f7f5f1;
+                  color: #14120f;
+                  text-align: center;
+                  padding: 24px;
+                }
+                a { color: #c0392b }
+              </style>
+            </head>
+            <body>
+              <div>
+                <p>Esta dirección cambió.</p>
+                <p>
+                  <a id="ir" href="https://imporbamas-reuniones.pages.dev/">
+                    Ir a la nueva
+                  </a>
+                </p>
+              </div>
+              <script>
+                // Por si el navegador no siguió el `replace`.
+                document.getElementById('ir').href =
+                  'https://imporbamas-reuniones.pages.dev/' + (location.hash || '')
+              </script>
+            </body>
+          </html>
+          HTML
+          touch sitio/.nojekyll
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: sitio
 
   deploy:
     needs: build
