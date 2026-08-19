@@ -29,6 +29,7 @@ import {
   type Rango,
 } from '../components/Filtros'
 import { useFiltros } from '../store/Filtros'
+import { calendarConfigurado, hayPermisoDeCalendario, tokenDeCalendario } from '../lib/calendar'
 
 /* ─────────────────────────────────────────────────────────────
    Reuniones.
@@ -395,6 +396,23 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
 
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    /*
+     * El permiso de Google se pide acá, lo primero, y no más adelante
+     * cuando hace falta el token.
+     *
+     * La ventana de permiso sólo se puede abrir mientras el navegador
+     * considere que hay un clic detrás, y esa ventana de tiempo se
+     * cierra apenas hay una espera larga. Dar de alta a los invitados
+     * —que va contra la base— es justamente eso: pedido después, la
+     * ventana quedaba bloqueada y la reunión se creaba sin Meet.
+     *
+     * Si el permiso ya está dado, esto no hace nada y no se ve.
+     */
+    if (calendarConfigurado && !hayPermisoDeCalendario()) {
+      await tokenDeCalendario()
+    }
+
     // Los de afuera se dan de alta ahora y entran sólo a esta reunión.
     const ids = [...participantes]
     for (const inv of invitados) {

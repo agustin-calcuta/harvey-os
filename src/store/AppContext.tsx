@@ -23,6 +23,7 @@ import {
   calendarConfigurado,
   cancelarEvento,
   crearEvento,
+  precargarGoogle,
 } from '../lib/calendar'
 import { RECURRENCIAS } from '../types'
 import type {
@@ -228,6 +229,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   )
 
   /* ── Carga inicial ──────────────────────────────────────── */
+
+  /*
+   * El script de Google se baja apenas abre la aplicación, no cuando
+   * se necesita. Es lo que permite que la ventana de permiso llegue a
+   * abrirse: si se descargara recién al crear la reunión, el
+   * navegador ya no la asociaría al clic y la bloquearía.
+   */
+  useEffect(() => {
+    precargarGoogle()
+  }, [])
 
   useEffect(() => {
     let vivo = true
@@ -769,7 +780,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (calendarConfigurado) {
         void crearEvento(ref.current, r)
           .then((ev) => {
-            if (!ev) return
+            /*
+             * Sin evento es porque no hubo permiso: o lo rechazó, o
+             * cerró la ventana. No es un error, pero tampoco puede
+             * pasar en silencio: la reunión existe y el Meet no, y
+             * quien la creó tiene que enterarse ahora y no cuando
+             * los demás pregunten por dónde entran.
+             */
+            if (!ev) {
+              avisar(
+                'La reunión quedó creada, sin agendar en Google. Se puede volver a intentar editándola.',
+                'info',
+              )
+              return
+            }
             void persistir('reuniones', {
               ...r,
               calendarEventoId: ev.id,

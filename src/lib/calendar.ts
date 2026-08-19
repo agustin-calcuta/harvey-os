@@ -84,6 +84,26 @@ function cargarGoogle(): Promise<void> {
 }
 
 /**
+ * Deja el script de Google cargado desde el arranque.
+ *
+ * No es una optimización: es lo que hace que la ventana de permiso
+ * se pueda abrir. El navegador sólo deja abrirla si viene de un clic
+ * del usuario, y esa autorización se pierde apenas hay un `await`
+ * largo en el medio. Descargar el script en el momento de crear la
+ * reunión metía justamente ese `await`, así que Chrome bloqueaba la
+ * ventana y la reunión quedaba sin Meet sin decir por qué.
+ *
+ * Cargándolo al abrir la aplicación, `tokenDeCalendario` resuelve en
+ * el mismo tick del clic y la ventana se abre.
+ */
+export function precargarGoogle(): void {
+  if (!CLIENT_ID) return
+  void cargarGoogle().catch(() => {
+    /* Sin conexión o con Google caído se reintenta al usarlo. */
+  })
+}
+
+/**
  * Token de acceso, pidiendo permiso si hace falta.
  *
  * `interactivo` en false devuelve lo que haya en memoria y nada más:
