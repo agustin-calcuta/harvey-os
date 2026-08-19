@@ -64,21 +64,27 @@ export const USUARIOS: Usuario[] = [
   /*
    * Ariel y Denise administran: dan de alta y de baja gente. No hay
    * una cuenta de soporte aparte —la administración la hacen ellos—.
-   * ⚠️ Faltan los apellidos.
+   *
+   * Los nombres completos y los correos salen de las minutas de
+   * Gemini, que traen a cada invitado con su `mailto:`. Es la fuente
+   * más confiable que hay: son las cuentas con las que realmente
+   * entraron a la reunión.
    */
-  persona('u_ariel', 'Ariel', 'ariel', 'Socio', 'superadmin'),
-  persona('u_denise', 'Denise', 'denise', 'Socia', 'superadmin'),
+  persona('u_ariel', 'Ariel Berinstein', 'ariel', 'Socio', 'superadmin'),
+  persona('u_denise', 'Denise Zaga', 'denise', 'Socia', 'superadmin'),
 
   /*
    * El equipo. Crean salas, reuniones, temas y tareas como
    * cualquiera; lo único que no hacen es dar de alta gente nueva.
    *
-   * ⚠️ El correo de Lucas es `digitallab@`, no `lucas@`: es la
-   * casilla del área, no una personal. Los otros dos están
-   * deducidos del mismo dominio y hay que confirmarlos.
+   * ⚠️ PENDIENTE — el correo de Lucas. Agustín pasó `digitallab@`,
+   * pero en las minutas de Gemini la cuenta figura como
+   * `digital.lab@calcutaconsulting.com` —con punto— bajo el nombre
+   * «Digital Lab CALCUTA». Si son alias de la misma cuenta da
+   * igual; si no, con el valor de acá Lucas no entra. Sin confirmar.
    */
-  persona('u_agustin', 'Agustín', 'agustin', 'Digital Lab'),
-  persona('u_francisco', 'Francisco', 'francisco', 'Digital Lab'),
+  persona('u_agustin', 'Agustín Ducculi', 'agustin', 'Digital Lab'),
+  persona('u_francisco', 'Francisco Lebermann', 'francisco', 'Digital Lab'),
   persona('u_lucas', 'Lucas', 'digitallab', 'Digital Lab'),
 ]
 

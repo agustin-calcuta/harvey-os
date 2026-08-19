@@ -32,10 +32,10 @@ begin;
 /* ── Personas ─────────────────────────────────────────────── */
 
 insert into public.usuarios (id, nombre, email, alcance, "puedeCrearSalas", cargo, activo, "creadoEn") values
-  ('u_ariel',     'Ariel',     'ariel@calcutaconsulting.com',      'superadmin', true, 'Socio',       true, now()),
-  ('u_denise',    'Denise',    'denise@calcutaconsulting.com',     'superadmin', true, 'Socia',       true, now()),
-  ('u_agustin',   'Agustín',   'agustin@calcutaconsulting.com',    'usuario',    true, 'Digital Lab', true, now()),
-  ('u_francisco', 'Francisco', 'francisco@calcutaconsulting.com',  'usuario',    true, 'Digital Lab', true, now()),
+  ('u_ariel',     'Ariel Berinstein',     'ariel@calcutaconsulting.com',      'superadmin', true, 'Socio',       true, now()),
+  ('u_denise',    'Denise Zaga',    'denise@calcutaconsulting.com',     'superadmin', true, 'Socia',       true, now()),
+  ('u_agustin',   'Agustín Ducculi',   'agustin@calcutaconsulting.com',    'usuario',    true, 'Digital Lab', true, now()),
+  ('u_francisco', 'Francisco Lebermann', 'francisco@calcutaconsulting.com',  'usuario',    true, 'Digital Lab', true, now()),
   -- Casilla del área, no personal: es la que dieron para Lucas.
   ('u_lucas',     'Lucas',     'digitallab@calcutaconsulting.com', 'usuario',    true, 'Digital Lab', true, now())
 on conflict (id) do nothing;
