@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "dev:calcuta": "VITE_MARCA=calcuta vite --port 5174",
+    "dev:calcuta": "VITE_MARCA=calcuta vite --mode calcuta --port 5174",
     "build:calcuta": "VITE_MARCA=calcuta npm run build",
     "lint": "oxlint",
     "preview": "vite preview"
