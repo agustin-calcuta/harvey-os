@@ -194,6 +194,7 @@ export function FiltroCliente({
         value={valor}
         onChange={(e) => onChange(e.target.value)}
         aria-label="Filtrar por cliente"
+        className={cx(selectCls, valor === 'todos' ? enReposo : puesto)}
       >
         <option value="todos">Todos los clientes</option>
         {activos.map((c) => (
