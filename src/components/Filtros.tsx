@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
-import { CalendarRange, DoorOpen, Filter, Search, X } from 'lucide-react'
+import { Briefcase, CalendarRange, DoorOpen, Filter, Search, X } from 'lucide-react'
 import { cx } from '../lib/utils'
-import type { Sala } from '../types'
+import type { Cliente, Sala } from '../types'
 
 /* ─────────────────────────────────────────────────────────────
    Los dos filtros que están en todas las secciones.
@@ -163,6 +163,44 @@ export function FiltroSala({
             {s.nombre}
           </option>
         ))}
+      </select>
+    </ConIcono>
+  )
+}
+
+/**
+ * Filtrar por cliente.
+ *
+ * Aparece recién cuando hay alguno cargado: en un estudio que recién
+ * arranca, un desplegable vacío es una promesa incumplida.
+ */
+export function FiltroCliente({
+  valor,
+  onChange,
+  clientes,
+}: {
+  /** `'todos'`, `'sin'`, o el id de un cliente. */
+  valor: string
+  onChange: (v: string) => void
+  clientes: Cliente[]
+}) {
+  const activos = clientes.filter((c) => c.activo)
+  if (!activos.length) return null
+
+  return (
+    <ConIcono icono={<Briefcase size={11} />}>
+      <select
+        value={valor}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label="Filtrar por cliente"
+      >
+        <option value="todos">Todos los clientes</option>
+        {activos.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.nombre}
+          </option>
+        ))}
+        <option value="sin">Sin cliente</option>
       </select>
     </ConIcono>
   )

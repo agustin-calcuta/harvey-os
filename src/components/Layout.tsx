@@ -42,6 +42,7 @@ export default function Layout() {
     esSuperadmin,
     compromisosVisibles,
     solicitudesPendientes,
+    mencionesSinLeer,
   } = useApp()
 
   const [abierto, setAbierto] = useState(false)
@@ -153,8 +154,24 @@ export default function Layout() {
             >
               <n.icono size={15} className="shrink-0" />
               <span className="flex-1">{n.texto}</span>
+              {/*
+                Que me hayan arrobado pesa más que cualquier contador:
+                es alguien esperando una respuesta, no una cuenta.
+                Por eso va en `acento` —el color que aparece poco— y
+                se muestra antes que lo vencido.
+              */}
+              {n.a === '/compromisos' && mencionesSinLeer.length > 0 ? (
+                <span
+                  className="bg-acento px-1.5 py-0.5 text-[9px] font-semibold text-acento-tinta"
+                  title={`${mencionesSinLeer.length} ${
+                    mencionesSinLeer.length === 1 ? 'mención sin leer' : 'menciones sin leer'
+                  }`}
+                >
+                  @{mencionesSinLeer.length}
+                </span>
+              ) : null}
               {/* Lo vencido pesa más que lo propio: si hay, se muestra eso. */}
-              {n.a === '/compromisos' &&
+              {n.a === '/compromisos' && mencionesSinLeer.length === 0 &&
                 (vencidos.length > 0 ? (
                   <span
                     className="bg-alerta px-1.5 py-0.5 text-[9px] text-white"

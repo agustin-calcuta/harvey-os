@@ -18,6 +18,7 @@ import {
   GripVertical,
   LayoutGrid,
   List,
+  MessageSquare,
   Pencil,
   Plus,
   Trash2,
@@ -50,6 +51,7 @@ import {
   FiltroBoton,
   FiltroFecha,
   FiltroSala,
+  FiltroCliente,
   FiltroSelect,
   enRango,
 } from '../components/Filtros'
@@ -122,6 +124,7 @@ export default function Compromisos() {
   const [creando, setCreando] = useState(false)
   const [editando, setEditando] = useState<Compromiso | undefined>()
   const [porBorrar, setPorBorrar] = useState<Compromiso | undefined>()
+  const [cliente, setCliente] = useState('todos')
 
   /*
    * Quién puede borrar una tarea: quien organiza esa sala, o quien la
@@ -200,13 +203,15 @@ export default function Compromisos() {
       deLasSalas.filter((c) => {
         if (responsable !== 'todos' && c.responsableId !== responsable) return false
         if (importancia !== 'todas' && c.importancia !== importancia) return false
+        if (cliente === 'sin' && c.clienteId) return false
+        if (cliente !== 'todos' && cliente !== 'sin' && c.clienteId !== cliente) return false
         if (soloVencidas && !estaVencido(c)) return false
         if (!entraPorFecha(c)) return false
         if (!incluirHechos && c.estado === 'hecho') return false
         if (busqueda && !c.accion.toLowerCase().includes(busqueda.toLowerCase())) return false
         return true
       }),
-    [deLasSalas, responsable, importancia, soloVencidas, entraPorFecha, incluirHechos, busqueda],
+    [deLasSalas, responsable, importancia, cliente, soloVencidas, entraPorFecha, incluirHechos, busqueda],
   )
 
   const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
@@ -255,6 +260,7 @@ export default function Compromisos() {
         <BarraFiltros>
           <Buscador valor={busqueda} onChange={setBusqueda} placeholder="Buscar una tarea…" />
           <FiltroSala valor={salaFiltro} onChange={setSalaFiltro} salas={misSalas} />
+          <FiltroCliente valor={cliente} onChange={setCliente} clientes={estado.clientes} />
           <FiltroFecha valor={rango} onChange={setRango} />
 
           {/* Por persona, sólo cuando se están mirando las del equipo. */}
@@ -684,6 +690,8 @@ function Tarjeta({
 
   const vencido = estaVencido(c)
   const proximo = venceProximo(c)
+  const elCliente = estado.clientes.find((x) => x.id === c.clienteId)
+  const charla = estado.comentarios.filter((x) => x.compromisoId === c.id).length
   const reunion = estado.reuniones.find((r) => r.id === c.reunionId)
 
   return (
@@ -710,8 +718,10 @@ function Tarjeta({
           style={{ background: IMPORTANCIA[c.importancia].hex }}
         />
         <div className="min-w-0 flex-1">
-          <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-tenue">
-            {sala(estado, c.salaId)?.nombre}
+          <div className="flex flex-wrap items-center gap-x-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-tenue">
+            <span>{sala(estado, c.salaId)?.nombre}</span>
+            {/* El cliente pesa más que la sala al mirar de reojo. */}
+            {elCliente && <span className="text-signal">{elCliente.nombre}</span>}
           </div>
           <div className="mt-0.5 text-xs leading-snug">{c.accion}</div>
           {c.avance && <div className="mt-1 text-meta text-tenue">{c.avance}</div>}
@@ -737,6 +747,15 @@ function Tarjeta({
 
       <div className="mt-2.5 flex flex-wrap items-center gap-2 pl-[26px]">
         <span className="text-[10px] text-suave">{nombreDe(estado, c.responsableId)}</span>
+        {charla > 0 && (
+          <span
+            className="flex items-center gap-1 text-[10px] text-tenue"
+            title={`${charla} ${charla === 1 ? 'comentario' : 'comentarios'}`}
+          >
+            <MessageSquare size={10} />
+            {charla}
+          </span>
+        )}
         {c.fechaLimite && (
           <span
             className={cx(

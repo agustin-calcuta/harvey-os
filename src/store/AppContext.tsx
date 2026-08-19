@@ -27,6 +27,8 @@ import {
 } from '../lib/calendar'
 import { RECURRENCIAS } from '../types'
 import type {
+  Cliente,
+  Comentario,
   Compromiso,
   Config,
   Estado,
@@ -164,6 +166,18 @@ interface Ctx {
   actualizarCompromiso(id: string, cambios: Partial<Compromiso>): Promise<void>
   borrarCompromiso(id: string): Promise<void>
   moverCompromiso(id: string, estado: EstadoCompromiso): Promise<void>
+
+  // comentarios de las tareas
+  comentar(compromisoId: string, texto: string, menciones: string[]): Promise<void>
+  borrarComentario(id: string): Promise<void>
+  /** Al abrir el hilo: haber visto la conversación es haberla leído. */
+  marcarComentariosLeidos(compromisoId: string): Promise<void>
+  /** Comentarios que me mencionan y todavía no abrí. */
+  mencionesSinLeer: Comentario[]
+
+  // clientes
+  /** Devuelve el cliente con ese nombre, creándolo si hace falta. */
+  asegurarCliente(nombre: string): Promise<Cliente | undefined>
 
   // personas y config
   guardarUsuario(u: Usuario): Promise<void>
@@ -1251,6 +1265,112 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * La sala viene con la tarea: la de su reunión, o la que se eligió
    * al crearla suelta. Ya no hay una sala activa de la que sacarla.
    */
+  /* ── Comentarios ────────────────────────────────────────── */
+
+  /**
+   * Lo que tengo sin leer: comentarios que me arrobaron y no abrí.
+   *
+   * Se calcula, no se guarda. Una tabla de notificaciones aparte
+   * tendría que mantenerse en sincronía con los comentarios —y algún
+   * día no lo estaría—: acá el aviso *es* el comentario, así que
+   * abrir el hilo lo apaga sin ningún paso extra.
+   *
+   * Sólo cuenta lo de tareas que todavía existen: si la tarea se
+   * borró, el aviso no lleva a ninguna parte.
+   */
+  const mencionesSinLeer = useMemo(() => {
+    if (!yo) return []
+    return estado.comentarios
+      .filter(
+        (c) =>
+          c.menciones.includes(yo.id) &&
+          !c.leidoPor.includes(yo.id) &&
+          estado.compromisos.some((t) => t.id === c.compromisoId),
+      )
+      .sort((a, b) => b.creadoEn.localeCompare(a.creadoEn))
+  }, [estado.comentarios, estado.compromisos, yo])
+
+  const comentar = useCallback(
+    async (compromisoId: string, texto: string, menciones: string[]) => {
+      if (!yo || !texto.trim()) return
+      await persistir('comentarios', {
+        id: uid('cm'),
+        compromisoId,
+        autorId: yo.id,
+        texto: texto.trim(),
+        menciones,
+        /*
+         * Lo propio nace leído: nadie se avisa a sí mismo, y sin esto
+         * el contador te contaría tus propios comentarios.
+         */
+        leidoPor: [yo.id],
+        creadoEn: new Date().toISOString(),
+      })
+    },
+    [persistir, yo],
+  )
+
+  const borrarComentario = useCallback(
+    async (id: string) => {
+      await eliminar('comentarios', id)
+    },
+    [eliminar],
+  )
+
+  /**
+   * Marca como leídos todos los comentarios de una tarea.
+   *
+   * Se llama al abrir el hilo: haber visto la conversación es haberla
+   * leído. Sólo escribe los que hacen falta —si no, cada apertura
+   * generaría escrituras inútiles contra la base.
+   */
+  const marcarComentariosLeidos = useCallback(
+    async (compromisoId: string) => {
+      if (!yo) return
+      const pendientes = ref.current.comentarios.filter(
+        (c) => c.compromisoId === compromisoId && !c.leidoPor.includes(yo.id),
+      )
+      for (const c of pendientes) {
+        await persistir('comentarios', { ...c, leidoPor: [...c.leidoPor, yo.id] })
+      }
+    },
+    [persistir, yo],
+  )
+
+  /* ── Clientes ───────────────────────────────────────────── */
+
+  /**
+   * Devuelve el cliente con ese nombre, creándolo si no existe.
+   *
+   * Es lo que permite elegir de la lista **o escribir uno nuevo** sin
+   * pasar por una pantalla de administración: si dar de alta un
+   * cliente costara más que tipearlo, nadie lo cargaría y el campo
+   * quedaría vacío justo en las tareas que importa filtrar.
+   */
+  const asegurarCliente = useCallback(
+    async (nombre: string) => {
+      const limpio = nombre.trim()
+      if (!limpio) return undefined
+      const clave = (s: string) =>
+        s
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '')
+      const existente = ref.current.clientes.find((c) => clave(c.nombre) === clave(limpio))
+      if (existente) return existente
+      const nuevo: Cliente = {
+        id: uid('cl'),
+        nombre: limpio,
+        activo: true,
+        creadoEn: new Date().toISOString(),
+      }
+      await persistir('clientes', nuevo)
+      return nuevo
+    },
+    [persistir],
+  )
+
   const crearCompromiso = useCallback(
     async (datos: Omit<Compromiso, 'id' | 'creadoEn' | 'salaId'> & { salaId?: string }) => {
       const deLaReunion = datos.reunionId
@@ -1419,6 +1539,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       proponerTema, actualizarTema, borrarTema, reordenarTemas,
       asignarAReunion, devolverAlTemario,
       crearCompromiso, actualizarCompromiso, borrarCompromiso, moverCompromiso,
+      comentar, borrarComentario, marcarComentariosLeidos, mencionesSinLeer,
+      asegurarCliente,
       guardarUsuario, borrarUsuario, actualizarConfig,
       reenviarNotificacion, restablecerDemo,
       avisos, avisar, descartarAviso,
@@ -1436,6 +1558,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       sumarInvitado, asegurarPersona,
       proponerTema, actualizarTema, borrarTema, reordenarTemas, asignarAReunion, devolverAlTemario,
       crearCompromiso, actualizarCompromiso, borrarCompromiso, moverCompromiso,
+      comentar, borrarComentario, marcarComentariosLeidos, mencionesSinLeer,
+      asegurarCliente,
       guardarUsuario, borrarUsuario, actualizarConfig, reenviarNotificacion,
       restablecerDemo, avisar, descartarAviso,
     ],

@@ -10,6 +10,7 @@ import {
 } from '../../types'
 import { Boton, Campo, Modal, Segmentado } from '../ui'
 import { marca } from '../../marca'
+import Comentarios from '../Comentarios'
 
 /*
  * Alta y edición de tareas: qué hay que hacer, quién y para cuándo.
@@ -32,8 +33,13 @@ export default function ModalCompromiso({
   temaId?: string
   compromiso?: Compromiso
 }) {
-  const { estado, crearCompromiso, actualizarCompromiso, salasDondeSoyDelEquipo: misSalas } =
-    useApp()
+  const {
+    estado,
+    crearCompromiso,
+    actualizarCompromiso,
+    asegurarCliente,
+    salasDondeSoyDelEquipo: misSalas,
+  } = useApp()
 
   /* De la reunión, de la tarea que se edita, o la que se elija. */
   const salaDeLaReunion = buscarReunion(estado, compromiso?.reunionId ?? reunionId)?.salaId
@@ -49,6 +55,7 @@ export default function ModalCompromiso({
   const [importancia, setImportancia] = useState<Importancia>('media')
   const [est, setEst] = useState<EstadoCompromiso>('pendiente')
   const [avance, setAvance] = useState('')
+  const [cliente, setCliente] = useState('')
 
   const primero = gente[0]?.id
   useEffect(() => {
@@ -61,10 +68,19 @@ export default function ModalCompromiso({
     setImportancia(compromiso?.importancia ?? 'media')
     setEst(compromiso?.estado ?? 'pendiente')
     setAvance(compromiso?.avance ?? '')
-  }, [abierto, compromiso, primero, salaFija])
+    setCliente(
+      estado.clientes.find((c) => c.id === compromiso?.clienteId)?.nombre ?? '',
+    )
+  }, [abierto, compromiso, primero, salaFija, estado.clientes])
 
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault()
+    /*
+     * El cliente se resuelve por nombre: si no existe se crea acá
+     * mismo. Vaciar el campo desvincula la tarea sin borrar el
+     * cliente, que puede estar en uso en otras.
+     */
+    const elCliente = cliente.trim() ? await asegurarCliente(cliente) : undefined
     const datos = {
       salaId: laSala,
       reunionId: compromiso?.reunionId ?? reunionId,
@@ -76,6 +92,7 @@ export default function ModalCompromiso({
       importancia,
       estado: est,
       avance: avance.trim() || undefined,
+      clienteId: elCliente?.id,
       completadoEn:
         est === 'hecho' ? (compromiso?.completadoEn ?? new Date().toISOString()) : undefined,
     }
@@ -167,6 +184,30 @@ export default function ModalCompromiso({
           />
         </Campo>
 
+        {/*
+          Para qué cliente es. Con `datalist` se elige de lo ya
+          cargado o se escribe uno nuevo en el mismo campo: si dar de
+          alta un cliente costara una pantalla aparte, nadie lo
+          cargaría y el filtro por cliente quedaría vacío justo en las
+          tareas donde importa.
+        */}
+        <Campo etiqueta="Cliente" ayuda="Opcional. Elegí de la lista o escribí uno nuevo.">
+          <input
+            className="w-full"
+            list="clientes-cargados"
+            value={cliente}
+            onChange={(e) => setCliente(e.target.value)}
+            placeholder="Sin cliente"
+          />
+          <datalist id="clientes-cargados">
+            {estado.clientes
+              .filter((c) => c.activo)
+              .map((c) => (
+                <option key={c.id} value={c.nombre} />
+              ))}
+          </datalist>
+        </Campo>
+
         <Campo etiqueta="Estado">
           <Segmentado
             valor={est}
@@ -187,6 +228,13 @@ export default function ModalCompromiso({
               onChange={(e) => setAvance(e.target.value)}
             />
           </Campo>
+        )}
+
+        {/* La conversación, sólo cuando la tarea ya existe. */}
+        {compromiso && (
+          <div className="border-t border-borde pt-4">
+            <Comentarios tarea={compromiso} />
+          </div>
         )}
 
         <div className="flex justify-end gap-2 pt-1">
