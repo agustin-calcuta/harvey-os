@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../../store/AppContext'
-import { integrantes, paraInputDate, reunion as buscarReunion } from '../../lib/utils'
+import { integrantes, nombreDe, paraInputDate, reunion as buscarReunion, rolEnSala } from '../../lib/utils'
 import {
   ESTADO_COMPROMISO,
   IMPORTANCIA,
@@ -36,6 +36,7 @@ export default function ModalCompromiso({
 }) {
   const {
     estado,
+    yo,
     crearCompromiso,
     actualizarCompromiso,
     asegurarCliente,
@@ -57,6 +58,24 @@ export default function ModalCompromiso({
   const [est, setEst] = useState<EstadoCompromiso>('pendiente')
   const [avance, setAvance] = useState('')
   const [cliente, setCliente] = useState('')
+
+  /*
+   * Quién puede tocar la tarea: quien la tiene a su nombre y quien
+   * organiza la sala. Es la misma condición que `compromisos_editar`
+   * en la base.
+   *
+   * Importa porque una tarea la ve **todo el equipo de la sala**, no
+   * sólo su responsable: alguien arrobado en la conversación la abre
+   * para responder. Sin esto veía todos los campos habilitados,
+   * cambiaba algo, apretaba Guardar y la base se lo rechazaba con un
+   * error de permisos que no explica nada. Ahora entra en lectura y
+   * con la conversación abierta, que es a lo que vino.
+   */
+  const puedoEditar =
+    !compromiso ||
+    yo?.alcance === 'superadmin' ||
+    compromiso.responsableId === yo?.id ||
+    rolEnSala(estado, compromiso.salaId, yo?.id) === 'organizador'
 
   const primero = gente[0]?.id
 
@@ -129,6 +148,14 @@ export default function ModalCompromiso({
       titulo={compromiso ? 'Editar tarea' : 'Nueva tarea'}
     >
       <form onSubmit={enviar} className="space-y-5">
+        {!puedoEditar && (
+          <p className="border-l-2 border-cold bg-hueco px-3 py-2 text-meta leading-relaxed text-suave">
+            Esta tarea es de {nombreDe(estado, compromiso!.responsableId)}. Podés leerla y
+            comentar; para cambiarla, pedísela a quien la tiene o a quien organiza la sala.
+          </p>
+        )}
+
+        <fieldset disabled={!puedoEditar} className="m-0 space-y-5 border-0 p-0">
         {!salaFija && misSalas.length > 1 && (
           <Campo etiqueta="Sala" ayuda="De acá salen las personas que pueden quedar a cargo.">
             <select
@@ -236,6 +263,9 @@ export default function ModalCompromiso({
           </Campo>
         )}
 
+        </fieldset>
+
+        {/* Fuera del fieldset: comentar puede cualquiera que la vea. */}
         {/* La conversación, sólo cuando la tarea ya existe. */}
         {compromiso && (
           <div className="border-t border-borde pt-4">
@@ -245,11 +275,13 @@ export default function ModalCompromiso({
 
         <div className="flex justify-end gap-2 pt-1">
           <Boton type="button" variante="fantasma" onClick={onCerrar}>
-            Cancelar
+            {puedoEditar ? 'Cancelar' : 'Cerrar'}
           </Boton>
-          <Boton type="submit" variante="solido">
-            {compromiso ? 'Guardar' : 'Registrar tarea'}
-          </Boton>
+          {puedoEditar && (
+            <Boton type="submit" variante="solido">
+              {compromiso ? 'Guardar' : 'Registrar tarea'}
+            </Boton>
+          )}
         </div>
       </form>
     </Modal>

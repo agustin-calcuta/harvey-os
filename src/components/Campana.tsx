@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Bell } from 'lucide-react'
 import { useApp } from '../store/AppContext'
 import { nombreDe, relativo } from '../lib/utils'
+import { colores } from '../marca'
 
 /* ─────────────────────────────────────────────────────────────
    Lo que te están esperando.
@@ -40,6 +41,23 @@ export default function Campana({ destacada = false }: { destacada?: boolean }) 
 
   const cuantas = mencionesSinLeer.length
 
+  /*
+   * El globo tiene que despegarse del cuadro.
+   *
+   * El cuadro va en el acento de la marca y el globo en el color de
+   * acción, que en Calcuta son lima y azul y se distinguen solos. En
+   * Imporbamas los dos son el mismo rojo: el globo se fundía con el
+   * fondo y el número no se leía.
+   *
+   * Cuando coinciden, el cuadro pasa a la tinta —negro— y el globo
+   * se queda con el color de la marca, que es el que tiene que
+   * llamar la atención. Es una regla y no un caso especial: sirve
+   * para cualquier cliente que elija un solo color.
+   */
+  const seConfunden = colores.acento.toLowerCase() === colores.signal.toLowerCase()
+  const cuadro = seConfunden ? 'bg-tinta text-fondo' : 'bg-acento text-acento-tinta'
+  const bordeGlobo = seConfunden ? 'border-tinta' : 'border-acento'
+
   return (
     <div ref={caja} className="relative">
       <button
@@ -56,7 +74,7 @@ export default function Campana({ destacada = false }: { destacada?: boolean }) 
                * color que aparece poco, y esto es justamente lo que
                * conviene que salte a la vista al abrir.
                */
-              'relative flex h-11 w-11 items-center justify-center bg-acento text-acento-tinta transition-opacity hover:opacity-85'
+              `relative flex h-11 w-11 items-center justify-center ${cuadro} transition-opacity hover:opacity-85`
             : 'relative p-2.5 text-white/50 transition-colors hover:text-white sm:p-2'
         }
       >
@@ -70,7 +88,7 @@ export default function Campana({ destacada = false }: { destacada?: boolean }) 
                    * acento. Con borde del mismo fondo para que no se
                    * pegue al ícono cuando el número tiene dos cifras.
                    */
-                  'absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center border-2 border-acento bg-signal px-1 text-[10px] font-semibold text-white'
+                  `absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center border-2 ${bordeGlobo} bg-signal px-1 text-[10px] font-semibold text-white`
                 : 'absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center bg-acento px-1 text-[9px] font-semibold text-acento-tinta'
             }
           >
