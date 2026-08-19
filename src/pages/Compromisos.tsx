@@ -20,6 +20,7 @@ import {
   List,
   Pencil,
   Plus,
+  Trash2,
 } from 'lucide-react'
 import { useApp } from '../store/AppContext'
 import {
@@ -29,6 +30,7 @@ import {
   integrantes,
   nombreDe,
   relativo,
+  rolEnSala,
   sala,
   venceProximo,
 } from '../lib/utils'
@@ -41,7 +43,7 @@ import {
   type EstadoCompromiso,
   type Importancia,
 } from '../types'
-import { Boton, Chip, Seccion, SelectorVista, Vacio } from '../components/ui'
+import { Boton, Chip, Confirmar, Seccion, SelectorVista, Vacio } from '../components/ui'
 import {
   BarraFiltros,
   Buscador,
@@ -90,6 +92,7 @@ export default function Compromisos() {
     estado,
     yo,
     moverCompromiso,
+    borrarCompromiso,
     compromisosVisibles,
     puedeOrganizar,
     misSalas,
@@ -118,6 +121,18 @@ export default function Compromisos() {
   const [busqueda, setBusqueda] = useState('')
   const [creando, setCreando] = useState(false)
   const [editando, setEditando] = useState<Compromiso | undefined>()
+  const [porBorrar, setPorBorrar] = useState<Compromiso | undefined>()
+
+  /*
+   * Quién puede borrar una tarea: quien organiza esa sala, o quien la
+   * tiene a su nombre. Es la misma condición que la política
+   * `compromisos_borrar` de la base —si acá se ofreciera de más, el
+   * botón fallaría con un error de permisos incomprensible—.
+   */
+  const puedoBorrar = (c: Compromiso) =>
+    yo?.alcance === 'superadmin' ||
+    rolEnSala(estado, c.salaId, yo?.id) === 'organizador' ||
+    c.responsableId === yo?.id
   const [arrastrando, setArrastrando] = useState<Compromiso | undefined>()
 
   const cambiarVista = (v: Vista) => {
@@ -354,6 +369,7 @@ export default function Compromisos() {
                     estado={col}
                     compromisos={filtrados.filter((c) => c.estado === col)}
                     onEditar={setEditando}
+                    onBorrar={(c) => (puedoBorrar(c) ? setPorBorrar(c) : undefined)}
                   />
                 ))}
               </div>
@@ -377,7 +393,13 @@ export default function Compromisos() {
             </p>
           </>
         ) : (
-          <VistaLista lista={filtrados} agrupar={agrupar} onEditar={setEditando} />
+          <VistaLista
+            lista={filtrados}
+            agrupar={agrupar}
+            onEditar={setEditando}
+            onBorrar={setPorBorrar}
+            puedoBorrar={puedoBorrar}
+          />
         )}
       </Seccion>
 
@@ -388,6 +410,22 @@ export default function Compromisos() {
         onCerrar={() => setEditando(undefined)}
         reunionId={editando?.reunionId ?? ''}
         compromiso={editando}
+      />
+      <Confirmar
+        abierto={!!porBorrar}
+        titulo="Eliminar tarea"
+        texto={
+          porBorrar
+            ? `Se elimina “${porBorrar.accion}”. Si venía de una minuta ya enviada, ahí sigue figurando.`
+            : ''
+        }
+        textoBoton="Eliminar"
+        peligro
+        onCancelar={() => setPorBorrar(undefined)}
+        onConfirmar={() => {
+          if (porBorrar) void borrarCompromiso(porBorrar.id)
+          setPorBorrar(undefined)
+        }}
       />
     </div>
   )
@@ -409,10 +447,14 @@ function VistaLista({
   lista,
   agrupar,
   onEditar,
+  onBorrar,
+  puedoBorrar,
 }: {
   lista: Compromiso[]
   agrupar: Agrupacion
   onEditar: (c: Compromiso) => void
+  onBorrar?: (c: Compromiso) => void
+  puedoBorrar: (c: Compromiso) => boolean
 }) {
   const { estado, moverCompromiso, puedeOrganizar } = useApp()
 
@@ -534,6 +576,15 @@ function VistaLista({
                     >
                       <Pencil size={11} className="mx-auto" />
                     </button>
+                    {onBorrar && puedoBorrar(c) && (
+                      <button
+                        onClick={() => onBorrar(c)}
+                        className="col-span-3 border border-borde2 bg-panel p-1.5 text-suave transition-colors hover:border-alerta hover:text-alerta sm:col-auto"
+                        aria-label={`Eliminar «${c.accion}»`}
+                      >
+                        <Trash2 size={11} className="mx-auto" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </li>
@@ -561,10 +612,12 @@ function Columna({
   estado: col,
   compromisos,
   onEditar,
+  onBorrar,
 }: {
   estado: EstadoCompromiso
   compromisos: Compromiso[]
   onEditar: (c: Compromiso) => void
+  onBorrar: (c: Compromiso) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: col })
   const meta = ESTADO_COMPROMISO[col]
@@ -595,7 +648,14 @@ function Columna({
         ) : (
           compromisos
             .sort((a, b) => (a.fechaLimite ?? '9999').localeCompare(b.fechaLimite ?? '9999'))
-            .map((c) => <Tarjeta key={c.id} compromiso={c} onEditar={() => onEditar(c)} />)
+            .map((c) => (
+              <Tarjeta
+                key={c.id}
+                compromiso={c}
+                onEditar={() => onEditar(c)}
+                onBorrar={() => onBorrar(c)}
+              />
+            ))
         )}
       </div>
     </div>
@@ -607,10 +667,13 @@ function Columna({
 function Tarjeta({
   compromiso: c,
   onEditar,
+  onBorrar,
   superpuesta,
 }: {
   compromiso: Compromiso
   onEditar: () => void
+  /* Sin permiso no llega, y entonces el tacho no se dibuja. */
+  onBorrar?: () => void
   superpuesta?: boolean
 }) {
   const { estado, moverCompromiso } = useApp()
@@ -661,6 +724,15 @@ function Tarjeta({
         >
           <Pencil size={11} />
         </button>
+        {onBorrar && (
+          <button
+            onClick={onBorrar}
+            className="shrink-0 p-1 text-borde2 transition-all hover:text-alerta xl:opacity-0 xl:group-hover:opacity-100"
+            aria-label="Eliminar"
+          >
+            <Trash2 size={11} />
+          </button>
+        )}
       </div>
 
       <div className="mt-2.5 flex flex-wrap items-center gap-2 pl-[26px]">

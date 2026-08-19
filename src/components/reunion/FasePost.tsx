@@ -90,9 +90,15 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
   const nuevas = compromisosDe(estado, reunion.id)
   const arrastradas = compromisosArrastrados(estado, reunion.id)
   const editable = puedeModerar(reunion)
-  /* Borrar es del socio de esa sala, no de cualquiera que modere. */
-  const puedeBorrar =
-    yo?.alcance === 'superadmin' || rolEnSala(estado, reunion.salaId, yo?.id) === 'organizador'
+  /*
+   * Borrar una tarea: quien organiza la sala, o quien la tiene a su
+   * nombre. Mismo criterio que editarla —el responsable ya puede
+   * reescribirle la acción entera— y que la política de la base.
+   */
+  const puedeBorrarTarea = (c: Compromiso) =>
+    yo?.alcance === 'superadmin' ||
+    rolEnSala(estado, reunion.salaId, yo?.id) === 'organizador' ||
+    c.responsableId === yo?.id
 
   const [conclusiones, setConclusiones] = useState(reunion.conclusionesGenerales ?? '')
   const [observaciones, setObservaciones] = useState(reunion.observaciones ?? '')
@@ -187,27 +193,27 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
         ))}
       </nav>
 
-      {editable && reunion.estado === 'cerrada' && (
-        <div className="flex flex-wrap gap-2">
-          <Boton variante="fantasma" onClick={() => reabrirReunion(reunion.id)}>
-            <RotateCcw size={12} /> Reabrir para editar
-          </Boton>
-          <Boton variante="fantasma" onClick={() => setVerCorreo(true)}>
-            <Mail size={12} /> Ver cómo llega el correo
-          </Boton>
-        </div>
-      )}
-
       {/*
-        Traer lo que escribió Gemini. Va acá y no en el temario porque
-        la minuta existe recién después del Meet, y es el momento en
-        que alguien la tiene en la mano y la quiere volcar.
+        Importar va primero y en sólido, no en fantasma como las otras
+        dos: es la que ahorra media hora de tipeo y tiene que verse
+        desde la puerta. Las otras son de mantenimiento —volver atrás,
+        espiar el correo— y con el gris alcanza.
       */}
       {editable && (
-        <div className="flex flex-wrap gap-2">
-          <Boton variante="fantasma" onClick={() => setImportando(true)}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Boton variante="solido" onClick={() => setImportando(true)}>
             <FileText size={12} /> Importar la minuta de Gemini
           </Boton>
+          {reunion.estado === 'cerrada' && (
+            <>
+              <Boton variante="fantasma" onClick={() => reabrirReunion(reunion.id)}>
+                <RotateCcw size={12} /> Reabrir para editar
+              </Boton>
+              <Boton variante="fantasma" onClick={() => setVerCorreo(true)}>
+                <Mail size={12} /> Ver cómo llega el correo
+              </Boton>
+            </>
+          )}
         </div>
       )}
 
@@ -346,7 +352,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
                     c={c}
                     editable={editable}
                     onEditar={() => setEditando(c)}
-                    onBorrar={puedeBorrar ? () => setPorBorrar(c) : undefined}
+                    onBorrar={puedeBorrarTarea(c) ? () => setPorBorrar(c) : undefined}
                   />
                 ))}
 

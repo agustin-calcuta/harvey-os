@@ -587,9 +587,17 @@ create policy compromisos_editar on public.compromisos
 -- Borrar es del socio de la sala. Cualquiera crea tareas y actualiza el
 -- avance de las suyas, pero sacar una del registro no: si dejó de tener
 -- sentido, se marca como hecha o la borra quien conduce el equipo.
+-- Borrar queda igual que editar: quien organiza la sala, o el
+-- responsable de la tarea.
+--
+-- Estaba sólo en manos del organizador y no se sostenía: el
+-- responsable ya podía reescribirle la acción, el detalle y la fecha
+-- —o sea, dejarla irreconocible— así que impedirle borrarla no
+-- protegía nada y sí lo obligaba a pedirle a un socio que le limpie
+-- una tarea que había cargado él por error.
 create policy compromisos_borrar on public.compromisos
   for delete to authenticated
-  using (public.organizo_la_sala("salaId"));
+  using (public.organizo_la_sala("salaId") or "responsableId" = public.mi_usuario_id());
 
 /* notificaciones */
 

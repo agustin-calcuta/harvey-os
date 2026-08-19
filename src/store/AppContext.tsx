@@ -1079,12 +1079,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const r = ref.current.reuniones.find((x) => x.id === id)
       if (!r) return
       const n = await registrarCorreo('minuta', r, correoMinuta(ref.current, r))
-      avisar(
-        n.estado === 'enviado'
-          ? `Minuta enviada a ${n.destinatarios.length} personas.`
-          : `Minuta lista para ${n.destinatarios.length} destinatarios. Falta conectar la casilla de correo.`,
-        n.estado === 'enviado' ? 'ok' : 'info',
-      )
+      const cuantos = n.destinatarios.length
+
+      /*
+       * Tres finales distintos, y antes los tres decían lo mismo.
+       *
+       * «Simulado» es que no hay casilla configurada; «error» es que
+       * la hay y el envío falló. Mostrar «falta conectar la casilla»
+       * cuando en realidad EmailJS devolvió un error manda a revisar
+       * la configuración —que está bien— en vez del problema real, y
+       * el detalle queda escondido en el registro de Administración.
+       */
+      if (n.estado === 'enviado') {
+        avisar(`Minuta enviada a ${cuantos} ${cuantos === 1 ? 'persona' : 'personas'}.`)
+      } else if (n.estado === 'error') {
+        avisar(`La minuta no salió: ${n.error ?? 'el proveedor rechazó el envío'}`, 'error')
+      } else {
+        avisar(
+          `Minuta lista para ${cuantos} ${cuantos === 1 ? 'destinatario' : 'destinatarios'}, pero no salió: falta conectar la casilla de correo.`,
+          'info',
+        )
+      }
     },
     [registrarCorreo, avisar],
   )
