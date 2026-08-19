@@ -27,18 +27,26 @@ base entre clientes: hoy las políticas aíslan por sala, no por
 organización, y hacerlo multi-inquilino de verdad es rehacerlas
 todas. Dos bases es más barato y más seguro.
 
-Con la connection string en `$PGURL_CALCUTA`, en este orden:
+Con la connection string en `$PGURL_CALCUTA`:
 
 ```bash
 psql "$PGURL_CALCUTA" -f db/schema.sql
 ```
 
 ```bash
-psql "$PGURL_CALCUTA" -f db/rls.sql
+psql "$PGURL_CALCUTA" -f db/seed-calcuta.sql
 ```
 
+**Acá hay que parar y hacer el paso 2**, porque `rls.sql` no se puede
+correr todavía: usa `auth.user_id()`, y el esquema `auth` lo crea
+Neon recién cuando se habilita la Data API. Corrido antes, falla en
+la primera política y no deja nada a medias —la transacción se
+revierte entera—, pero es una vuelta al pedo.
+
+Con la Data API ya habilitada:
+
 ```bash
-psql "$PGURL_CALCUTA" -f db/seed-calcuta.sql
+psql "$PGURL_CALCUTA" -f db/rls.sql
 ```
 
 ```bash
@@ -64,12 +72,16 @@ personas, con Ariel y Denise en `superadmin`.
 
 ---
 
-## 2. Neon Auth
+## 2. Neon Auth y la Data API
 
 **Quién:** Agustín, en el proyecto nuevo.
 
-1. Habilitar Google como proveedor.
-2. Agregar a los orígenes permitidos el dominio del despliegue
+1. Habilitar **Neon Auth** con Google como proveedor.
+2. Habilitar la **Data API**. Esto no es opcional ni cosmético: es
+   lo que crea el esquema `auth` y el rol `authenticated`, sin los
+   cuales `rls.sql` no corre y la aplicación no puede hablar con la
+   base desde el navegador.
+3. Agregar a los orígenes permitidos el dominio del despliegue
    —el de Cloudflare Pages— y `http://localhost:5174` para poder
    probar en local.
 
