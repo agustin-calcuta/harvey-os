@@ -301,6 +301,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
         (u) => u.email.toLowerCase() === s.email.toLowerCase(),
       )
 
+      /*
+       * Entrar y guardar el vínculo son dos cosas, y sólo la primera
+       * tiene que poder frenar el ingreso.
+       *
+       * El `await persistir` de acá abajo estaba suelto: si fallaba
+       * —la red, una política, cualquier cosa— la excepción se
+       * llevaba puesto el `setCargando(false)` del final y la
+       * aplicación se quedaba con la barrita girando para siempre.
+       * Al refrescar entraba bien, porque para entonces el vínculo ya
+       * existía y no había nada que guardar: por eso parecía que
+       * "hay que refrescar para entrar".
+       */
+      const guardar = (u: Usuario) =>
+        void persistirRef.current
+          ?.('usuarios', u)
+          .catch((e) => console.warn('[reuniones] no se pudo vincular la cuenta:', e))
+
       if (porAuth) {
         setYo(porAuth)
       } else if (porEmail) {
@@ -310,7 +327,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           avatarUrl: porEmail.avatarUrl ?? s.avatarUrl,
         }
         setYo(vinculado)
-        await persistirRef.current?.('usuarios', vinculado)
+        guardar(vinculado)
       } else {
         // Alguien nuevo. El alcance lo decide el trigger de la base.
         const nuevo: Usuario = {
@@ -324,10 +341,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
           creadoEn: new Date().toISOString(),
         }
         setYo(nuevo)
-        await persistirRef.current?.('usuarios', nuevo)
+        guardar(nuevo)
       }
       setCargando(false)
-    })()
+    })().catch((e) => {
+      /*
+       * Y por si algo más falla antes de llegar al final: nunca hay
+       * que dejar la pantalla de carga puesta. Sin sesión se ve el
+       * acceso, que es algo que la persona puede accionar.
+       */
+      console.warn('[reuniones] falló el arranque de sesión:', e)
+      if (vivo) setCargando(false)
+    })
     return () => {
       vivo = false
     }
