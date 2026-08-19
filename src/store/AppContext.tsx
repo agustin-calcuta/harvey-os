@@ -690,16 +690,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       reunion: Reunion,
       compuesto: { asunto: string; html: string; texto: string },
     ) => {
-      const destinatarios = ref.current.usuarios
-        .filter((u) => reunion.participantesIds.includes(u.id) && u.activo)
-        .map((u) => u.email)
+      const gente = ref.current.usuarios.filter(
+        (u) => reunion.participantesIds.includes(u.id) && u.activo,
+      )
+      /* La notificación guarda sólo los correos; el envío usa el nombre
+         para el saludo, que va personalizado por persona. */
+      const destinatarios = gente.map((u) => u.email)
 
       let estadoEnvio: Notificacion['estado'] = 'simulado'
       let error: string | undefined
       if (ref.current.config.emailsActivos) {
         try {
           estadoEnvio = await enviarCorreo({
-            destinatarios,
+            destinatarios: gente.map((u) => ({ email: u.email, nombre: u.nombre })),
             asunto: compuesto.asunto,
             html: compuesto.html,
             texto: compuesto.texto,
@@ -1281,7 +1284,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!n) return
       try {
         const r = await enviarCorreo({
-          destinatarios: n.destinatarios,
+          destinatarios: n.destinatarios.map((email) => ({
+            email,
+            nombre: ref.current.usuarios.find((u) => u.email === email)?.nombre,
+          })),
           asunto: n.asunto,
           html: n.cuerpoHtml,
           texto: n.cuerpoTexto,

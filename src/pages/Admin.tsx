@@ -40,7 +40,7 @@ export default function Admin() {
     setProbando(true)
     try {
       const r = await enviarCorreo({
-        destinatarios: [yo.email],
+        destinatarios: [{ email: yo.email, nombre: yo.nombre }],
         ...correoDePrueba(estado.config.organizacion),
       })
       avisar(

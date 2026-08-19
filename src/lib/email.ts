@@ -1,6 +1,6 @@
 import type { Compromiso, Estado, Reunion, Tema } from '../types'
 import { IMPORTANCIA, OBJETIVOS } from '../types'
-import { agendaDe, compromisosDe, fechaCorta, fechaLarga, hora, minutosAgenda, nombreDe } from './utils'
+import { agendaDe, compromisosDe, fechaCorta, fechaLarga, hora, minutosAgenda, nombreDe, sala as salaDe } from './utils'
 import { colores, fuentes } from '../marca'
 
 /* ─────────────────────────────────────────────────────────────
@@ -50,6 +50,33 @@ const layout = (titulo: string, kicker: string, cuerpo: string, marca: string) =
       ${marca} · enviado automáticamente
     </div>
   </div>
+</div>`
+
+/**
+ * Adónde apunta el correo.
+ *
+ * Se arma con el origen de donde está corriendo la aplicación, así
+ * el enlace es correcto en las dos instancias sin configurar nada:
+ * GitHub Pages cuelga el sitio de `/<repo>/` y Cloudflare de la
+ * raíz, y `BASE_URL` ya sabe cuál de los dos es.
+ */
+const urlDeLaReunion = (id: string) =>
+  `${window.location.origin}${import.meta.env.BASE_URL}#/reuniones/${id}`
+
+/**
+ * El botón para abrir la minuta.
+ *
+ * Va arriba de todo y no al final: quien lee en el teléfono no baja
+ * ocho pantallas de tabla para encontrar el enlace. Y va con
+ * `background` además de `color`, porque varios clientes de correo
+ * descartan las hojas de estilo pero respetan el atributo.
+ */
+const botonVerMinuta = (id: string) => `
+<div style="margin:0 0 26px">
+  <a href="${urlDeLaReunion(id)}"
+     style="display:inline-block;background:${SIGNAL};color:#ffffff;text-decoration:none;padding:12px 22px;font-size:13px;font-weight:700;letter-spacing:0.02em">
+    Ver la minuta completa
+  </a>
 </div>`
 
 const chip = (texto: string, color: string) =>
@@ -128,6 +155,7 @@ const filaCompromiso = (e: Estado, c: Compromiso) => `
 export function correoMinuta(e: Estado, r: Reunion) {
   const temas = agendaDe(e, r.id)
   const comps = compromisosDe(e, r.id)
+  const sala = salaDe(e, r.salaId)?.nombre
 
   const bloquesTemas = temas
     .map(
@@ -145,9 +173,12 @@ export function correoMinuta(e: Estado, r: Reunion) {
 
   const cuerpo = `
     <p style="margin:0 0 20px">
-      Cerramos <strong style="color:${TINTA}">${r.titulo}</strong> del ${fechaLarga(r.fecha)}.
-      Acá quedan las conclusiones y las tareas que se llevó cada uno.
+      Hola ${MARCA_NOMBRE}: cerramos <strong style="color:${TINTA}">${r.titulo}</strong>${
+        sala ? ` en <strong style="color:${TINTA}">${sala}</strong>` : ''
+      } del ${fechaLarga(r.fecha)}.
+      Acá abajo quedan las conclusiones y las tareas que se llevó cada uno.
     </p>
+    ${botonVerMinuta(r.id)}
     ${
       r.conclusionesGenerales
         ? `<div style="font-size:10px;letter-spacing:3px;color:${SUAVE};text-transform:uppercase;margin-bottom:8px">[ Principales conclusiones ]</div>
@@ -243,12 +274,38 @@ export const correoConfigurado = Boolean(
     import.meta.env.VITE_EMAIL_ENDPOINT,
 )
 
+/**
+ * A quién va el correo.
+ *
+ * Lleva el nombre además del correo porque el saludo es personal:
+ * cada uno recibe «Hola Denise» y no «Hola equipo». Con EmailJS eso
+ * no cuesta nada —ya se manda un mensaje por persona— y cambia
+ * bastante cómo se lee.
+ */
+export interface Destinatario {
+  email: string
+  nombre?: string
+}
+
 export interface Payload {
-  destinatarios: string[]
+  destinatarios: Destinatario[]
   asunto: string
   html: string
   texto: string
 }
+
+/**
+ * El marcador que se reemplaza por el nombre de cada destinatario,
+ * justo antes de despachar.
+ *
+ * Es un marcador y no un parámetro de `layout` porque el cuerpo se
+ * compone una sola vez para todos: personalizarlo acá evita rearmar
+ * la minuta entera —tablas, temas y tareas— una vez por persona.
+ */
+export const MARCA_NOMBRE = '{{NOMBRE}}'
+
+const personalizar = (texto: string, nombre?: string) =>
+  texto.replaceAll(MARCA_NOMBRE, (nombre ?? '').trim().split(/\s+/)[0] || 'hola')
 
 /**
  * Punto único de salida de correo.
@@ -290,16 +347,17 @@ export async function enviarCorreo(payload: Payload): Promise<'simulado' | 'envi
         EMAILJS.servicio,
         EMAILJS.plantilla,
         {
-          to_email: destinatario,
+          to_email: destinatario.email,
+          to_name: destinatario.nombre ?? '',
           subject: payload.asunto,
-          html: payload.html,
-          texto: payload.texto,
+          html: personalizar(payload.html, destinatario.nombre),
+          texto: personalizar(payload.texto, destinatario.nombre),
         },
         { publicKey: EMAILJS.clave },
       )
     } catch (e) {
       const detalle = e instanceof Error ? e.message : JSON.stringify(e)
-      fallidos.push(`${destinatario} (${detalle})`)
+      fallidos.push(`${destinatario.email} (${detalle})`)
     }
   }
 
