@@ -151,10 +151,16 @@
     background: var(--color-suave);
   }
 
+  /*
+   * En el teléfono, más altos: con `py-2` quedaban en 30 px y errarle
+   * a un desplegable de 30 px con el pulgar es la diferencia entre
+   * cargar una tarea en la reunión y cargarla después, que es como
+   * decir nunca.
+   */
   input,
   textarea,
   select {
-    @apply bg-panel border border-borde2 text-tinta px-3 py-2 text-sm outline-none transition-colors;
+    @apply bg-panel border border-borde2 text-tinta px-3 py-2.5 text-sm outline-none transition-colors sm:py-2;
   }
   input:focus,
   textarea:focus,

@@ -34,9 +34,9 @@ export default function Login() {
         </div>
       </div>
 
-      <div className="grid flex-1 lg:grid-cols-[1.1fr_1fr]">
+      <div className="grid min-w-0 flex-1 grid-cols-1 lg:grid-cols-[1.1fr_1fr]">
         {/* ── Marca ── */}
-        <div className="relative flex flex-col justify-between overflow-hidden border-b border-borde p-8 lg:border-b-0 lg:border-r lg:p-12">
+        <div className="relative flex min-w-0 flex-col justify-between overflow-hidden border-b border-borde p-8 lg:border-b-0 lg:border-r lg:p-12">
           <div
             className="pointer-events-none absolute inset-0 opacity-[0.05]"
             style={{
@@ -54,12 +54,12 @@ export default function Login() {
               marca no trae archivo, el nombre compuesto hace el
               mismo trabajo —que es lo que hacía Imporbamas—.
             */}
-            <h1 className="display text-[clamp(2.5rem,7vw,5rem)]">
+            <h1 className="display text-[clamp(1.75rem,8vw,5rem)] break-words">
               {logos.logotipo ? (
                 <img
                   src={rutaPublica(logos.logotipo)}
                   alt={marca.nombre}
-                  className="w-full max-w-[min(28rem,80%)]"
+                  className="h-auto w-full max-w-[28rem]"
                 />
               ) : (
                 marca.nombre

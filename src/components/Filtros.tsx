@@ -117,10 +117,10 @@ export function textoRango(r: Rango): string {
  * están puestos— sin pesar más que lo que filtran.
  */
 const selectCls =
-  'appearance-none border bg-panel py-1 pl-7 pr-6 text-meta leading-5 transition-colors'
+  'appearance-none border bg-panel py-2.5 pl-7 pr-6 text-meta leading-5 transition-colors sm:py-1'
 
 const selectSinIcono =
-  'appearance-none border bg-panel py-1 pl-2.5 pr-6 text-meta leading-5 transition-colors'
+  'appearance-none border bg-panel py-2.5 pl-2.5 pr-6 text-meta leading-5 transition-colors sm:py-1'
 
 const enReposo = 'border-borde2 text-suave hover:border-suave hover:text-tinta'
 const puesto = 'border-tinta font-semibold text-tinta'
@@ -325,7 +325,7 @@ export function FiltroBoton({
       onClick={onClick}
       aria-pressed={activo}
       className={cx(
-        'border px-2.5 py-1 text-meta leading-5 transition-colors',
+        'border px-2.5 py-2.5 text-meta sm:py-1 leading-5 transition-colors',
         activo ? 'border-tinta bg-tinta font-semibold text-fondo' : enReposo,
       )}
     >

@@ -42,11 +42,19 @@ export function Boton({
 }: BotonProps) {
   const base =
     'inline-flex items-center justify-center gap-2 font-semibold transition-all disabled:opacity-35 disabled:cursor-not-allowed select-none border'
-  // Alturas cómodas para el dedo: nada por debajo de ~34 px de alto real.
+  /*
+   * Alturas cómodas para el dedo: nada por debajo de ~40 px de alto
+   * real **en el teléfono**, que es donde se usa con el pulgar.
+   *
+   * Los valores chicos se reservan para `sm:` en adelante: medido en
+   * un teléfono, `sm` daba 31 px de alto y `md` 34, por debajo de lo
+   * que cualquiera acierta sin mirar. En el escritorio, donde hay
+   * puntero, quedan como estaban.
+   */
   const tamanos = {
-    sm: 'text-meta px-3 py-1.5',
-    md: 'text-cuerpo px-4 py-2',
-    lg: 'text-tarjeta px-6 py-3',
+    sm: 'text-meta px-3 py-2.5 sm:py-1.5',
+    md: 'text-cuerpo px-4 py-2.5 sm:py-2',
+    lg: 'text-tarjeta px-6 py-3.5 sm:py-3',
   }
   const variantes = {
     destacado: 'bg-signal border-signal text-white hover:bg-signal-hi hover:border-signal-hi',
@@ -197,7 +205,7 @@ export function Modal({
           </div>
           <button
             onClick={onCerrar}
-            className="shrink-0 border border-borde2 p-1.5 text-suave transition-colors hover:border-signal hover:text-signal"
+            className="shrink-0 border border-borde2 p-2.5 text-suave transition-colors hover:border-signal hover:text-signal sm:p-1.5"
             aria-label="Cerrar"
           >
             <X size={14} />

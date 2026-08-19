@@ -279,6 +279,8 @@ export interface Tema {
   detalle?: string
   importancia: Importancia
   objetivo: Objetivo
+  /** Para qué cliente es. Opcional. */
+  clienteId?: string
   propuestoPor: string
   duracionMin: number
   duracionRealSeg?: number
@@ -352,6 +354,8 @@ export interface Reunion {
    * reunión, no al equipo, y no ve el resto de las minutas.
    */
   participantesIds: string[]
+  /** Para qué cliente es. Opcional: hay reuniones internas. */
+  clienteId?: string
   estado: EstadoReunion
   /** No se lista para el resto de la sala: sólo la ven los que están. */
   privada?: boolean

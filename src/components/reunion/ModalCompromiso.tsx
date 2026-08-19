@@ -11,6 +11,7 @@ import {
 import { Boton, Campo, Modal, Segmentado } from '../ui'
 import { marca } from '../../marca'
 import Comentarios from '../Comentarios'
+import CampoCliente from '../CampoCliente'
 
 /*
  * Alta y edición de tareas: qué hay que hacer, quién y para cuándo.
@@ -191,22 +192,7 @@ export default function ModalCompromiso({
           cargaría y el filtro por cliente quedaría vacío justo en las
           tareas donde importa.
         */}
-        <Campo etiqueta="Cliente" ayuda="Opcional. Elegí de la lista o escribí uno nuevo.">
-          <input
-            className="w-full"
-            list="clientes-cargados"
-            value={cliente}
-            onChange={(e) => setCliente(e.target.value)}
-            placeholder="Sin cliente"
-          />
-          <datalist id="clientes-cargados">
-            {estado.clientes
-              .filter((c) => c.activo)
-              .map((c) => (
-                <option key={c.id} value={c.nombre} />
-              ))}
-          </datalist>
-        </Campo>
+        <CampoCliente valor={cliente} onChange={setCliente} />
 
         <Campo etiqueta="Estado">
           <Segmentado

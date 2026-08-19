@@ -30,6 +30,7 @@ import {
 } from '../components/Filtros'
 import { useFiltros } from '../store/Filtros'
 import { calendarConfigurado, hayPermisoDeCalendario, tokenDeCalendario } from '../lib/calendar'
+import CampoCliente from '../components/CampoCliente'
 
 /* ─────────────────────────────────────────────────────────────
    Reuniones.
@@ -328,7 +329,8 @@ const OTRO = '__otro__'
  * lugares habituales y la duración de siempre.
  */
 function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {
-  const { estado, crearReunion, asegurarPersona, salasDondeSoyDelEquipo: misSalas, yo } = useApp()
+  const { estado, crearReunion, asegurarPersona, asegurarCliente, salasDondeSoyDelEquipo: misSalas, yo } =
+    useApp()
 
   const [salaId, setSalaId] = useState(misSalas[0]?.id ?? '')
   const laSala = misSalas.find((s) => s.id === salaId) ?? misSalas[0]
@@ -350,6 +352,7 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
   const [otroLugar, setOtroLugar] = useState('')
   const [moderadorId, setModeradorId] = useState(yo?.id ?? gente[0]?.id ?? '')
   const [recurrencia, setRecurrencia] = useState<Recurrencia>('unica')
+  const [cliente, setCliente] = useState('')
   const [privada, setPrivada] = useState(false)
   /* Desmarcados a propósito: se marca quién va, no quién no va. */
   const [participantes, setParticipantes] = useState<string[]>([])
@@ -412,6 +415,7 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
       const persona = await asegurarPersona(inv.nombre, inv.email)
       if (persona && !ids.includes(persona.id)) ids.push(persona.id)
     }
+    const elCliente = cliente.trim() ? await asegurarCliente(cliente) : undefined
     const r = await crearReunion({
       salaId: laSala?.id,
       titulo,
@@ -422,6 +426,7 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
       recurrencia,
       privada,
       participantesIds: ids,
+      clienteId: elCliente?.id,
       estado: 'agenda_abierta',
     })
     onCerrar()
@@ -519,6 +524,8 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
             </select>
           </Campo>
         </div>
+
+        <CampoCliente valor={cliente} onChange={setCliente} />
 
         <Campo etiqueta="Se repite">
           <div className="flex flex-wrap gap-1.5">

@@ -113,6 +113,8 @@ create table if not exists public.reuniones (
   "duracionPrevistaMin"  integer not null default 60,
   lugar                  text,
   "moderadorId"          text not null,
+  -- Para qué cliente es la reunión. Opcional: hay internas.
+  "clienteId"            text,
   -- Puede incluir a alguien que no es de la sala: se suma a esta
   -- reunión, no al equipo, y no ve el resto de las minutas.
   "participantesIds"     text[] not null default '{}',
@@ -169,6 +171,8 @@ create table if not exists public.temas (
   "reunionId"      text references public.reuniones(id) on delete cascade,
   titulo           text not null,
   detalle          text,
+  -- Para qué cliente es el tema. Opcional.
+  "clienteId"      text,
   importancia      text not null default 'media' check (importancia in ('alta','media','baja')),
   objetivo         text not null default 'decision'
                      check (objetivo in ('decision','exploratoria','comunicativa','informativa')),
@@ -287,5 +291,7 @@ create table if not exists public.comentarios (
 create index if not exists comentarios_compromiso on public.comentarios ("compromisoId");
 create index if not exists comentarios_menciones on public.comentarios using gin (menciones);
 create index if not exists compromisos_cliente on public.compromisos ("clienteId");
+create index if not exists reuniones_cliente on public.reuniones ("clienteId");
+create index if not exists temas_cliente on public.temas ("clienteId");
 
 commit;

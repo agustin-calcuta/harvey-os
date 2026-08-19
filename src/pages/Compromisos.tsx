@@ -336,7 +336,7 @@ export default function Compromisos() {
                   key={valor}
                   onClick={() => setResponsable(valor)}
                   className={cx(
-                    'px-3 py-1 text-meta font-semibold leading-5 transition-colors',
+                    'px-3 py-2.5 text-meta font-semibold sm:py-1 leading-5 transition-colors',
                     responsable === valor
                       ? 'bg-tinta text-fondo'
                       : 'bg-panel text-suave hover:text-tinta',
@@ -708,7 +708,7 @@ function Tarjeta({
         <button
           {...attributes}
           {...listeners}
-          className="mt-0.5 shrink-0 cursor-grab text-borde2 transition-colors hover:text-tinta active:cursor-grabbing"
+          className="-m-1.5 mt-0 shrink-0 cursor-grab p-1.5 text-borde2 transition-colors hover:text-tinta active:cursor-grabbing sm:m-0 sm:mt-0.5 sm:p-0"
           aria-label="Mover"
         >
           <GripVertical size={13} />
@@ -729,7 +729,7 @@ function Tarjeta({
         {/* En táctil no hay hover: el lápiz queda siempre visible. */}
         <button
           onClick={onEditar}
-          className="shrink-0 p-1 text-borde2 transition-all hover:text-tinta xl:opacity-0 xl:group-hover:opacity-100"
+          className="shrink-0 p-2 text-borde2 transition-all hover:text-tinta sm:p-1 xl:opacity-0 xl:group-hover:opacity-100"
           aria-label="Editar"
         >
           <Pencil size={11} />
@@ -737,7 +737,7 @@ function Tarjeta({
         {onBorrar && (
           <button
             onClick={onBorrar}
-            className="shrink-0 p-1 text-borde2 transition-all hover:text-alerta xl:opacity-0 xl:group-hover:opacity-100"
+            className="shrink-0 p-2 text-borde2 transition-all hover:text-alerta sm:p-1 xl:opacity-0 xl:group-hover:opacity-100"
             aria-label="Eliminar"
           >
             <Trash2 size={11} />

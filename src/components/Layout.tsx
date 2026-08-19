@@ -113,11 +113,11 @@ export default function Layout() {
             </span>
           </button>
           <button
-            className="text-white/50 lg:hidden"
+            className="-m-2 p-2 text-white/50 lg:hidden"
             onClick={() => setAbierto(false)}
             aria-label="Cerrar menú"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
 
@@ -241,7 +241,7 @@ export default function Layout() {
             <button
               onClick={salir}
               title="Cerrar sesión"
-              className="p-1.5 text-white/50 transition-colors hover:text-signal"
+              className="p-2.5 text-white/50 transition-colors hover:text-signal sm:p-1.5"
             >
               <LogOut size={14} />
             </button>

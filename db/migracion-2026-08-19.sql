@@ -114,3 +114,24 @@ grant select, insert, update, delete on public.comentarios to authenticated;
 commit;
 
 notify pgrst, 'reload schema';
+
+/* ── El cliente también en reuniones y temas ──────────────── */
+--
+-- Se agregó después: primero fue sólo en tareas, y quedó claro que
+-- una reunión entera puede ser de un cliente —y sus temas también—.
+-- Al filtrar, es lo que permite ver «todo lo de Lucky Tours» y no
+-- sólo sus tareas sueltas.
+
+begin;
+
+alter table public.reuniones
+  add column if not exists "clienteId" text references public.clientes(id) on delete set null;
+alter table public.temas
+  add column if not exists "clienteId" text references public.clientes(id) on delete set null;
+
+create index if not exists reuniones_cliente on public.reuniones ("clienteId");
+create index if not exists temas_cliente on public.temas ("clienteId");
+
+commit;
+
+notify pgrst, 'reload schema';

@@ -4,6 +4,7 @@ import { integrantes, llegaTarde } from '../../lib/utils'
 import { IMPORTANCIA, OBJETIVOS, type Importancia, type Objetivo, type Tema } from '../../types'
 import { Boton, Campo, Modal, Segmentado } from '../ui'
 import { marca } from '../../marca'
+import CampoCliente from '../CampoCliente'
 
 /* ─────────────────────────────────────────────────────────────
    Alta y edición de un tema.
@@ -33,8 +34,15 @@ export default function ModalTema({
   tema?: Tema
   entraDirecto?: boolean
 }) {
-  const { yo, estado, proponerTema, actualizarTema, organizoLa, salasDondeSoyDelEquipo } =
-    useApp()
+  const {
+    yo,
+    estado,
+    proponerTema,
+    actualizarTema,
+    asegurarCliente,
+    organizoLa,
+    salasDondeSoyDelEquipo,
+  } = useApp()
   const sala = estado.salas.find((s) => s.id === salaId)
   const reunion = estado.reuniones.find((r) => r.id === reunionId)
   const puedeOrganizar = organizoLa(salaId ?? reunion?.salaId)
@@ -44,6 +52,7 @@ export default function ModalTema({
   const [detalle, setDetalle] = useState('')
   const [importancia, setImportancia] = useState<Importancia>('media')
   const [objetivo, setObjetivo] = useState<Objetivo>('decision')
+  const [cliente, setCliente] = useState('')
   const [propuestoPor, setPropuestoPor] = useState(yo?.id ?? '')
   /* Para qué equipo es, mientras la nota todavía es sólo mía. */
   const [salaTentativaId, setSalaTentativaId] = useState('')
@@ -54,15 +63,17 @@ export default function ModalTema({
     setDetalle(tema?.detalle ?? '')
     setImportancia(tema?.importancia ?? 'media')
     setObjetivo(tema?.objetivo ?? 'decision')
+    setCliente(estado.clientes.find((c) => c.id === tema?.clienteId)?.nombre ?? '')
     setPropuestoPor(tema?.propuestoPor ?? yo?.id ?? '')
     setSalaTentativaId(tema?.salaTentativaId ?? '')
-  }, [abierto, tema, yo])
+  }, [abierto, tema, yo, estado.clientes])
 
   const alTemario = !reunionId
   const tarde = reunion ? llegaTarde(reunion) : false
 
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault()
+    const elCliente = cliente.trim() ? await asegurarCliente(cliente) : undefined
     const datos = {
       salaId,
       reunionId,
@@ -72,6 +83,7 @@ export default function ModalTema({
       detalle: detalle.trim() || undefined,
       importancia,
       objetivo,
+      clienteId: elCliente?.id,
       // El tiempo lo pone la sala; el organizador lo ajusta en la agenda.
       duracionMin: tema?.duracionMin ?? sala?.duracionTemaDefaultMin ?? 15,
       propuestoPor,
@@ -115,6 +127,8 @@ export default function ModalTema({
             placeholder="Qué está en juego, qué información hay que mirar, qué se necesita resolver…"
           />
         </Campo>
+
+        <CampoCliente valor={cliente} onChange={setCliente} />
 
         <Campo etiqueta="Importancia" ayuda="Qué tan caliente está el tema.">
           <Segmentado
