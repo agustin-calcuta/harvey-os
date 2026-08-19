@@ -4,7 +4,6 @@ import {
   Download,
   FileCheck,
   FileText,
-  Mail,
   Pencil,
   Plus,
   RotateCcw,
@@ -13,7 +12,6 @@ import {
 } from 'lucide-react'
 import { useApp } from '../../store/AppContext'
 import { generarMinutaPDF } from '../../lib/pdf'
-import { correoMinuta } from '../../lib/email'
 import {
   agendaDe,
   compromisosArrastrados,
@@ -37,7 +35,6 @@ import {
 import {
   BarraFlotante,
   Boton,
-  Capa,
   Chip,
   ChipImportancia,
   Confirmar,
@@ -108,7 +105,6 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
   const [nuevaTarea, setNuevaTarea] = useState(false)
   const [editando, setEditando] = useState<Compromiso | undefined>()
   const [porBorrar, setPorBorrar] = useState<Compromiso | undefined>()
-  const [verCorreo, setVerCorreo] = useState(false)
   const [importando, setImportando] = useState(false)
   const [confirmarEnvio, setConfirmarEnvio] = useState(false)
   /*
@@ -193,27 +189,17 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
         ))}
       </nav>
 
-      {/*
-        Importar va primero y en sólido, no en fantasma como las otras
-        dos: es la que ahorra media hora de tipeo y tiene que verse
-        desde la puerta. Las otras son de mantenimiento —volver atrás,
-        espiar el correo— y con el gris alcanza.
-      */}
       {editable && (
         <div className="flex flex-wrap items-center gap-2">
-          <Boton variante="solido" onClick={() => setImportando(true)}>
+          {reunion.estado === 'cerrada' && (
+            <Boton variante="fantasma" onClick={() => reabrirReunion(reunion.id)}>
+              <RotateCcw size={12} /> Reabrir para editar
+            </Boton>
+          )}
+          {/* A la derecha y en sólido: es lo que ahorra media hora de tipeo. */}
+          <Boton variante="solido" className="ml-auto" onClick={() => setImportando(true)}>
             <FileText size={12} /> Importar la minuta de Gemini
           </Boton>
-          {reunion.estado === 'cerrada' && (
-            <>
-              <Boton variante="fantasma" onClick={() => reabrirReunion(reunion.id)}>
-                <RotateCcw size={12} /> Reabrir para editar
-              </Boton>
-              <Boton variante="fantasma" onClick={() => setVerCorreo(true)}>
-                <Mail size={12} /> Ver cómo llega el correo
-              </Boton>
-            </>
-          )}
         </div>
       )}
 
@@ -482,7 +468,6 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
           setConfirmarEnvio(false)
         }}
       />
-      <VistaCorreo abierto={verCorreo} onCerrar={() => setVerCorreo(false)} reunion={reunion} />
     </div>
   )
 }
@@ -609,37 +594,3 @@ function NotaEditable({ temaId, valor }: { temaId: string; valor: string }) {
   )
 }
 
-function VistaCorreo({
-  abierto,
-  onCerrar,
-  reunion,
-}: {
-  abierto: boolean
-  onCerrar: () => void
-  reunion: Reunion
-}) {
-  const { estado } = useApp()
-  if (!abierto) return null
-  const correo = correoMinuta(estado, reunion)
-  const destinatarios = estado.usuarios
-    .filter((u) => reunion.participantesIds.includes(u.id))
-    .map((u) => u.email)
-
-  return (
-    <Capa onCerrar={onCerrar}>
-      <div className="my-auto w-full max-w-2xl">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <Etiqueta className="bracket mb-1">Va a {destinatarios.length} personas</Etiqueta>
-            <div className="text-sm text-tinta">{correo.asunto}</div>
-          </div>
-          <Boton onClick={onCerrar}>Cerrar</Boton>
-        </div>
-        <div
-          className="overflow-hidden border border-borde"
-          dangerouslySetInnerHTML={{ __html: correo.html }}
-        />
-      </div>
-    </Capa>
-  )
-}

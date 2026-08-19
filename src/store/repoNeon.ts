@@ -97,6 +97,20 @@ export const repoNeon: Repo = {
         .then(cb)
         .catch((e) => console.warn('[reuniones] fallo al refrescar:', e))
 
+    /*
+     * La primera carga va ya, no dentro de doce segundos.
+     *
+     * Sin esto la aplicación arrancaba mostrando el estado inicial
+     * —que tiene las salas y la gente, pero ninguna reunión— y había
+     * que esperar al primer tic del intervalo para ver los datos de
+     * verdad. Abriendo la aplicación de frente casi no se notaba,
+     * pero entrando por el enlace de un correo a una reunión puntual
+     * la pantalla decía «Reunión no encontrada» durante esos doce
+     * segundos, que es exactamente el momento en que alguien decide
+     * que la herramienta no anda.
+     */
+    refrescar()
+
     const id = window.setInterval(refrescar, 12000)
     const alVolver = () => {
       if (document.visibilityState === 'visible') refrescar()

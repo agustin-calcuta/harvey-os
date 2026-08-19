@@ -74,14 +74,28 @@ export default function ReunionDetalle() {
   }, [reunion])
 
   if (!reunion) {
+    /*
+     * Entrando por el enlace de un correo, la aplicación se abre en
+     * esta pantalla antes de que lleguen los datos de la base. Si
+     * todavía no llegó ninguna reunión, decir «no encontrada» es
+     * decirle a alguien que su reunión se borró cuando en realidad
+     * está por aparecer.
+     */
+    const todaviaCargando = estado.reuniones.length === 0
     return (
       <Vacio
-        titulo="Reunión no encontrada"
-        texto="Puede que se haya eliminado."
+        titulo={todaviaCargando ? 'Buscando la reunión…' : 'Reunión no encontrada'}
+        texto={
+          todaviaCargando
+            ? 'Un segundo, estamos trayendo los datos.'
+            : 'Puede que se haya eliminado, o que no participes de ella.'
+        }
         accion={
-          <Link to="/reuniones">
-            <Boton>Volver a reuniones</Boton>
-          </Link>
+          todaviaCargando ? undefined : (
+            <Link to="/reuniones">
+              <Boton>Volver a reuniones</Boton>
+            </Link>
+          )
         }
       />
     )

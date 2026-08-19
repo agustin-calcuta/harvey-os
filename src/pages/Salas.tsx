@@ -156,7 +156,6 @@ export default function Salas() {
                             {pidiendo} {pidiendo === 1 ? 'pide entrar' : 'piden entrar'}
                           </Chip>
                         )}
-                        {s.cadencia && <span className="text-meta text-tenue">{s.cadencia}</span>}
                       </div>
                       <h3 className="text-lg">{s.nombre}</h3>
                       {s.descripcion && (
@@ -550,14 +549,22 @@ function ModalSala({
           />
         </Campo>
 
-        <Campo etiqueta="Cada cuánto se juntan" ayuda="Se sugiere al crear una reunión.">
-          <input
-            className="w-full"
-            value={cadencia}
-            onChange={(e) => setCadencia(e.target.value)}
-            placeholder="Jueves 11:00"
-          />
-        </Campo>
+        {/*
+          Sólo al editar. Al abrir una sala nueva todavía no se sabe
+          cada cuánto se van a juntar —muchas veces se arma la sala
+          justamente para empezar a ordenar eso—, así que preguntarlo
+          ahí es pedir un dato que nadie tiene.
+        */}
+        {sala && (
+          <Campo etiqueta="Cada cuánto se juntan" ayuda="Se sugiere al crear una reunión.">
+            <input
+              className="w-full"
+              value={cadencia}
+              onChange={(e) => setCadencia(e.target.value)}
+              placeholder="Jueves 11:00"
+            />
+          </Campo>
+        )}
 
         {/* ── A quiénes sumar ──
             Al crear la sala. Después se maneja desde Equipo. */}
