@@ -58,8 +58,10 @@ function aFila(item: Record<string, unknown>): Record<string, unknown> {
   return salida
 }
 
-export const repoNeon: Repo = {
+export const repoNeon: Repo & { faltantes?: string[] } = {
   modo: 'neon',
+  /* Colecciones que la última lectura no pudo traer. */
+  faltantes: undefined,
 
   async cargar(): Promise<Estado> {
     const cliente = neon
@@ -70,8 +72,35 @@ export const repoNeon: Repo = {
       cliente.from('config').select('*').eq('id', 'global'),
     ])
 
-    const primerError = resultados.find((r) => r.error)?.error
-    if (primerError) throw new Error(primerError.message)
+    /*
+     * Una tabla que falta no puede tumbar la aplicación entera.
+     *
+     * Antes, cualquier error cortaba la carga: si una base todavía no
+     * tenía las tablas de una función nueva —comentarios, clientes—
+     * la respuesta era una aplicación **vacía**, como si no hubiera
+     * reuniones ni tareas. Y eso pasa justo en el peor momento: al
+     * desplegar una versión nueva sobre una base sin migrar.
+     *
+     * Ahora sólo son imprescindibles las que sostienen todo lo demás.
+     * Si falla una accesoria, se sigue sin ella y se avisa; si falla
+     * una imprescindible, sí se corta, porque sin gente ni salas no
+     * hay nada que mostrar y una pantalla vacía mentiría.
+     */
+    const IMPRESCINDIBLES: Coleccion[] = ['usuarios', 'salas', 'membresias']
+    const faltantes: string[] = []
+
+    COLECCIONES.forEach((c, i) => {
+      const err = resultados[i].error
+      if (!err) return
+      if (IMPRESCINDIBLES.includes(c)) throw new Error(`${c}: ${err.message}`)
+      faltantes.push(c)
+      console.warn(`[reuniones] sigo sin «${c}»:`, err.message)
+    })
+
+    if (faltantes.length) {
+      // Se cuenta arriba para poder avisarlo una sola vez.
+      this.faltantes = faltantes
+    }
 
     const porColeccion = Object.fromEntries(
       COLECCIONES.map((c, i) => [
@@ -103,9 +132,24 @@ export const repoNeon: Repo = {
      * la diferencia entre recargar la página y dar por perdido un mes
      * de reuniones.
      */
+    let yaAvise = false
     const refrescar = () =>
       void this.cargar()
-        .then(cb)
+        .then((estado) => {
+          cb(estado)
+          /*
+           * Si faltó alguna tabla, se dice una vez y no en cada
+           * refresco: repetir el mismo aviso cada doce segundos es
+           * la forma más rápida de que se ignore.
+           */
+          const f = (this as { faltantes?: string[] }).faltantes
+          if (f?.length && !yaAvise) {
+            yaAvise = true
+            alFallar?.(
+              `faltan tablas en la base (${f.join(', ')}). La aplicación funciona, pero esas funciones no.`,
+            )
+          }
+        })
         .catch((e) => {
           console.warn('[reuniones] fallo al refrescar:', e)
           alFallar?.(e instanceof Error ? e.message : String(e))

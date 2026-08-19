@@ -45,6 +45,7 @@ import {
   type Importancia,
 } from '../types'
 import { Boton, Chip, Confirmar, Seccion, SelectorVista, Vacio } from '../components/ui'
+import { marca } from '../marca'
 import {
   BarraFiltros,
   Buscador,
@@ -690,7 +691,9 @@ function Tarjeta({
 
   const vencido = estaVencido(c)
   const proximo = venceProximo(c)
-  const elCliente = estado.clientes.find((x) => x.id === c.clienteId)
+  const elCliente = marca.usaClientes
+    ? estado.clientes.find((x) => x.id === c.clienteId)
+    : undefined
   const charla = estado.comentarios.filter((x) => x.compromisoId === c.id).length
   const reunion = estado.reuniones.find((r) => r.id === c.reunionId)
 

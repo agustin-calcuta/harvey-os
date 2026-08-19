@@ -21,6 +21,9 @@ export const imporbamas: Marca = {
 
   /* El superadmin es la cuenta de soporte de Calcuta, no del equipo. */
   adminsSonDelEquipo: false,
+
+  /* Trabajan para su propia marca: no hay clientes que distinguir. */
+  usaClientes: false,
   credito: 'Desarrollado por Calcuta',
 
   colores: {

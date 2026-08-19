@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Briefcase, CalendarRange, DoorOpen, Filter, Search, X } from 'lucide-react'
 import { cx } from '../lib/utils'
 import type { Cliente, Sala } from '../types'
+import { marca } from '../marca'
 
 /* ─────────────────────────────────────────────────────────────
    Los dos filtros que están en todas las secciones.
@@ -185,7 +186,7 @@ export function FiltroCliente({
   clientes: Cliente[]
 }) {
   const activos = clientes.filter((c) => c.activo)
-  if (!activos.length) return null
+  if (!marca.usaClientes || !activos.length) return null
 
   return (
     <ConIcono icono={<Briefcase size={11} />}>

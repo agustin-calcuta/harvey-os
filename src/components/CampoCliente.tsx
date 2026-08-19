@@ -1,6 +1,7 @@
 import { useId } from 'react'
 import { useApp } from '../store/AppContext'
 import { Campo } from './ui'
+import { marca } from '../marca'
 
 /* ─────────────────────────────────────────────────────────────
    Para qué cliente es.
@@ -28,6 +29,16 @@ export default function CampoCliente({
   const { estado } = useApp()
   /* Un id propio por instancia: puede haber dos en la misma pantalla. */
   const lista = useId()
+
+  /*
+   * Donde el trabajo no se organiza por cliente, el campo no existe.
+   * Se decide acá y no en cada formulario: son tres —tarea, tema y
+   * reunión— y el cuarto que se agregue se olvidaría de preguntar.
+   *
+   * El corte va después de los hooks: React exige que se llamen
+   * siempre, en el mismo orden.
+   */
+  if (!marca.usaClientes) return null
 
   return (
     <Campo etiqueta="Cliente" ayuda={ayuda}>

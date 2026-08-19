@@ -38,6 +38,9 @@ export const calcuta: Marca = {
   /* Acá administran dos socios que participan de todas las reuniones. */
   adminsSonDelEquipo: true,
 
+  /* Consultora: cada tarea es de algún cliente, y por ahí se filtra. */
+  usaClientes: true,
+
   colores: {
     /*
      * Superficies. Neutras a propósito: el hueso de Imporbamas

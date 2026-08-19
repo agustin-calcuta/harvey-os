@@ -199,6 +199,17 @@ export interface Marca {
    */
   adminsSonDelEquipo: boolean
 
+  /**
+   * Si el trabajo se organiza por cliente.
+   *
+   * Una consultora factura por cliente y necesita saber de quién es
+   * cada tarea; una marca de ropa trabaja para sí misma y el campo
+   * sería una pregunta sin respuesta en cada formulario. Apagado, no
+   * aparece ni el campo ni el filtro —los datos que hubiera quedan
+   * en la base, sin borrarse—.
+   */
+  usaClientes: boolean
+
   colores: ColoresMarca
   fuentes: FuentesMarca
   logos: LogosMarca
