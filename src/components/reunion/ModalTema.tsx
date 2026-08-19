@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../../store/AppContext'
 import { integrantes, llegaTarde } from '../../lib/utils'
 import { IMPORTANCIA, OBJETIVOS, type Importancia, type Objetivo, type Tema } from '../../types'
@@ -57,16 +57,26 @@ export default function ModalTema({
   /* Para qué equipo es, mientras la nota todavía es sólo mía. */
   const [salaTentativaId, setSalaTentativaId] = useState('')
 
+  const clientesRef = useRef(estado.clientes)
+  clientesRef.current = estado.clientes
+
+  /*
+   * Igual que en el modal de tareas: se rellena al abrir y nada más.
+   * Con el objeto del tema o la lista de clientes en las
+   * dependencias, cada refresco contra la base —uno cada doce
+   * segundos— reescribía lo que se estaba tipeando.
+   */
   useEffect(() => {
     if (!abierto) return
     setTitulo(tema?.titulo ?? '')
     setDetalle(tema?.detalle ?? '')
     setImportancia(tema?.importancia ?? 'media')
     setObjetivo(tema?.objetivo ?? 'decision')
-    setCliente(estado.clientes.find((c) => c.id === tema?.clienteId)?.nombre ?? '')
+    setCliente(clientesRef.current.find((c) => c.id === tema?.clienteId)?.nombre ?? '')
     setPropuestoPor(tema?.propuestoPor ?? yo?.id ?? '')
     setSalaTentativaId(tema?.salaTentativaId ?? '')
-  }, [abierto, tema, yo, estado.clientes])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abierto, tema?.id, yo?.id])
 
   const alTemario = !reunionId
   const tarde = reunion ? llegaTarde(reunion) : false

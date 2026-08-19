@@ -24,6 +24,7 @@ import { Boton, Campo, Chip, Confirmar, Modal, Vacio } from '../components/ui'
 import FasePre from '../components/reunion/FasePre'
 import FaseVivo from '../components/reunion/FaseVivo'
 import FasePost from '../components/reunion/FasePost'
+import CampoNumero from '../components/CampoNumero'
 
 /** Valor del desplegable de lugar para escribir uno a mano. */
 const OTRO = '__otro__'
@@ -410,14 +411,7 @@ function ModalEditarReunion({
             />
           </Campo>
           <Campo etiqueta="Duración prevista (min)">
-            <input
-              type="number"
-              min={15}
-              step={5}
-              className="w-full"
-              value={duracion}
-              onChange={(e) => setDuracion(Number(e.target.value))}
-            />
+            <CampoNumero min={15} step={5} valor={duracion} onChange={setDuracion} />
           </Campo>
         </div>
 

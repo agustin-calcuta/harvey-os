@@ -31,6 +31,7 @@ import {
 import { useFiltros } from '../store/Filtros'
 import { calendarConfigurado, hayPermisoDeCalendario, tokenDeCalendario } from '../lib/calendar'
 import CampoCliente from '../components/CampoCliente'
+import CampoNumero from '../components/CampoNumero'
 
 /* ─────────────────────────────────────────────────────────────
    Reuniones.
@@ -370,13 +371,30 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
     ? `${laSala.nombre} · #${estado.reuniones.filter((r) => r.salaId === laSala.id).length + 1}`
     : ''
   const tituloPropio = useRef(false)
+
+  /* El estado por referencia, para leerlo sin depender de él. */
+  const estadoRef = useRef(estado)
+  estadoRef.current = estado
+  const sugeridoRef = useRef(sugerido)
+  sugeridoRef.current = sugerido
+
+  /*
+   * Se arma al abrir y al cambiar de sala. Nada más.
+   *
+   * Antes dependía de `estado` entero, así que cada refresco contra
+   * la base —uno cada doce segundos— volvía a poner la duración por
+   * defecto, el lugar sugerido y a desmarcar a los participantes.
+   * En el medio de cargar una reunión eso se ve como que la pantalla
+   * "deshace" lo que uno acaba de elegir, sin ninguna explicación.
+   */
   useEffect(() => {
     if (!abierto || !laSala) return
-    if (!tituloPropio.current) setTitulo(sugerido)
+    if (!tituloPropio.current) setTitulo(sugeridoRef.current)
     setDuracion(laSala.duracionReunionDefaultMin)
-    setLugar(lugaresDe(estado, laSala.id)[0] ?? OTRO)
+    setLugar(lugaresDe(estadoRef.current, laSala.id)[0] ?? OTRO)
     setParticipantes([])
-  }, [abierto, laSala, sugerido, estado])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abierto, laSala?.id])
 
   const alternar = (id: string) =>
     setParticipantes((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
@@ -479,14 +497,7 @@ function ModalNuevaReunion({ abierto, onCerrar }: { abierto: boolean; onCerrar: 
             />
           </Campo>
           <Campo etiqueta="Duración prevista (min)">
-            <input
-              type="number"
-              min={15}
-              step={5}
-              className="w-full"
-              value={duracion}
-              onChange={(e) => setDuracion(Number(e.target.value))}
-            />
+            <CampoNumero min={15} step={5} valor={duracion} onChange={setDuracion} />
           </Campo>
         </div>
 

@@ -43,6 +43,7 @@ import {
   Vacio,
 } from '../components/ui'
 import { marca } from '../marca'
+import CampoNumero from '../components/CampoNumero'
 
 /* ─────────────────────────────────────────────────────────────
    Las salas: un espacio por equipo, con su gente y sus reuniones.
@@ -684,24 +685,10 @@ function ModalSala({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Campo etiqueta="Duración de la reunión (min)">
-                <input
-                  type="number"
-                  min={15}
-                  step={5}
-                  className="w-full"
-                  value={duracion}
-                  onChange={(e) => setDuracion(Number(e.target.value))}
-                />
+                <CampoNumero min={15} step={5} valor={duracion} onChange={setDuracion} />
               </Campo>
               <Campo etiqueta="Duración por tema (min)">
-                <input
-                  type="number"
-                  min={5}
-                  step={5}
-                  className="w-full"
-                  value={duracionTema}
-                  onChange={(e) => setDuracionTema(Number(e.target.value))}
-                />
+                <CampoNumero min={5} step={5} valor={duracionTema} onChange={setDuracionTema} />
               </Campo>
             </div>
           </>

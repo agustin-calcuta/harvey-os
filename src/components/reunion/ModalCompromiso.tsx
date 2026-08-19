@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../../store/AppContext'
 import { integrantes, paraInputDate, reunion as buscarReunion } from '../../lib/utils'
 import {
@@ -59,6 +59,25 @@ export default function ModalCompromiso({
   const [cliente, setCliente] = useState('')
 
   const primero = gente[0]?.id
+
+  /*
+   * La lista de clientes por referencia, para poder leerla sin que
+   * el efecto de abajo dependa de ella.
+   */
+  const clientesRef = useRef(estado.clientes)
+  clientesRef.current = estado.clientes
+
+  /*
+   * Rellena el formulario **al abrir**, y sólo al abrir.
+   *
+   * Las dependencias son identidades estables —el id de la tarea, no
+   * la tarea— porque los datos se refrescan contra la base cada doce
+   * segundos y cada refresco crea objetos nuevos. Con el objeto en
+   * las dependencias, el efecto se disparaba en cada refresco y
+   * reescribía todos los campos con los valores guardados: lo que
+   * estabas tipeando desaparecía solo, cada doce segundos, sin que
+   * hubiera forma de entender por qué.
+   */
   useEffect(() => {
     if (!abierto) return
     if (salaFija) setSalaId(salaFija)
@@ -70,9 +89,10 @@ export default function ModalCompromiso({
     setEst(compromiso?.estado ?? 'pendiente')
     setAvance(compromiso?.avance ?? '')
     setCliente(
-      estado.clientes.find((c) => c.id === compromiso?.clienteId)?.nombre ?? '',
+      clientesRef.current.find((c) => c.id === compromiso?.clienteId)?.nombre ?? '',
     )
-  }, [abierto, compromiso, primero, salaFija, estado.clientes])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abierto, compromiso?.id, primero, salaFija])
 
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault()
