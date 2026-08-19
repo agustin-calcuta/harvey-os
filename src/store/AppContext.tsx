@@ -851,10 +851,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
         avisar('Esa persona ya está en la reunión.', 'info')
         return
       }
-      await persistir('reuniones', {
-        ...r,
-        participantesIds: [...r.participantesIds, persona.id],
-      })
+      const nueva = { ...r, participantesIds: [...r.participantesIds, persona.id] }
+      await persistir('reuniones', nueva)
+
+      /*
+       * Y al evento de Google también, si la reunión está agendada.
+       *
+       * Sin esto, sumar a alguien después de crear la reunión lo
+       * dejaba invitado en la plataforma y afuera del calendario: no
+       * le llegaba la invitación ni el link del Meet, que es
+       * justamente lo que necesita alguien de afuera del equipo.
+       *
+       * Sin permiso vigente no se pide de nuevo —abrir una ventana de
+       * Google acá sería peor—, así que se hace con lo que haya.
+       */
+      if (nueva.calendarEventoId) {
+        void actualizarEvento(ref.current, nueva, nueva.calendarEventoId).catch((e) =>
+          console.warn('[reuniones] no se pudo sumar al invitado en el calendario:', e),
+        )
+      }
+
       avisar(`${persona.nombre} queda invitada a esta reunión, sin entrar a la sala.`)
     },
     [asegurarPersona, persistir, avisar],
