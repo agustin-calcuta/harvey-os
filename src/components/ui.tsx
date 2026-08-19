@@ -105,7 +105,7 @@ export function Chip({
 /** Semáforo de importancia: el rojo/amarillo/verde que pidió Fran. */
 export function ChipImportancia({ valor, conTexto = true }: { valor: Importancia; conTexto?: boolean }) {
   const i = IMPORTANCIA[valor]
-  const tono = valor === 'alta' ? 'signal' : valor === 'media' ? 'amber' : 'cold'
+  const tono = valor === 'alta' ? 'alerta' : valor === 'media' ? 'amber' : 'acid'
   return (
     <Chip tono={tono}>
       <span className={cx('inline-block h-1.5 w-1.5 rounded-full', i.bg)} />
@@ -153,31 +153,6 @@ export function Avatar({
       )}
     >
       {iniciales(nombre)}
-    </div>
-  )
-}
-
-export function Avatares({
-  nombres,
-  max = 5,
-}: {
-  nombres: { nombre: string; url?: string }[]
-  max?: number
-}) {
-  const visibles = nombres.slice(0, max)
-  const resto = nombres.length - visibles.length
-  return (
-    <div className="flex items-center -space-x-1.5">
-      {visibles.map((n, i) => (
-        <div key={i} className="ring-1 ring-fondo">
-          <Avatar nombre={n.nombre} url={n.url} tam="sm" />
-        </div>
-      ))}
-      {resto > 0 && (
-        <div className="h-7 w-7 border border-borde2 bg-hueco flex items-center justify-center font-semibold text-[9px] text-suave ring-1 ring-fondo">
-          +{resto}
-        </div>
-      )}
     </div>
   )
 }

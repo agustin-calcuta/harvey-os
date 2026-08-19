@@ -20,7 +20,7 @@ import { BarraFiltros, FiltroFecha, FiltroSala, enRango } from '../components/Fi
 import { useFiltros } from '../store/Filtros'
 import {
   Atajo,
-  Avatares,
+
   Boton,
   Chip,
   ChipObjetivo,
@@ -164,12 +164,6 @@ export default function Panel() {
                 </div>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-3">
-                <Avatares
-                  nombres={proxima.participantesIds
-                    .map((id) => estado.usuarios.find((u) => u.id === id))
-                    .filter(Boolean)
-                    .map((u) => ({ nombre: u!.nombre, url: u!.avatarUrl }))}
-                />
                 <Link to={`/reuniones/${proxima.id}`}>
                   <Boton variante="solido" tam="sm">
                     Abrir <ArrowRight size={12} />

@@ -41,7 +41,7 @@ import {
   type EstadoCompromiso,
   type Importancia,
 } from '../types'
-import { Avatar, Boton, Chip, Seccion, SelectorVista, Vacio } from '../components/ui'
+import { Boton, Chip, Seccion, SelectorVista, Vacio } from '../components/ui'
 import {
   BarraFiltros,
   Buscador,
@@ -441,7 +441,6 @@ function VistaLista({
       {grupos.map(([clave, items]) => (
         <div key={clave}>
           <div className="mb-2 flex items-center gap-3">
-            {agrupar === 'responsable' && <Avatar nombre={clave} tam="sm" />}
             <h3 className="text-sm">{clave}</h3>
             <span className="text-meta text-tenue">{items.length}</span>
             {items.some((c) => estaVencido(c)) && (
@@ -623,7 +622,6 @@ function Tarjeta({
   const vencido = estaVencido(c)
   const proximo = venceProximo(c)
   const reunion = estado.reuniones.find((r) => r.id === c.reunionId)
-  const responsable = estado.usuarios.find((u) => u.id === c.responsableId)
 
   return (
     <div
@@ -666,7 +664,6 @@ function Tarjeta({
       </div>
 
       <div className="mt-2.5 flex flex-wrap items-center gap-2 pl-[26px]">
-        <Avatar nombre={responsable?.nombre ?? '?'} url={responsable?.avatarUrl} tam="xs" />
         <span className="text-[10px] text-suave">{nombreDe(estado, c.responsableId)}</span>
         {c.fechaLimite && (
           <span

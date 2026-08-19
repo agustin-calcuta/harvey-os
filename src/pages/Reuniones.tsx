@@ -18,7 +18,7 @@ import {
   temasDe,
 } from '../lib/utils'
 import { ESTADO_REUNION, RECURRENCIAS, type Recurrencia, type Reunion } from '../types'
-import { Avatares, Boton, Campo, Chip, Modal, Seccion, Vacio } from '../components/ui'
+import { Boton, Campo, Chip, Modal, Seccion, Vacio } from '../components/ui'
 import {
   BarraFiltros,
   Buscador,
@@ -304,13 +304,6 @@ function Fila({ reunion: r, donde }: { reunion: Reunion; donde?: string[] }) {
         </div>
 
         <div className="flex w-full shrink-0 flex-row-reverse items-center justify-between gap-3 sm:w-auto sm:flex-col sm:items-end">
-          <Avatares
-            nombres={r.participantesIds
-              .map((id) => estado.usuarios.find((u) => u.id === id))
-              .filter(Boolean)
-              .map((u) => ({ nombre: u!.nombre, url: u!.avatarUrl }))}
-            max={4}
-          />
           <div className="flex gap-3 font-semibold text-[10px] uppercase tracking-[0.14em] text-tenue">
             <span>{agenda.length} temas</span>
             {propuestos.length > 0 && (

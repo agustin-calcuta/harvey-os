@@ -20,7 +20,7 @@ import {
   type Recurrencia,
   type Reunion,
 } from '../types'
-import { Avatares, Boton, Campo, Chip, Confirmar, Modal, Vacio } from '../components/ui'
+import { Boton, Campo, Chip, Confirmar, Modal, Vacio } from '../components/ui'
 import FasePre from '../components/reunion/FasePre'
 import FaseVivo from '../components/reunion/FaseVivo'
 import FasePost from '../components/reunion/FasePost'
@@ -46,7 +46,7 @@ function faseSugerida(e: EstadoReunion): Fase {
 export default function ReunionDetalle() {
   const { id } = useParams<{ id: string }>()
   const navegar = useNavigate()
-  const { estado, puedeModerar, organizoLa, iniciarReunion, borrarReunion } = useApp()
+  const { estado, yo, puedeModerar, organizoLa, iniciarReunion, borrarReunion } = useApp()
 
   const reunion = estado.reuniones.find((r) => r.id === id)
   const [fase, setFase] = useState<Fase>(() =>
@@ -90,6 +90,18 @@ export default function ReunionDetalle() {
   const moderador = puedeModerar(reunion)
   /* Editar o borrar la reunión es de quien organiza *esa* sala. */
   const puedeOrganizar = organizoLa(reunion.salaId)
+
+  /*
+   * Editar y borrar una reunión no es cosa sólo de los socios.
+   *
+   * Estaba atado a organizar la sala, y eso dejaba a un miembro sin
+   * poder corregir ni dar de baja una reunión que él mismo había
+   * creado: si se equivocaba en la fecha tenía que pedirle a un
+   * socio que la borre. Ahora alcanza con haberla creado o moderarla
+   * —quien la armó sabe si sirve— y los socios siguen pudiendo con
+   * todas las de su sala.
+   */
+  const puedeEditarla = puedeOrganizar || moderador || reunion.creadoPor === yo?.id
   const est = ESTADO_REUNION[reunion.estado]
 
   return (
@@ -165,12 +177,6 @@ export default function ReunionDetalle() {
           </div>
 
           <div className="flex w-full shrink-0 flex-row-reverse flex-wrap items-center justify-between gap-3 sm:w-auto sm:flex-col sm:flex-nowrap sm:items-end">
-            <Avatares
-              nombres={reunion.participantesIds
-                .map((uid) => estado.usuarios.find((u) => u.id === uid))
-                .filter(Boolean)
-                .map((u) => ({ nombre: u!.nombre, url: u!.avatarUrl }))}
-            />
             <div className="flex flex-wrap justify-end gap-2">
               {/* Se puede empezar sin haber cerrado el temario: cerrarlo es
                   avisar de qué se va a hablar, no un requisito. */}
@@ -201,7 +207,7 @@ export default function ReunionDetalle() {
                   <Square size={11} /> Cerrar y generar minuta
                 </Boton>
               )}
-              {puedeOrganizar && (
+              {puedeEditarla && (
                 <>
                   <Boton
                     tam="sm"
@@ -209,7 +215,7 @@ export default function ReunionDetalle() {
                     onClick={() => setEditando(true)}
                     aria-label="Editar la reunión"
                   >
-                    <Pencil size={12} />
+                    <Pencil size={12} /> Editar
                   </Boton>
                   <Boton
                     tam="sm"
@@ -217,7 +223,7 @@ export default function ReunionDetalle() {
                     onClick={() => setPorBorrar(true)}
                     aria-label="Eliminar la reunión"
                   >
-                    <Trash2 size={12} />
+                    <Trash2 size={12} /> Eliminar
                   </Boton>
                 </>
               )}

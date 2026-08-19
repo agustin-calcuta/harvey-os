@@ -31,7 +31,7 @@ import {
 } from '../lib/utils'
 import { ROLES_SALA, type RolSala, type Sala, type SalaAjena, type Usuario } from '../types'
 import {
-  Avatares,
+
   Boton,
   Campo,
   Chip,
@@ -163,10 +163,6 @@ export default function Salas() {
                         <p className="mt-1 text-sm leading-relaxed text-suave">{s.descripcion}</p>
                       )}
                     </div>
-                    <Avatares
-                      nombres={gente.map((u) => ({ nombre: u.nombre, url: u.avatarUrl }))}
-                      max={4}
-                    />
                   </div>
 
                   <div className="mb-4 flex flex-wrap gap-x-5 gap-y-1 text-meta text-tenue">

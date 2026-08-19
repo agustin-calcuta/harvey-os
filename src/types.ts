@@ -149,12 +149,22 @@ export const IMPORTANCIA: Record<
   Importancia,
   { nombre: string; alias: string; color: string; bg: string; hex: string }
 > = {
+  /*
+   * Semáforo de verdad: caliente, tibio, frío.
+   *
+   * Antes «alta» usaba `signal` y «baja» usaba `cold`, y en Calcuta
+   * los dos son azules —el eléctrico de la marca y el petróleo de la
+   * secundaria—: lo más urgente y lo menos urgente se veían casi
+   * igual. Ahora van por temperatura, que es lo que la palabra
+   * «caliente» promete, y en las dos marcas quedan tres colores que
+   * se distinguen de un vistazo.
+   */
   alta: {
     nombre: 'Alta',
     alias: 'Caliente',
-    color: 'text-signal',
-    bg: 'bg-signal',
-    hex: colores.signal,
+    color: 'text-alerta',
+    bg: 'bg-alerta',
+    hex: colores.alerta,
   },
   media: {
     nombre: 'Media',
@@ -166,9 +176,9 @@ export const IMPORTANCIA: Record<
   baja: {
     nombre: 'Baja',
     alias: 'Frío',
-    color: 'text-cold',
-    bg: 'bg-cold',
-    hex: colores.cold,
+    color: 'text-acid',
+    bg: 'bg-acid',
+    hex: colores.acid,
   },
 }
 

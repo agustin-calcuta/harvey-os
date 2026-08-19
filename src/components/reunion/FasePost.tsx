@@ -3,6 +3,7 @@ import {
   Check,
   Download,
   FileCheck,
+  FileText,
   Mail,
   Pencil,
   Plus,
@@ -44,6 +45,7 @@ import {
   Vacio,
 } from '../ui'
 import ModalCompromiso from './ModalCompromiso'
+import ImportarMinuta from './ImportarMinuta'
 
 /* ─────────────────────────────────────────────────────────────
    Generación de la minuta.
@@ -101,6 +103,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
   const [editando, setEditando] = useState<Compromiso | undefined>()
   const [porBorrar, setPorBorrar] = useState<Compromiso | undefined>()
   const [verCorreo, setVerCorreo] = useState(false)
+  const [importando, setImportando] = useState(false)
   const [confirmarEnvio, setConfirmarEnvio] = useState(false)
   /*
    * Una minuta ya emitida no se vuelve a "generar": si alguna vez
@@ -191,6 +194,19 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
           </Boton>
           <Boton variante="fantasma" onClick={() => setVerCorreo(true)}>
             <Mail size={12} /> Ver cómo llega el correo
+          </Boton>
+        </div>
+      )}
+
+      {/*
+        Traer lo que escribió Gemini. Va acá y no en el temario porque
+        la minuta existe recién después del Meet, y es el momento en
+        que alguien la tiene en la mano y la quiere volcar.
+      */}
+      {editable && (
+        <div className="flex flex-wrap gap-2">
+          <Boton variante="fantasma" onClick={() => setImportando(true)}>
+            <FileText size={12} /> Importar la minuta de Gemini
           </Boton>
         </div>
       )}
@@ -421,6 +437,11 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
       </BarraFlotante>
 
       {/* ── Modales ── */}
+      <ImportarMinuta
+        abierto={importando}
+        onCerrar={() => setImportando(false)}
+        reunion={reunion}
+      />
       <ModalCompromiso
         abierto={nuevaTarea}
         onCerrar={() => setNuevaTarea(false)}

@@ -15,6 +15,13 @@
 -- de verdad, siguen ahí. Un `truncate` acá sería una forma muy
 -- rápida de perder el trabajo de un mes.
 --
+-- ⚠️ El reverso de esa moneda: volver a correrlo **no corrige** lo
+-- que ya está cargado. Si acá se cambia un rol o un correo, en una
+-- base que ya tiene esa fila no pasa nada. Pasó una vez —el equipo
+-- quedó como `miembro` cuando ya se había decidido que fueran
+-- `organizador`, y sin ese rol no se puede ni editar ni borrar una
+-- reunión—. Para arreglar algo ya cargado va un `update` a mano.
+--
 -- ── Quién puede qué ───────────────────────────────────────────
 -- Todos abren salas, crean reuniones, proponen temas y se asignan
 -- tareas. Ariel y Denise además administran: dan de alta y de baja
