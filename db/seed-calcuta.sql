@@ -36,8 +36,9 @@ insert into public.usuarios (id, nombre, email, alcance, "puedeCrearSalas", carg
   ('u_denise',    'Denise Zaga',    'denise@calcutaconsulting.com',     'superadmin', true, 'Socia',       true, now()),
   ('u_agustin',   'Agustín Ducculi',   'agustin@calcutaconsulting.com',    'usuario',    true, 'Digital Lab', true, now()),
   ('u_francisco', 'Francisco Lebermann', 'francisco@calcutaconsulting.com',  'usuario',    true, 'Digital Lab', true, now()),
-  -- Casilla del área, no personal: es la que dieron para Lucas.
-  ('u_lucas',     'Lucas',     'digitallab@calcutaconsulting.com', 'usuario',    true, 'Digital Lab', true, now())
+  -- Casilla del área, no personal. El punto de `digital.lab@` cuenta:
+  -- en Workspace no se ignora como en Gmail personal.
+  ('u_lucas',     'Lucas Schmidt',     'digital.lab@calcutaconsulting.com', 'usuario',    true, 'Digital Lab', true, now())
 on conflict (id) do nothing;
 
 /* ── Salas ────────────────────────────────────────────────── */

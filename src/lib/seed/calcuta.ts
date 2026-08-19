@@ -65,10 +65,14 @@ export const USUARIOS: Usuario[] = [
    * Ariel y Denise administran: dan de alta y de baja gente. No hay
    * una cuenta de soporte aparte —la administración la hacen ellos—.
    *
-   * Los nombres completos y los correos salen de las minutas de
-   * Gemini, que traen a cada invitado con su `mailto:`. Es la fuente
-   * más confiable que hay: son las cuentas con las que realmente
+   * Los correos salen de las minutas de Gemini, que traen a cada
+   * invitado con su `mailto:`: son las cuentas con las que realmente
    * entraron a la reunión.
+   *
+   * Los nombres, en cambio, se confirmaron a mano. La cuenta del
+   * área aparece en las minutas sólo como «Digital Lab CALCUTA», sin
+   * nombre de persona, y buscarle uno cruzando otras minutas hizo
+   * que se colara el apellido de un tocayo de otro cliente.
    */
   persona('u_ariel', 'Ariel Berinstein', 'ariel', 'Socio', 'superadmin'),
   persona('u_denise', 'Denise Zaga', 'denise', 'Socia', 'superadmin'),
@@ -77,15 +81,14 @@ export const USUARIOS: Usuario[] = [
    * El equipo. Crean salas, reuniones, temas y tareas como
    * cualquiera; lo único que no hacen es dar de alta gente nueva.
    *
-   * ⚠️ PENDIENTE — el correo de Lucas. Agustín pasó `digitallab@`,
-   * pero en las minutas de Gemini la cuenta figura como
-   * `digital.lab@calcutaconsulting.com` —con punto— bajo el nombre
-   * «Digital Lab CALCUTA». Si son alias de la misma cuenta da
-   * igual; si no, con el valor de acá Lucas no entra. Sin confirmar.
+   * El de Lucas es `digital.lab@` —con punto—, que es la casilla del
+   * área y no una personal. Salió de las minutas de Gemini: se había
+   * cargado sin el punto y así no habría podido entrar. En Workspace
+   * los puntos cuentan, a diferencia de Gmail personal.
    */
   persona('u_agustin', 'Agustín Ducculi', 'agustin', 'Digital Lab'),
   persona('u_francisco', 'Francisco Lebermann', 'francisco', 'Digital Lab'),
-  persona('u_lucas', 'Lucas', 'digitallab', 'Digital Lab'),
+  persona('u_lucas', 'Lucas Schmidt', 'digital.lab', 'Digital Lab'),
 ]
 
 const ADMINS = ['u_ariel', 'u_denise']
