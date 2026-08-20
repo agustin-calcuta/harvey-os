@@ -502,13 +502,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
   persistirRef.current = persistir
 
-  const eliminar = useCallback(async (col: Coleccion, id: string) => {
-    setEstado((prev) => ({
-      ...prev,
-      [col]: (prev[col] as { id: string }[]).filter((x) => x.id !== id),
-    }))
-    await repo.borrarDoc(col, id)
-  }, [])
+  /*
+   * Borrar se ve al instante, pero si la base lo rechaza se deshace.
+   *
+   * Antes se quitaba de la pantalla y se mandaba el borrado sin mirar
+   * el resultado: si una política lo rechazaba, la fila desaparecía y
+   * **volvía sola al refresco siguiente**, doce segundos después y sin
+   * decir nada. Es de las cosas más desconcertantes que puede hacer
+   * una aplicación —parece que la borró y después se arrepintió—.
+   *
+   * Ahora, si falla, lo que se borró vuelve en el acto y con el
+   * motivo a la vista.
+   */
+  const eliminar = useCallback(
+    async (col: Coleccion, id: string) => {
+      const anterior = (ref.current[col] as { id: string }[]).find((x) => x.id === id)
+      setEstado((prev) => ({
+        ...prev,
+        [col]: (prev[col] as { id: string }[]).filter((x) => x.id !== id),
+      }))
+      try {
+        await repo.borrarDoc(col, id)
+      } catch (e) {
+        if (anterior) {
+          setEstado((prev) => ({
+            ...prev,
+            [col]: [...(prev[col] as { id: string }[]), anterior],
+          }))
+        }
+        avisar(
+          `No se pudo eliminar: ${e instanceof Error ? e.message : e}`,
+          'error',
+        )
+        throw e
+      }
+    },
+    [avisar],
+  )
 
   /* ── Permisos ───────────────────────────────────────────── */
 

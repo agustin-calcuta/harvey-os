@@ -501,8 +501,22 @@ create policy reuniones_editar on public.reuniones
   using (public.organizo_la_sala("salaId") or "moderadorId" = public.mi_usuario_id())
   with check (public.organizo_la_sala("salaId") or "moderadorId" = public.mi_usuario_id());
 
+-- Borrar una reunión: quien organiza la sala, quien la creó o quien
+-- la modera.
+--
+-- Antes era sólo del organizador, y con el equipo como miembros eso
+-- dejaba a quien creaba una reunión sin poder darla de baja: la
+-- interfaz le ofrecía el botón —ahí sí alcanzaba con haberla
+-- creado— y la base se lo rechazaba. Como el borrado se aplica
+-- primero en pantalla, la reunión desaparecía y volvía sola al
+-- siguiente refresco, que es de las cosas más desconcertantes que
+-- puede hacer una aplicación.
 create policy reuniones_borrar on public.reuniones
-  for delete to authenticated using (public.organizo_la_sala("salaId"));
+  for delete to authenticated using (
+    public.organizo_la_sala("salaId")
+    or "creadoPor" = public.mi_usuario_id()
+    or "moderadorId" = public.mi_usuario_id()
+  );
 
 /*
  * temas ─ el temario es privado; en una reunión, el equipo lo ve.
