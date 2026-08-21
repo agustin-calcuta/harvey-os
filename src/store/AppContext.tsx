@@ -122,7 +122,12 @@ interface Ctx {
    * reuniones y tareas: el proveedor participa, no arma la agenda.
    */
   salasDondeSoyDelEquipo: Sala[]
-  puedeModerar(r: Reunion): boolean
+  /**
+   * Si puedo conducir esa reunión: iniciarla, tomar las notas,
+   * cerrarla y armar la minuta. Es de quien participa, no de un
+   * cargo.
+   */
+  puedeConducir(r: Reunion): boolean
   /** Abrir salas es de los socios. Reuniones crea cualquiera. */
   puedeCrearSalas: boolean
   /** De todas mis salas: en las que organizo, todo; en el resto, lo mío. */
@@ -625,11 +630,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [estado, misSalas, yo, esSuperadmin],
   )
 
-  const puedeModerar = useCallback(
-    (r: Reunion) =>
-      esSuperadmin ||
-      rolEnSala(ref.current, r.salaId, yo?.id) === 'organizador' ||
-      r.moderadorId === yo?.id,
+  /*
+   * Conducir una reunión es de quien está en ella.
+   *
+   * Estaba en manos del organizador de la sala y del moderador
+   * designado, y eso dejaba a los demás mirando: no podían apretar
+   * «iniciar», ni tomar las notas, ni cargar la minuta de Gemini. En
+   * un equipo de cinco eso no es un permiso, es un cuello de botella
+   * —la reunión no empieza hasta que llega el que tiene el botón—.
+   *
+   * Ahora alcanza con ser del equipo de la sala. Es la misma regla
+   * con la que se crea una reunión (`reuniones_alta` pide
+   * `soy_del_equipo`): si podés armarla, podés conducirla.
+   *
+   * A propósito **no** se pide estar en `participantesIds`. Una
+   * reunión creada sin tocar la lista sale con un solo participante
+   * —el que la creó—, y pedirlo dejaría a los demás sin poder
+   * empezarla aunque la base los deje: la interfaz sería más estricta
+   * que las políticas, que es la forma callada del mismo problema.
+   *
+   * El externo queda afuera: participa de la reunión que lo convoca,
+   * no la maneja. Salvo que lo hayan puesto de moderador a propósito,
+   * que es una decisión de quien la armó.
+   *
+   * Es la misma condición que `reuniones_editar` en `db/rls.sql`. Si
+   * cambia una, cambian las dos.
+   */
+  const puedeConducir = useCallback(
+    (r: Reunion) => {
+      if (esSuperadmin || r.moderadorId === yo?.id) return true
+      const rol = rolEnSala(ref.current, r.salaId, yo?.id)
+      return !!rol && rol !== 'externo'
+    },
     [esSuperadmin, yo],
   )
 
@@ -1762,7 +1794,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cargarDirectorio, pedirEntrar, retirarSolicitud, resolverSolicitud,
       solicitudesPendientes, misSolicitudes,
       esSuperadmin, miRol, organizoLa, puedeOrganizar, salasDondeSoyDelEquipo,
-      puedeModerar, puedeCrearSalas, compromisosVisibles,
+      puedeConducir, puedeCrearSalas, compromisosVisibles,
       crearReunion, actualizarReunion, borrarReunion,
       abrirAgenda, cerrarAgenda, iniciarReunion, cerrarReunion, reabrirReunion,
       sumarInvitado, asegurarPersona, enviarMinuta,
@@ -1778,7 +1810,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [
       yo, cargando, datosListos, vistaPrevia, estado, misSalas, salaActiva, esSuperadmin, miRol,
       organizoLa, puedeOrganizar, salasDondeSoyDelEquipo,
-      puedeModerar, puedeCrearSalas, compromisosVisibles, avisos,
+      puedeConducir, puedeCrearSalas, compromisosVisibles, avisos,
       entrarComoPerfil, entrarConGoogle, salir, elegirSala,
       crearSala, actualizarSala, archivarSala, sumarAlaSala, cambiarRolEnSala, sacarDeLaSala,
       salirDeSala, cargarDirectorio, pedirEntrar, retirarSolicitud, resolverSolicitud,

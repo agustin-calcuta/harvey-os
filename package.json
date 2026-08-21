@@ -9,7 +9,8 @@
     "dev:calcuta": "VITE_MARCA=calcuta vite --mode calcuta --port 5174",
     "build:calcuta": "VITE_MARCA=calcuta npm run build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:sinbase": "VITE_NEON_DATA_API_URL= VITE_NEON_AUTH_URL= vite --port 5175"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

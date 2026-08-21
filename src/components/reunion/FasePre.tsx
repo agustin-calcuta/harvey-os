@@ -55,7 +55,7 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
   const {
     estado,
     yo,
-    organizoLa,
+    puedeConducir,
     actualizarTema,
     borrarTema,
     reordenarTemas,
@@ -64,8 +64,18 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
     devolverAlTemario,
   } = useApp()
 
-  /* El rol es de cada sala: acá manda el de la sala de esta reunión. */
-  const puedeOrganizar = organizoLa(reunion.salaId)
+  /*
+   * Quién carga un tema y queda en la agenda, sin esperar a que lo
+   * aprueben. Estaba atado a organizar la sala, y con el equipo como
+   * miembros eso significaba que cargar un tema no servía de nada:
+   * entraba como «propuesto», la agenda seguía vacía y la reunión
+   * empezaba sin nada, sin ningún cartel que explicara por qué.
+   *
+   * Ahora es de quien conduce la reunión, que es el equipo convocado.
+   * El externo sigue proponiendo y esperando: ahí la aprobación es
+   * el punto.
+   */
+  const conduce = puedeConducir(reunion)
 
   const [creando, setCreando] = useState(false)
   const [editando, setEditando] = useState<Tema | undefined>()
@@ -134,11 +144,12 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
       {/* ── Acciones ── */}
       <div className="flex flex-wrap items-center gap-2">
         <Boton variante="solido" onClick={() => setCreando(true)}>
-          <Plus size={13} /> Proponer tema
+          {/* Para el equipo el tema entra a la agenda; el externo propone. */}
+          <Plus size={13} /> {conduce ? 'Agregar tema' : 'Proponer tema'}
         </Boton>
         <span className="text-meta text-suave">
           {agenda.length} {agenda.length === 1 ? 'tema' : 'temas'} en agenda
-          {puedeOrganizar && (
+          {conduce && (
             <>
               {' · '}
               <span className={excedido ? 'text-signal' : undefined}>
@@ -157,7 +168,7 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
       )}
 
       {/* ── Sin tratar de reuniones anteriores ── */}
-      {puedeOrganizar && sinTratar.length > 0 && (
+      {conduce && sinTratar.length > 0 && (
         <Colapsable titulo="No se llegaron a hablar en reuniones anteriores" cuenta={sinTratar.length}>
           <ul className="space-y-2">{sinTratar.map((t) => paraIncluir(t, 'sinTratar'))}</ul>
         </Colapsable>
@@ -175,18 +186,18 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
         <Colapsable
           titulo="Esperando aprobación"
           cuenta={propuestos.length}
-          abiertoPorDefecto={puedeOrganizar}
+          abiertoPorDefecto={conduce}
         >
           <ul className="space-y-2">
             {propuestos.map((t) => (
               <li key={t.id} className="card p-4">
                 <FilaTema
                   tema={t}
-                  puedeOrganizar={puedeOrganizar}
+                  puedeEditar={conduce}
                   onEditar={() => setEditando(t)}
                   onBorrar={() => setPorBorrar(t)}
                 />
-                {puedeOrganizar && (
+                {conduce && (
                   <div className="mt-3 flex flex-wrap gap-2 border-t border-borde pt-3">
                     <Boton
                       tam="sm"
@@ -225,7 +236,7 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
         cuenta={agenda.length}
         abiertoPorDefecto
         acciones={
-          puedeOrganizar && agenda.length > 1 ? (
+          conduce && agenda.length > 1 ? (
             <span className="flex shrink-0 items-center gap-1.5 text-meta text-tenue">
               <GripVertical size={11} /> Arrastrá para cambiar el orden
             </span>
@@ -251,8 +262,8 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
                     key={t.id}
                     tema={t}
                     indice={i}
-                    arrastrable={puedeOrganizar}
-                    puedeOrganizar={puedeOrganizar}
+                    arrastrable={conduce}
+                    puedeEditar={conduce}
                     onEditar={() => setEditando(t)}
                     onBorrar={() => setPorBorrar(t)}
                     onDiferir={() =>
@@ -280,7 +291,7 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
                 <Chip tono="signal">Rechazado</Chip>
                 <span className="min-w-0 flex-1 truncate text-sm">{t.titulo}</span>
                 <span className="text-meta text-tenue">{nombreDe(estado, t.propuestoPor)}</span>
-                {puedeOrganizar && (
+                {conduce && (
                   <div className="flex gap-1">
                     <Boton tam="sm" onClick={() => actualizarTema(t.id, { estado: 'aprobado' })}>
                       Recuperar
@@ -298,7 +309,7 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
 
       {/* ── Cerrar el temario ──
           Flotante: es el submit de esta pantalla y se perdía abajo de todo. */}
-      {puedeOrganizar && reunion.estado === 'agenda_abierta' && (
+      {conduce && reunion.estado === 'agenda_abierta' && (
         <BarraFlotante>
           {/* Sin correo en la instancia, cerrar el temario es sólo cerrarlo. */}
           {marca.usaCorreo && (
@@ -328,7 +339,7 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
         onCerrar={() => setCreando(false)}
         salaId={reunion.salaId}
         reunionId={reunion.id}
-        entraDirecto={puedeOrganizar}
+        entraDirecto={conduce}
       />
       <ModalTema
         abierto={!!editando}
@@ -376,14 +387,14 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
 
 function FilaTema({
   tema,
-  puedeOrganizar,
+  puedeEditar,
   onEditar,
   onBorrar,
 }: {
   tema: Tema
   onEditar: () => void
   onBorrar: () => void
-  puedeOrganizar: boolean
+  puedeEditar: boolean
 }) {
   const { estado, yo } = useApp()
   const propio = tema.propuestoPor === yo?.id
@@ -403,7 +414,7 @@ function FilaTema({
           <span className="ml-1 text-meta text-tenue">{nombreDe(estado, tema.propuestoPor)}</span>
         </div>
       </div>
-      {(puedeOrganizar || propio) && (
+      {(puedeEditar || propio) && (
         <div className="flex shrink-0 gap-1">
           <button
             onClick={onEditar}
@@ -431,7 +442,7 @@ function TemaOrdenable({
   tema,
   indice,
   arrastrable,
-  puedeOrganizar,
+  puedeEditar,
   onEditar,
   onBorrar,
   onDiferir,
@@ -441,7 +452,7 @@ function TemaOrdenable({
   tema: Tema
   indice: number
   arrastrable: boolean
-  puedeOrganizar: boolean
+  puedeEditar: boolean
   onEditar: () => void
   onBorrar: () => void
   onDiferir: () => void
@@ -480,12 +491,12 @@ function TemaOrdenable({
         <div className="min-w-0 flex-1">
           <FilaTema
             tema={tema}
-            puedeOrganizar={puedeOrganizar}
+            puedeEditar={puedeEditar}
             onEditar={onEditar}
             onBorrar={onBorrar}
           />
 
-          {puedeOrganizar && (
+          {puedeEditar && (
             <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-borde pt-3 sm:gap-2">
               <span className="label">Tiempo</span>
               {[5, 10, 15, 20, 30].map((m) => (

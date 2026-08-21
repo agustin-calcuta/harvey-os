@@ -495,14 +495,25 @@ create policy reuniones_leer on public.reuniones
 create policy reuniones_alta on public.reuniones
   for insert to authenticated with check (public.soy_del_equipo("salaId"));
 
--- Modera quien organiza la sala, o quien esté designado moderador.
+-- Conducir la reunión —iniciarla, guardar las conclusiones, cerrarla,
+-- volcar la minuta— es del equipo de la sala.
+--
+-- Era del organizador y del moderador designado, y eso dejaba a los
+-- demás mirando: la reunión no empezaba hasta que llegaba el que
+-- tenía el botón, y la minuta de Gemini sólo la podía cargar él. Es
+-- la misma regla con la que se crea una reunión (`reuniones_alta`):
+-- si podés armarla, podés conducirla.
+--
+-- El externo queda afuera —`soy_del_equipo` lo excluye— salvo que lo
+-- hayan puesto de moderador a propósito.
 create policy reuniones_editar on public.reuniones
   for update to authenticated
-  using (public.organizo_la_sala("salaId") or "moderadorId" = public.mi_usuario_id())
-  with check (public.organizo_la_sala("salaId") or "moderadorId" = public.mi_usuario_id());
+  using (public.soy_del_equipo("salaId") or "moderadorId" = public.mi_usuario_id())
+  with check (public.soy_del_equipo("salaId") or "moderadorId" = public.mi_usuario_id());
 
--- Borrar una reunión: quien organiza la sala, quien la creó o quien
--- la modera.
+-- Borrar una reunión: el equipo de la sala, quien la creó o quien la
+-- modera. Va con `reuniones_editar`: sería raro poder cambiarle la
+-- fecha a una reunión y no poder darla de baja.
 --
 -- Antes era sólo del organizador, y con el equipo como miembros eso
 -- dejaba a quien creaba una reunión sin poder darla de baja: la
@@ -513,7 +524,7 @@ create policy reuniones_editar on public.reuniones
 -- puede hacer una aplicación.
 create policy reuniones_borrar on public.reuniones
   for delete to authenticated using (
-    public.organizo_la_sala("salaId")
+    public.soy_del_equipo("salaId")
     or "creadoPor" = public.mi_usuario_id()
     or "moderadorId" = public.mi_usuario_id()
   );
@@ -555,20 +566,28 @@ create policy temas_alta on public.temas
       or public.participo_de_la_reunion("reunionId")
     )
     and (
-      public.organizo_la_sala("salaId")
+      public.soy_del_equipo("salaId")
       or "salaId" is null
       or estado in ('propuesto', 'banco', 'diferido')
     )
   );
 
+-- El temario de una reunión lo maneja el equipo de esa sala: se
+-- agregan temas, se reordenan y se escriben las conclusiones durante
+-- la reunión. Escribir la conclusión de un tema es un `update` sobre
+-- el tema, así que atarlo a quien lo propuso dejaba a quien toma nota
+-- sin poder guardar nada de lo que no fuera suyo.
+--
+-- `propuestoPor` sigue estando por el bloc de notas personal, donde
+-- no hay sala y el tema es de quien lo escribió y de nadie más.
 create policy temas_editar on public.temas
   for update to authenticated
-  using (public.organizo_la_sala("salaId") or "propuestoPor" = public.mi_usuario_id())
-  with check (public.organizo_la_sala("salaId") or "propuestoPor" = public.mi_usuario_id());
+  using (public.soy_del_equipo("salaId") or "propuestoPor" = public.mi_usuario_id())
+  with check (public.soy_del_equipo("salaId") or "propuestoPor" = public.mi_usuario_id());
 
 create policy temas_borrar on public.temas
   for delete to authenticated
-  using (public.organizo_la_sala("salaId") or "propuestoPor" = public.mi_usuario_id());
+  using (public.soy_del_equipo("salaId") or "propuestoPor" = public.mi_usuario_id());
 
 /* compromisos ─ el responsable actualiza su propio avance */
 

@@ -77,7 +77,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
   const {
     estado,
     yo,
-    puedeModerar,
+    puedeConducir,
     actualizarReunion,
     borrarCompromiso,
     reabrirReunion,
@@ -87,7 +87,7 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
   const temas = agendaDe(estado, reunion.id)
   const nuevas = compromisosDe(estado, reunion.id)
   const arrastradas = compromisosArrastrados(estado, reunion.id)
-  const editable = puedeModerar(reunion)
+  const editable = puedeConducir(reunion)
   /*
    * Borrar una tarea: quien organiza la sala, o quien la tiene a su
    * nombre. Mismo criterio que editarla —el responsable ya puede

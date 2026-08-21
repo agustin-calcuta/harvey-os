@@ -47,7 +47,7 @@ function faseSugerida(e: EstadoReunion): Fase {
 export default function ReunionDetalle() {
   const { id } = useParams<{ id: string }>()
   const navegar = useNavigate()
-  const { estado, yo, puedeModerar, organizoLa, iniciarReunion, borrarReunion } = useApp()
+  const { estado, yo, puedeConducir, iniciarReunion, borrarReunion } = useApp()
 
   const reunion = estado.reuniones.find((r) => r.id === id)
   const [fase, setFase] = useState<Fase>(() =>
@@ -102,21 +102,18 @@ export default function ReunionDetalle() {
     )
   }
 
-  const moderador = puedeModerar(reunion)
-  /* Editar o borrar la reunión es de quien organiza *esa* sala. */
-  const puedeOrganizar = organizoLa(reunion.salaId)
+  const conduce = puedeConducir(reunion)
 
   /*
-   * Editar y borrar una reunión no es cosa sólo de los socios.
+   * Editar y borrar la reunión: quien la conduce o quien la creó.
    *
-   * Estaba atado a organizar la sala, y eso dejaba a un miembro sin
-   * poder corregir ni dar de baja una reunión que él mismo había
-   * creado: si se equivocaba en la fecha tenía que pedirle a un
-   * socio que la borre. Ahora alcanza con haberla creado o moderarla
-   * —quien la armó sabe si sirve— y los socios siguen pudiendo con
-   * todas las de su sala.
+   * Es lo mismo que dicen `reuniones_editar` y `reuniones_borrar` en
+   * `db/rls.sql`, y tiene que seguir siendo lo mismo. Cada vez que
+   * estas dos capas se separaron, el resultado fue el mismo: la
+   * pantalla ofrece algo, la base lo rechaza, y lo borrado vuelve
+   * solo al refresco siguiente sin que nadie sepa por qué.
    */
-  const puedeEditarla = puedeOrganizar || moderador || reunion.creadoPor === yo?.id
+  const puedeEditarla = conduce || reunion.creadoPor === yo?.id
   const est = ESTADO_REUNION[reunion.estado]
 
   return (
@@ -196,7 +193,7 @@ export default function ReunionDetalle() {
               {/* Se puede empezar sin haber cerrado el temario: cerrarlo es
                   avisar de qué se va a hablar, no un requisito. */}
               {(reunion.estado === 'agenda_cerrada' || reunion.estado === 'agenda_abierta') &&
-                moderador && (
+                conduce && (
                   <Boton
                     tam="sm"
                     variante="destacado"
@@ -210,7 +207,7 @@ export default function ReunionDetalle() {
                 )}
               {/* Una reunión que nunca se inició no se cierra: para eso
                   está iniciarla. */}
-              {reunion.estado === 'en_curso' && moderador && (
+              {reunion.estado === 'en_curso' && conduce && (
                 <Boton
                   tam="sm"
                   variante="destacado"
@@ -289,7 +286,7 @@ export default function ReunionDetalle() {
               titulo="La reunión todavía no empezó"
               texto="Cuando estén todos, iniciala y arrancás por el seguimiento de lo que quedó de la vez pasada."
               accion={
-                moderador ? (
+                conduce ? (
                   <Boton
                     variante="solido"
                     onClick={() => {
@@ -323,10 +320,15 @@ export default function ReunionDetalle() {
         onCerrar={() => setEditando(false)}
         reunion={reunion}
       />
+      {/*
+        Los temas no se borran: `borrarReunion` los devuelve al bloc de
+        quien los escribió. El cartel decía que se iban con la reunión, y
+        eso frena a cualquiera que cargó algo y no lo quiere perder.
+      */}
       <Confirmar
         abierto={porBorrar}
         titulo="Eliminar reunión"
-        texto={`Se elimina “${reunion.titulo}” junto con todos sus temas. Las tareas quedan en el historial.`}
+        texto={`Se elimina “${reunion.titulo}”. Los temas vuelven al bloc de notas de quien los escribió y las tareas quedan en el historial.`}
         textoBoton="Eliminar"
         peligro
         onCancelar={() => setPorBorrar(false)}

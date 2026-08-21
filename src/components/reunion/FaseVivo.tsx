@@ -29,6 +29,7 @@ import {
 } from '../../types'
 import { Boton, Chip, Confirmar, Vacio } from '../ui'
 import ModalCompromiso from './ModalCompromiso'
+import ModalTema from './ModalTema'
 import Grabadora from './Grabadora'
 import type { MinutaSugerida } from '../../lib/ia'
 
@@ -58,7 +59,7 @@ export default function FaseVivo({
   pidiendoCierre?: boolean
   onCierreAtendido?: () => void
 }) {
-  const { estado, actualizarTema, actualizarReunion, cerrarReunion, puedeModerar } = useApp()
+  const { estado, actualizarTema, actualizarReunion, cerrarReunion, puedeConducir } = useApp()
   const agenda = agendaDe(estado, reunion.id)
 
   /* Para leer el estado del momento sin re-crear `volcarMinuta`. */
@@ -70,6 +71,12 @@ export default function FaseVivo({
   const [seg, setSeg] = useState(0)
   const [notas, setNotas] = useState('')
   const [nuevaTarea, setNuevaTarea] = useState(false)
+  const [temaNuevo, setTemaNuevo] = useState(false)
+  /*
+   * Cuántos temas había al abrir el modal, o `null` si no se abrió.
+   * Ver el salto de más abajo.
+   */
+  const alAbrirTema = useRef<number | null>(null)
   const [confirmarCierre, setConfirmarCierre] = useState(false)
 
   /* El botón de la cabecera abre este mismo diálogo. */
@@ -130,7 +137,7 @@ export default function FaseVivo({
   )
 
   const tema = indice >= 0 ? agenda[indice] : undefined
-  const moderador = puedeModerar(reunion)
+  const conduce = puedeConducir(reunion)
   const arrastradas = useMemo(
     () => compromisosArrastrados(estado, reunion.id),
     [estado, reunion.id],
@@ -162,6 +169,27 @@ export default function FaseVivo({
     setCorriendo(false)
   }
 
+  /*
+   * El tema que se acaba de abrir queda al frente.
+   *
+   * Sin esto el botón no hace nada visible: el tema aparece en la
+   * barra y hay que ir a buscarlo con el dedo, con la reunión en
+   * curso.
+   *
+   * El disparador es haber abierto el modal, no que aparezca un tema:
+   * de lo contrario saltaría al entrar —la agenda «crece» de cero a
+   * lo que ya había— y también cuando otro agrega el suyo desde su
+   * pantalla, cambiándonos el tema de abajo de las manos.
+   */
+  const saltar = useRef(guardarYSaltar)
+  saltar.current = guardarYSaltar
+  useEffect(() => {
+    const habia = alAbrirTema.current
+    if (temaNuevo || habia === null || agenda.length <= habia) return
+    alAbrirTema.current = null
+    saltar.current(agenda.length - 1)
+  }, [temaNuevo, agenda.length])
+
   /* Autoguardado de las notas mientras se escribe. */
   useEffect(() => {
     if (!tema) return
@@ -189,7 +217,7 @@ export default function FaseVivo({
 
       {/* ── Grabación ──
           Sólo si el servicio está configurado; si no, no se dibuja. */}
-      {moderador && <Grabadora reunion={reunion} onMinuta={volcarMinuta} />}
+      {conduce && <Grabadora reunion={reunion} onMinuta={volcarMinuta} />}
 
       {/* ── Recorrido ──
           El seguimiento primero, después los temas con su título a la
@@ -235,6 +263,28 @@ export default function FaseVivo({
             )}
           </button>
         ))}
+        {/*
+          Abrir un tema con la reunión empezada.
+
+          Una reunión puede arrancar sin nada cargado —se juntan porque
+          apareció algo, no porque había agenda— y antes eso dejaba la
+          pantalla sin ningún lado donde escribir: la única salida era
+          volver a la pre-reunión con la reunión ya en curso. También
+          sirve para lo que aparece en el medio, que es la mitad de lo
+          que se habla.
+        */}
+        {conduce && (
+          <button
+            onClick={() => {
+              alAbrirTema.current = agenda.length
+              setTemaNuevo(true)
+            }}
+            className="flex shrink-0 items-center gap-2 border border-dashed border-borde2 bg-panel px-3 py-2 text-[11px] text-suave transition-colors hover:border-signal hover:text-signal"
+          >
+            <Plus size={12} className="shrink-0" />
+            Tema
+          </button>
+        )}
       </div>
 
       <div className="mx-auto w-full max-w-3xl space-y-5">
@@ -243,7 +293,20 @@ export default function FaseVivo({
         ) : !tema ? (
           <Vacio
             titulo="No hay temas en la agenda"
-            texto="Volvé a la pre-reunión y aprobá al menos un tema."
+            texto="Se puede reunir igual: el seguimiento repasa lo que quedó de la vez pasada, y lo que aparezca se abre como tema acá mismo."
+            accion={
+              conduce ? (
+                <Boton
+                  variante="solido"
+                  onClick={() => {
+                    alAbrirTema.current = agenda.length
+                    setTemaNuevo(true)
+                  }}
+                >
+                  <Plus size={13} /> Abrir un tema
+                </Boton>
+              ) : undefined
+            }
           />
         ) : (
           <>
@@ -373,6 +436,17 @@ export default function FaseVivo({
       </div>
 
       {/* ── Modales ── */}
+      {/* Con la reunión en curso el tema entra directo: se está
+          hablando de eso ahora, no hay a quién esperarle la
+          aprobación. */}
+      <ModalTema
+        abierto={temaNuevo}
+        onCerrar={() => setTemaNuevo(false)}
+        salaId={reunion.salaId}
+        reunionId={reunion.id}
+        entraDirecto={conduce}
+      />
+
       {tema && (
         <ModalCompromiso
           abierto={nuevaTarea}

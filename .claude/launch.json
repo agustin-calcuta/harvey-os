@@ -4,14 +4,29 @@
     {
       "name": "calcuta",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:calcuta"],
+      "runtimeArgs": [
+        "run",
+        "dev:calcuta"
+      ],
       "port": 5174
     },
     {
       "name": "imporbamas",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 5173
+    },
+    {
+      "name": "sin-base",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:sinbase"
+      ],
+      "port": 5175
     }
   ]
 }
