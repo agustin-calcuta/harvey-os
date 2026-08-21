@@ -74,7 +74,8 @@ interface Ctx {
   cargando: boolean
   modo: 'demo' | 'firebase' | 'neon'
   vistaPrevia: boolean
-  entrarComoDemo(usuarioId: string, salaId?: string): void
+  /** Entrar eligiendo un perfil del equipo. Con base detrás, los datos son los compartidos. */
+  entrarComoPerfil(usuarioId: string, salaId?: string): Promise<void>
   entrarConGoogle(): Promise<void>
   salir(): Promise<void>
 
@@ -357,6 +358,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!neonConfigurado || vistaPrevia) return
     let vivo = true
     ;(async () => {
+      /*
+       * Identidad por perfil, datos compartidos.
+       *
+       * Donde el acceso con Google todavía está apagado, quién sos lo
+       * dice la pantalla de acceso, pero **los datos siguen siendo los
+       * de la base**. Es la diferencia con la vista previa: ahí cada
+       * navegador tenía su copia, y lo que cargaba uno no lo veía
+       * nadie. Para probar entre varios eso no sirve —dos personas en
+       * dos computadoras tienen que estar mirando la misma reunión—.
+       */
+      if (!marca.accesoGoogle) {
+        const guardado = localStorage.getItem(CLAVE_SESION)
+        if (!guardado) {
+          setYo(null)
+          setCargando(false)
+          return
+        }
+        let datos = ref.current
+        if (datos.usuarios.length === 0) {
+          try {
+            datos = await repo.cargar()
+            if (!vivo) return
+            setEstado(datos)
+            setDatosListos(true)
+          } catch (e) {
+            console.warn('[reuniones] no se pudieron cargar los usuarios:', e)
+          }
+        }
+        if (!vivo) return
+        const suyo = datos.usuarios.find((x) => x.id === guardado)
+        if (suyo) {
+          setYo(suyo)
+          setCargando(false)
+          return
+        }
+        /*
+         * La base no contesta o todavía no lo tiene: se sigue con lo
+         * de este navegador en vez de mandarlo de vuelta al acceso.
+         * Recargar la página no puede ser lo que le borre la sesión.
+         */
+        usarDatosDeDemostracion()
+        const local = await repo.cargar()
+        if (!vivo) return
+        setEstado(local)
+        setDatosListos(true)
+        setYo(local.usuarios.find((x) => x.id === guardado) ?? null)
+        setCargando(false)
+        return
+      }
+
       const s = await sesionActual()
       if (!vivo) return
       if (!s) {
@@ -1594,13 +1645,61 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   /* ── Sesión: acciones ───────────────────────────────────── */
 
-  const entrarComoDemo = useCallback(
-    (usuarioId: string, salaSugerida?: string) => {
+  const entrarComoPerfil = useCallback(
+    async (usuarioId: string, salaSugerida?: string) => {
+      localStorage.setItem(CLAVE_SESION, usuarioId)
+
+      /*
+       * Con base y sin Google, el perfil elegido es la identidad y los
+       * datos son los compartidos: lo que carga uno lo ven los demás.
+       * No se pasa a los datos locales ni se enciende `vistaPrevia`,
+       * que es lo que separa «probar solo» de «trabajar juntos».
+       */
+      if (neonConfigurado && !marca.accesoGoogle) {
+        usarBasePrincipal()
+        let datos = ref.current
+        if (datos.usuarios.length === 0) {
+          try {
+            datos = await repo.cargar()
+          } catch (e) {
+            console.warn('[reuniones] la base no respondió:', e)
+            datos = { ...ESTADO_VACIO }
+          }
+        }
+        const u = datos.usuarios.find((x) => x.id === usuarioId)
+        /*
+         * Si la base no contesta o todavía no tiene a esta persona,
+         * se entra igual con los datos de este navegador.
+         *
+         * Es peor quedarse afuera que trabajar sin compartir: pasa
+         * mientras la base se está preparando, y quien está por
+         * mostrar la herramienta no tiene cómo saber que el problema
+         * es de permisos. Se avisa, eso sí, porque lo que se cargue
+         * en ese rato no lo va a ver nadie más.
+         */
+        if (u) {
+          setEstado(datos)
+          setDatosListos(true)
+          const suya =
+            salaSugerida ?? datos.membresias.find((m) => m.usuarioId === usuarioId)?.salaId
+          if (suya) {
+            setSalaId(suya)
+            localStorage.setItem(CLAVE_SALA, suya)
+          }
+          setYo(u)
+          return
+        }
+        avisar(
+          'La base compartida todavía no responde: entrás con los datos de esta computadora y lo que cargues no lo ven los demás.',
+          'info',
+        )
+      }
+
+      /* Sin base detrás: el recorrido por perfil, en este navegador. */
       usarDatosDeDemostracion()
       const local = structuredClone(ESTADO_INICIAL)
       const u = local.usuarios.find((x) => x.id === usuarioId)
       if (!u) return
-      localStorage.setItem(CLAVE_SESION, usuarioId)
       localStorage.setItem(CLAVE_VISTA_PREVIA, '1')
       const suya =
         salaSugerida ??
@@ -1614,7 +1713,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setVistaPrevia(true)
       setYo(u)
     },
-    [],
+    [avisar],
   )
 
   const entrarConGoogle = useCallback(async () => {
@@ -1635,7 +1734,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setVistaPrevia(false)
     setYo(null)
     setSalaId(null)
-    setEstado(ESTADO_INICIAL)
+    /* Con base detrás se vuelve a vacío, no al seed: lo que se ve
+       después de salir tiene que venir de la base, no del código. */
+    setEstado(hayBaseRemota ? ESTADO_VACIO : ESTADO_INICIAL)
     if (neonConfigurado) await salirDeNeon()
     if (firebaseConfigurado) await cerrarSesionFirebase()
   }, [])
@@ -1653,7 +1754,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       /* Cargando es «todavía no puedo mostrar nada útil»: sesión o datos. */
       cargando: cargando || (!!yo && !datosListos),
       modo: repo.modo, vistaPrevia,
-      entrarComoDemo, entrarConGoogle, salir,
+      entrarComoPerfil, entrarConGoogle, salir,
       estado,
       misSalas, salaActiva, elegirSala,
       crearSala, actualizarSala, archivarSala,
@@ -1678,7 +1779,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       yo, cargando, datosListos, vistaPrevia, estado, misSalas, salaActiva, esSuperadmin, miRol,
       organizoLa, puedeOrganizar, salasDondeSoyDelEquipo,
       puedeModerar, puedeCrearSalas, compromisosVisibles, avisos,
-      entrarComoDemo, entrarConGoogle, salir, elegirSala,
+      entrarComoPerfil, entrarConGoogle, salir, elegirSala,
       crearSala, actualizarSala, archivarSala, sumarAlaSala, cambiarRolEnSala, sacarDeLaSala,
       salirDeSala, cargarDirectorio, pedirEntrar, retirarSolicitud, resolverSolicitud,
       solicitudesPendientes, misSolicitudes,

@@ -1,4 +1,5 @@
 import type { Estado, Membresia, Sala, Usuario } from '../../types'
+import { DOMINIO_PENDIENTE } from '../utils.ts'
 import { en } from './fechas.ts'
 import type { VistaPrevia } from './tipos.ts'
 
@@ -22,20 +23,21 @@ import type { VistaPrevia } from './tipos.ts'
    deja dar de alta y de baja gente sin depender de nosotros.
 
    ── Los correos ──────────────────────────────────────────────
-   Van vacíos a propósito. El correo es lo que después vincula cada
-   cuenta de Google con su ficha, así que uno inventado no es un
-   dato incompleto: es un dato **equivocado**, y el día que se
-   encienda el acceso deja afuera justo a la persona que figura con
-   él. Se completan desde Administración cuando el equipo los pase.
+   Van a un dominio que no existe (`DOMINIO_PENDIENTE`), y no a uno
+   inventado que parezca real. El correo es lo que después vincula
+   cada cuenta de Google con su ficha: uno inventado no es un dato
+   incompleto sino uno **equivocado**, y el día que se encienda el
+   acceso deja afuera justo a la persona que figura con él. Se
+   completan desde Administración cuando el equipo los pase.
    ───────────────────────────────────────────────────────────── */
 
 /* ── Personas ─────────────────────────────────────────────── */
 
-const socio = (id: string, nombre: string): Usuario => ({
+const socio = (id: string, nombre: string, usuario: string): Usuario => ({
   id,
   nombre,
-  /* Se carga desde Administración; ver la nota de arriba. */
-  email: '',
+  /* Provisorio hasta que pasen el de verdad; ver la nota de arriba. */
+  email: `${usuario}@${DOMINIO_PENDIENTE}`,
   /* Los cuatro administran: no hay cuenta de soporte. */
   alcance: 'superadmin',
   puedeCrearSalas: true,
@@ -45,10 +47,10 @@ const socio = (id: string, nombre: string): Usuario => ({
 })
 
 export const USUARIOS: Usuario[] = [
-  socio('u_nico', 'Nicolas Kroitor'),
-  socio('u_matias', 'Matias Kroitor'),
-  socio('u_lucas', 'Lucas Finkelstein'),
-  socio('u_hernan', 'Hernan Finkelstein'),
+  socio('u_nico', 'Nicolas Kroitor', 'nicolas'),
+  socio('u_matias', 'Matias Kroitor', 'matias'),
+  socio('u_lucas', 'Lucas Finkelstein', 'lucas'),
+  socio('u_hernan', 'Hernan Finkelstein', 'hernan'),
 ]
 
 const SOCIOS = USUARIOS.map((u) => u.id)

@@ -4,7 +4,7 @@ import { useApp } from '../store/AppContext'
 import { firebaseConfigurado } from '../lib/firebase'
 import { neonConfigurado } from '../lib/neon'
 import { correoConfigurado, correoDePrueba, enviarCorreo } from '../lib/email'
-import { fechaCorta, integrantes, uid } from '../lib/utils'
+import { correoPendiente, fechaCorta, integrantes, uid } from '../lib/utils'
 import { marca } from '../marca'
 import type { Alcance, Usuario } from '../types'
 import { Boton, Campo, Chip, Confirmar, Modal, Seccion, Segmentado } from '../components/ui'
@@ -126,13 +126,15 @@ export default function Admin() {
                     {!u.activo && <Chip>Inactiva</Chip>}
                   </div>
                   {/*
-                    Con separador sólo si hay las dos cosas: mientras
-                    no estén cargados los correos, un «·» suelto antes
-                    del cargo se lee como un dato que falta y no como
-                    uno que todavía no se pidió.
+                    El correo provisorio se muestra como lo que es.
+                    Escribir «nicolas@pendiente.invalid» ahí lo haría
+                    pasar por una dirección cargada, y es justo lo que
+                    falta pedirle al equipo.
                   */}
                   <div className="truncate text-meta text-tenue">
-                    {[u.email, u.cargo].filter(Boolean).join(' · ')}
+                    {[correoPendiente(u.email) ? 'Correo pendiente' : u.email, u.cargo]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </div>
                 </div>
                 <span className="flex items-center gap-1.5 text-meta text-tenue">

@@ -17,7 +17,12 @@
 -- Después de esta vez, para tocar algo va un `update` a mano.
 --
 -- ── Los correos ───────────────────────────────────────────────
--- Van vacíos. El acceso con Google está apagado en esta instancia
+-- Van a `@pendiente.invalid`, que es un dominio que no existe ni
+-- puede existir (lo reserva la RFC 2606): nadie puede mandarles un
+-- correo ahí por error. No van vacíos porque la columna es `unique`
+-- y cuatro filas vacías se pisan entre sí.
+--
+-- El acceso con Google está apagado en esta instancia
 -- (`usaCorreo` y `accesoGoogle` en `src/marca/imporbamas.ts`), y un
 -- correo inventado no es un dato incompleto sino uno equivocado: el
 -- día que se encienda el acceso deja afuera justo a la persona que
@@ -39,10 +44,10 @@ truncate table public.comentarios, public.notificaciones, public.compromisos,
 -- sin depender de nosotros; también les hace ver todas las salas,
 -- que con cuatro personas y una sala no molesta.
 insert into public.usuarios (id, nombre, email, alcance, "puedeCrearSalas", cargo, activo, "creadoEn") values
-  ('u_nico',   'Nicolas Kroitor',    '', 'superadmin', true, 'Socio', true, now()),
-  ('u_matias', 'Matias Kroitor',     '', 'superadmin', true, 'Socio', true, now()),
-  ('u_lucas',  'Lucas Finkelstein',  '', 'superadmin', true, 'Socio', true, now()),
-  ('u_hernan', 'Hernan Finkelstein', '', 'superadmin', true, 'Socio', true, now());
+  ('u_nico',   'Nicolas Kroitor',    'nicolas@pendiente.invalid', 'superadmin', true, 'Socio', true, now()),
+  ('u_matias', 'Matias Kroitor',     'matias@pendiente.invalid',  'superadmin', true, 'Socio', true, now()),
+  ('u_lucas',  'Lucas Finkelstein',  'lucas@pendiente.invalid',   'superadmin', true, 'Socio', true, now()),
+  ('u_hernan', 'Hernan Finkelstein', 'hernan@pendiente.invalid',  'superadmin', true, 'Socio', true, now());
 
 /* ── Salas ────────────────────────────────────────────────── */
 

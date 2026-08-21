@@ -457,3 +457,18 @@ export const slug = (s: string) =>
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '')
+
+/* ─────────────────────────────────────────────────────────────
+   Correos que todavía no se cargaron.
+
+   `.invalid` lo reserva la RFC 2606 para esto: no existe ni puede
+   registrarse, así que nadie le manda un correo por error. Se usan
+   como marcador de posición donde falta el correo de verdad —en la
+   base la columna es `unique`, así que dejarlos vacíos no es
+   opción— y la interfaz los muestra como lo que son.
+   ───────────────────────────────────────────────────────────── */
+export const DOMINIO_PENDIENTE = 'pendiente.invalid'
+
+/** Si es uno de los provisorios y no una dirección de verdad. */
+export const correoPendiente = (email?: string) =>
+  !email || email.endsWith(`@${DOMINIO_PENDIENTE}`)

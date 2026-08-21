@@ -22,7 +22,7 @@ const CINTA =
  */
 
 export default function Login() {
-  const { entrarComoDemo, entrarConGoogle } = useApp()
+  const { entrarComoPerfil, entrarConGoogle } = useApp()
   const accesoReal = neonConfigurado || firebaseConfigurado
   const usuarios = ESTADO_INICIAL.usuarios
   const conGoogle = marca.accesoGoogle
@@ -147,7 +147,7 @@ export default function Login() {
                     return (
                       <button
                         key={u.id}
-                        onClick={() => entrarComoDemo(u.id, v.sala)}
+                        onClick={() => void entrarComoPerfil(u.id, v.sala)}
                         className="group flex w-full items-center gap-3 border border-borde bg-panel p-3 text-left transition-all hover:border-signal"
                       >
                         <div className="min-w-0 flex-1">
