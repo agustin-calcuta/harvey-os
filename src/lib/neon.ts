@@ -1,4 +1,5 @@
 import { createClient } from '@neondatabase/neon-js'
+import { marca } from '../marca'
 
 /* ─────────────────────────────────────────────────────────────
    Cliente de Neon.
@@ -15,9 +16,23 @@ const DATA_API_URL = import.meta.env.VITE_NEON_DATA_API_URL
 
 export const neonConfigurado = Boolean(AUTH_URL && DATA_API_URL)
 
+/*
+ * `allowAnonymous` deja consultar sin haber iniciado sesión.
+ *
+ * La Data API rechaza toda petición sin token —«missing
+ * authentication credentials», antes de llegar a Postgres—, así que
+ * sin esto una instancia donde se entra eligiendo un perfil no puede
+ * leer ni escribir nada, y cada navegador termina con su propia copia.
+ *
+ * Sólo se enciende donde el acceso con Google está apagado, y lo que
+ * ese token anónimo puede hacer lo decide la base: hay que haber
+ * corrido `db/acceso-por-perfil-imporbamas.sql`. Donde se entra con
+ * Google no se toca: ahí cada uno trae su sesión y las políticas de
+ * `rls.sql` recortan lo que ve.
+ */
 export const neon = neonConfigurado
   ? createClient({
-      auth: { url: AUTH_URL },
+      auth: { url: AUTH_URL, allowAnonymous: !marca.accesoGoogle },
       dataApi: { url: DATA_API_URL },
     })
   : null
