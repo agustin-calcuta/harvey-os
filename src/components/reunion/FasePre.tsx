@@ -38,6 +38,7 @@ import {
   Confirmar,
   Vacio,
 } from '../ui'
+import { marca } from '../../marca'
 import ModalTema from './ModalTema'
 
 /* ─────────────────────────────────────────────────────────────
@@ -299,20 +300,24 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
           Flotante: es el submit de esta pantalla y se perdía abajo de todo. */}
       {puedeOrganizar && reunion.estado === 'agenda_abierta' && (
         <BarraFlotante>
-          <label className="mr-auto flex items-center gap-2 text-meta text-suave">
-            <input
-              type="checkbox"
-              checked={avisar}
-              onChange={(e) => setAvisar(e.target.checked)}
-            />
-            Avisar por correo a los {reunion.participantesIds.length} participantes
-          </label>
+          {/* Sin correo en la instancia, cerrar el temario es sólo cerrarlo. */}
+          {marca.usaCorreo && (
+            <label className="mr-auto flex items-center gap-2 text-meta text-suave">
+              <input
+                type="checkbox"
+                checked={avisar}
+                onChange={(e) => setAvisar(e.target.checked)}
+              />
+              Avisar por correo a los {reunion.participantesIds.length} participantes
+            </label>
+          )}
           <Boton
             variante="destacado"
             onClick={() => setConfirmarCierre(true)}
             disabled={agenda.length === 0}
+            className={marca.usaCorreo ? undefined : 'ml-auto'}
           >
-            <Send size={13} /> Cerrar temario {avisar ? 'y avisar' : ''}
+            <Send size={13} /> Cerrar temario {marca.usaCorreo && avisar ? 'y avisar' : ''}
           </Boton>
         </BarraFlotante>
       )}
@@ -348,11 +353,15 @@ export default function FasePre({ reunion }: { reunion: Reunion }) {
         abierto={confirmarCierre}
         titulo="Cerrar el temario"
         texto={
-          avisar
-            ? `Sale un correo a los ${reunion.participantesIds.length} participantes con los ${agenda.length} temas, para que lleguen sabiendo de qué se va a hablar. Si aparece algo de último momento, se puede sumar igual.`
-            : `Se cierra el temario con ${agenda.length} temas y no se avisa a nadie. Si aparece algo de último momento, se puede sumar igual.`
+          !marca.usaCorreo
+            ? `Se cierra el temario con ${agenda.length} temas. Si aparece algo de último momento, se puede sumar igual.`
+            : avisar
+              ? `Sale un correo a los ${reunion.participantesIds.length} participantes con los ${agenda.length} temas, para que lleguen sabiendo de qué se va a hablar. Si aparece algo de último momento, se puede sumar igual.`
+              : `Se cierra el temario con ${agenda.length} temas y no se avisa a nadie. Si aparece algo de último momento, se puede sumar igual.`
         }
-        textoBoton={avisar ? 'Cerrar y avisar' : 'Cerrar sin avisar'}
+        textoBoton={
+          !marca.usaCorreo ? 'Cerrar temario' : avisar ? 'Cerrar y avisar' : 'Cerrar sin avisar'
+        }
         onCancelar={() => setConfirmarCierre(false)}
         onConfirmar={() => {
           void cerrarAgenda(reunion.id, avisar)

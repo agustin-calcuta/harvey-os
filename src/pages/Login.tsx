@@ -9,20 +9,24 @@ const CINTA =
   'TEMARIO · REUNIÓN · MINUTA EN VIVO · SEGUIMIENTO · TAREAS CON RESPONSABLE Y FECHA · '
 
 /*
- * Los cuatro perfiles vienen del seed: qué cuentas se ofrecen
- * depende de quién existe en los datos de cada cliente.
+ * Los perfiles vienen del seed: qué cuentas se ofrecen depende de
+ * quién existe en los datos de cada cliente.
+ *
+ * Qué son esos perfiles cambia con la marca. Donde el acceso con
+ * Google está encendido son un recorrido para mirar la herramienta
+ * sin credenciales, y se anuncian como tales. Donde está apagado
+ * —porque todavía no se cargaron los correos con los que entra cada
+ * uno— son **la** forma de entrar, y entonces no llevan ninguna
+ * advertencia: decir «datos de ejemplo» sobre la única puerta que
+ * hay es decirle al equipo que lo que carga no cuenta.
  */
 
 export default function Login() {
   const { entrarComoDemo, entrarConGoogle } = useApp()
   const accesoReal = neonConfigurado || firebaseConfigurado
   const usuarios = ESTADO_INICIAL.usuarios
-  /*
-   * Una instancia que ya está en uso no tiene perfiles de
-   * demostración: se entra con la cuenta propia a los datos
-   * propios. Lo decide el seed del cliente, no una opción aparte.
-   */
-  const hayVistaPrevia = VISTAS.length > 0
+  const conGoogle = marca.accesoGoogle
+  const hayPerfiles = VISTAS.length > 0
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -84,7 +88,7 @@ export default function Login() {
           </div>
 
           <div className="relative text-[10px] font-semibold uppercase tracking-[0.16em] text-tenue">
-            {hayVistaPrevia ? 'Vista previa' : marca.nombre} · {new Date().getFullYear()}
+            {marca.nombre} · {new Date().getFullYear()}
           </div>
         </div>
 
@@ -94,39 +98,47 @@ export default function Login() {
             <div className="label bracket mb-3">Acceso</div>
             <h2 className="display mb-8 text-4xl">Entrar</h2>
 
-            <button
-              onClick={entrarConGoogle}
-              className="mb-3 flex w-full items-center justify-center gap-3 border border-tinta bg-tinta px-5 py-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-fondo transition-all hover:bg-black"
-            >
-              <GoogleIcono />
-              Continuar con Google
-            </button>
-
-            <p className="text-xs leading-relaxed text-tenue">
-              {accesoReal
-                ? 'Entrás a las salas de las que formás parte, con el rol que tengas en cada una.'
-                : 'El acceso con Google se activa al cargar las credenciales.'}
-            </p>
-
-            {/*
-              El recorrido por perfil sólo existe donde hay perfiles
-              de demostración cargados. En una instancia que ya está
-              en uso —el equipo entra con su cuenta a sus datos
-              reales— no hay nada que previsualizar, y ofrecerlo
-              haría parecer que lo que se ve es de mentira.
-            */}
-            {hayVistaPrevia && (
+            {conGoogle && (
               <>
-                <div className="my-7 flex items-center gap-3">
-                  <div className="h-px flex-1 bg-borde" />
-                  <span className="label">O mirá cómo se ve cada perfil</span>
-                  <div className="h-px flex-1 bg-borde" />
-                </div>
+                <button
+                  onClick={entrarConGoogle}
+                  className="mb-3 flex w-full items-center justify-center gap-3 border border-tinta bg-tinta px-5 py-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-fondo transition-all hover:bg-black"
+                >
+                  <GoogleIcono />
+                  Continuar con Google
+                </button>
 
-                <p className="mb-4 text-xs leading-relaxed text-tenue">
-                  Entrás sin iniciar sesión, con datos de ejemplo. Nada de lo que toques sale de
-                  este navegador.
+                <p className="text-xs leading-relaxed text-tenue">
+                  {accesoReal
+                    ? 'Entrás a las salas de las que formás parte, con el rol que tengas en cada una.'
+                    : 'El acceso con Google se activa al cargar las credenciales.'}
                 </p>
+              </>
+            )}
+
+            {hayPerfiles && (
+              <>
+                {/* El separador sólo tiene sentido si arriba hay otra puerta. */}
+                {conGoogle && (
+                  <>
+                    <div className="my-7 flex items-center gap-3">
+                      <div className="h-px flex-1 bg-borde" />
+                      <span className="label">O mirá cómo se ve cada perfil</span>
+                      <div className="h-px flex-1 bg-borde" />
+                    </div>
+
+                    <p className="mb-4 text-xs leading-relaxed text-tenue">
+                      Entrás sin iniciar sesión, con datos de ejemplo. Nada de lo que toques sale
+                      de este navegador.
+                    </p>
+                  </>
+                )}
+
+                {!conGoogle && (
+                  <p className="mb-5 text-xs leading-relaxed text-tenue">
+                    Elegí quién sos.
+                  </p>
+                )}
 
                 <div className="space-y-1.5">
                   {VISTAS.map((v) => {

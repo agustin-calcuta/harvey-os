@@ -33,7 +33,7 @@ const clave = (s: string) =>
  * más corto: así «@Ana María» gana sobre «@Ana» cuando existen las
  * dos, en vez de cortar en la primera coincidencia.
  */
-function detectarMenciones(texto: string, gente: Usuario[]): string[] {
+export function detectarMenciones(texto: string, gente: Usuario[]): string[] {
   const t = clave(texto)
   const ordenada = [...gente].sort((a, b) => b.nombre.length - a.nombre.length)
   const encontrados = new Set<string>()
@@ -82,13 +82,109 @@ function conMenciones(texto: string, gente: Usuario[]) {
   )
 }
 
+/**
+ * El campo donde se escribe, con el desplegable de `@`.
+ *
+ * Está aparte del hilo porque se usa en dos momentos distintos:
+ * conversando sobre una tarea que ya existe, y escribiendo el primer
+ * comentario mientras se la crea. Antes lo segundo no se podía —había
+ * que registrar la tarea, volver a abrirla con el lápiz y recién ahí
+ * arrobar a alguien—, y en la práctica eso significaba que nadie se
+ * enteraba de las tareas nuevas.
+ */
+export function CajaMencion({
+  gente,
+  texto,
+  onChange,
+  placeholder,
+  rows = 2,
+  onEnter,
+}: {
+  /** Contra quiénes se resuelve el `@`. Sin nadie, el campo escribe texto y ya. */
+  gente: Usuario[]
+  texto: string
+  onChange: (v: string) => void
+  placeholder?: string
+  rows?: number
+  /** Qué hace Enter. Sin esto, Enter hace un renglón como en cualquier textarea. */
+  onEnter?: () => void
+}) {
+  /* Posición del `@` que se está escribiendo, para el desplegable. */
+  const [buscando, setBuscando] = useState<{ desde: number; termino: string } | null>(null)
+  const campo = useRef<HTMLTextAreaElement>(null)
+
+  const candidatos = useMemo(() => {
+    if (!buscando) return []
+    const t = clave(buscando.termino)
+    return gente.filter((u) => clave(u.nombre).includes(t)).slice(0, 5)
+  }, [buscando, gente])
+
+  const alEscribir = (v: string, posicion: number) => {
+    onChange(v)
+    /*
+     * Se busca el último `@` antes del cursor y se mira lo que sigue.
+     * Si hay un espacio en el medio, ya no se está escribiendo una
+     * mención y el desplegable se cierra.
+     */
+    const hasta = v.slice(0, posicion)
+    const i = hasta.lastIndexOf('@')
+    if (i < 0) return setBuscando(null)
+    const termino = hasta.slice(i + 1)
+    if (/\s/.test(termino) || termino.length > 24) return setBuscando(null)
+    setBuscando({ desde: i, termino })
+  }
+
+  const elegir = (u: Usuario) => {
+    if (!buscando) return
+    const antes = texto.slice(0, buscando.desde)
+    const despues = texto.slice(buscando.desde + 1 + buscando.termino.length)
+    onChange(`${antes}@${u.nombre}${despues.startsWith(' ') ? '' : ' '}${despues}`)
+    setBuscando(null)
+    campo.current?.focus()
+  }
+
+  return (
+    <div className="relative">
+      {candidatos.length > 0 && (
+        <div className="absolute bottom-full left-0 z-10 mb-1 w-56 border border-borde2 bg-panel shadow-lg">
+          {candidatos.map((u) => (
+            <button
+              key={u.id}
+              type="button"
+              onClick={() => elegir(u)}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-hueco"
+            >
+              <AtSign size={11} className="shrink-0 text-tenue" />
+              {u.nombre}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <textarea
+        ref={campo}
+        rows={rows}
+        value={texto}
+        onChange={(e) => alEscribir(e.target.value, e.target.selectionStart)}
+        onKeyDown={(e) => {
+          /* Con el desplegable abierto, Enter es para elegir, no para mandar. */
+          if (onEnter && e.key === 'Enter' && !e.shiftKey && !candidatos.length) {
+            e.preventDefault()
+            onEnter()
+          }
+          if (e.key === 'Escape') setBuscando(null)
+        }}
+        placeholder={placeholder}
+        className="w-full text-xs"
+      />
+    </div>
+  )
+}
+
 export default function Comentarios({ tarea }: { tarea: Compromiso }) {
   const { estado, yo, comentar, borrarComentario, marcarComentariosLeidos } = useApp()
   const [texto, setTexto] = useState('')
   const [enviando, setEnviando] = useState(false)
-  /* Posición del `@` que se está escribiendo, para el desplegable. */
-  const [buscando, setBuscando] = useState<{ desde: number; termino: string } | null>(null)
-  const campo = useRef<HTMLTextAreaElement>(null)
 
   const gente = useMemo(
     () => integrantes(estado, tarea.salaId).filter((u) => u.id !== yo?.id),
@@ -108,44 +204,12 @@ export default function Comentarios({ tarea }: { tarea: Compromiso }) {
     void marcarComentariosLeidos(tarea.id)
   }, [tarea.id, marcarComentariosLeidos])
 
-  const candidatos = useMemo(() => {
-    if (!buscando) return []
-    const t = clave(buscando.termino)
-    return gente.filter((u) => clave(u.nombre).includes(t)).slice(0, 5)
-  }, [buscando, gente])
-
-  const alEscribir = (v: string, posicion: number) => {
-    setTexto(v)
-    /*
-     * Se busca el último `@` antes del cursor y se mira lo que sigue.
-     * Si hay un espacio en el medio, ya no se está escribiendo una
-     * mención y el desplegable se cierra.
-     */
-    const hasta = v.slice(0, posicion)
-    const i = hasta.lastIndexOf('@')
-    if (i < 0) return setBuscando(null)
-    const termino = hasta.slice(i + 1)
-    if (/\s/.test(termino) || termino.length > 24) return setBuscando(null)
-    setBuscando({ desde: i, termino })
-  }
-
-  const elegir = (u: Usuario) => {
-    if (!buscando) return
-    const antes = texto.slice(0, buscando.desde)
-    const despues = texto.slice(buscando.desde + 1 + buscando.termino.length)
-    const nuevo = `${antes}@${u.nombre}${despues.startsWith(' ') ? '' : ' '}${despues}`
-    setTexto(nuevo)
-    setBuscando(null)
-    campo.current?.focus()
-  }
-
   const enviar = async () => {
     if (!texto.trim() || enviando) return
     setEnviando(true)
     try {
       await comentar(tarea.id, texto, detectarMenciones(texto, gente))
       setTexto('')
-      setBuscando(null)
     } finally {
       setEnviando(false)
     }
@@ -183,40 +247,14 @@ export default function Comentarios({ tarea }: { tarea: Compromiso }) {
         </div>
       )}
 
-      {/* ── Escribir ── */}
-      <div className="relative">
-        {candidatos.length > 0 && (
-          <div className="absolute bottom-full left-0 z-10 mb-1 w-56 border border-borde2 bg-panel shadow-lg">
-            {candidatos.map((u) => (
-              <button
-                key={u.id}
-                onClick={() => elegir(u)}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-hueco"
-              >
-                <AtSign size={11} className="shrink-0 text-tenue" />
-                {u.nombre}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <textarea
-          ref={campo}
-          rows={2}
-          value={texto}
-          onChange={(e) => alEscribir(e.target.value, e.target.selectionStart)}
-          onKeyDown={(e) => {
-            /* Enter manda; Shift+Enter hace un renglón. */
-            if (e.key === 'Enter' && !e.shiftKey && !candidatos.length) {
-              e.preventDefault()
-              void enviar()
-            }
-            if (e.key === 'Escape') setBuscando(null)
-          }}
-          placeholder="Escribí algo. Con @ arrobás a alguien del equipo."
-          className="w-full text-xs"
-        />
-      </div>
+      {/* ── Escribir ── Enter manda; Shift+Enter hace un renglón. */}
+      <CajaMencion
+        gente={gente}
+        texto={texto}
+        onChange={setTexto}
+        onEnter={() => void enviar()}
+        placeholder="Escribí algo. Con @ arrobás a alguien del equipo."
+      />
 
       <div className="flex items-center justify-between gap-2">
         <span className="text-[10px] text-tenue">

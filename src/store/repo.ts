@@ -26,8 +26,14 @@ export type { Coleccion, Repo }
 /* ── Demo ─────────────────────────────────────────────────── */
 
 /* v2: el modelo pasó a organizarse por salas. Subir la versión
-   descarta los snapshots viejos en vez de mezclarlos mal. */
-const CLAVE = 'harvey-os:estado:v2'
+   descarta los snapshots viejos en vez de mezclarlos mal.
+
+   v3: se fueron los datos de muestra y entraron las personas reales.
+   Acá subir la versión no es prolijidad: el snapshot viejo vive en el
+   navegador de cada uno, así que sin esto quien ya había abierto la
+   herramienta seguiría viendo los cuatro apellidos inventados y las
+   reuniones de ejemplo, y ninguna actualización se lo sacaría. */
+const CLAVE = 'harvey-os:estado:v3'
 
 function leerLocal(): Estado {
   try {

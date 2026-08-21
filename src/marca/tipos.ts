@@ -210,6 +210,30 @@ export interface Marca {
    */
   usaClientes: boolean
 
+  /**
+   * Si la instancia manda correos.
+   *
+   * Apagado, no se compone ni se registra ningún envío: no salen el
+   * aviso de temario cerrado ni la minuta, el registro de correos no
+   * está y Administración no ofrece encenderlos. Es para una
+   * instancia que todavía no tiene casilla propia: con el correo
+   * prendido, cada cierre deja un aviso «simulado» que parece un
+   * envío que falló, y hay que explicar en cada pantalla que eso no
+   * se mandó a ningún lado.
+   */
+  usaCorreo: boolean
+
+  /**
+   * Si se entra con Google.
+   *
+   * Apagado, la pantalla de acceso ofrece los perfiles del equipo y
+   * nada más. Es el estado de una instancia que todavía no tiene
+   * cargados los correos reales de cada uno: el botón de Google
+   * estaría, y quien lo apretara entraría a una cuenta que no
+   * coincide con ninguna ficha y se quedaría sin salas.
+   */
+  accesoGoogle: boolean
+
   colores: ColoresMarca
   fuentes: FuentesMarca
   logos: LogosMarca

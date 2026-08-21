@@ -41,6 +41,10 @@ export const calcuta: Marca = {
   /* Consultora: cada tarea es de algún cliente, y por ahí se filtra. */
   usaClientes: true,
 
+  /* Casilla propia y Workspace propio: las dos cosas andan. */
+  usaCorreo: true,
+  accesoGoogle: true,
+
   colores: {
     /*
      * Superficies. Neutras a propósito: el hueso de Imporbamas

@@ -1,8 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core'
+import { CSS } from '@dnd-kit/utilities'
+import {
   CalendarPlus,
   Columns3,
+  GripVertical,
   Inbox,
   List,
   Pencil,
@@ -35,6 +48,7 @@ import {
   Seccion,
   SelectorVista,
   Vacio,
+  usePantallaAncha,
 } from '../components/ui'
 import { BarraFiltros, Buscador, FiltroFecha, FiltroSala, enRango } from '../components/Filtros'
 import { useFiltros } from '../store/Filtros'
@@ -89,10 +103,43 @@ export default function Bloc() {
   const [editando, setEditando] = useState<Tema | undefined>()
   const [porBorrar, setPorBorrar] = useState<Tema | undefined>()
   const [porAsignar, setPorAsignar] = useState<Tema | undefined>()
+  const [arrastrando, setArrastrando] = useState<Tema | undefined>()
 
   const cambiarVista = (v: Vista) => {
     setVista(v)
     localStorage.setItem(CLAVE_VISTA, v)
+  }
+
+  /*
+   * Arrastrar de una columna a otra.
+   *
+   * Las tres columnas del bloc no son un estado que se elija: son en
+   * qué momento está cada nota. Por eso sólo dos aceptan que se les
+   * suelte algo, y lo que hacen no es «cambiar el estado» sino la
+   * acción que ya tenían los botones de la tarjeta:
+   *
+   *   → Asignados  = elegir a qué reunión va (abre el desplegable,
+   *                  porque la reunión hay que decirla)
+   *   → Borradores = sacarla de la reunión y devolverla al bloc
+   *
+   * A Pendientes no se puede soltar nada: una nota queda pendiente
+   * porque una reunión se cerró sin tratarla, y eso no es algo que
+   * alguien pueda decidir a mano.
+   */
+  const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+
+  const alEmpezar = (e: DragStartEvent) =>
+    setArrastrando(estado.temas.find((t) => t.id === e.active.id))
+
+  const alSoltar = (e: DragEndEvent) => {
+    const tema = estado.temas.find((t) => t.id === e.active.id)
+    setArrastrando(undefined)
+    if (!tema || !e.over) return
+    const destino = e.over.id as Grupo
+    const origen = e.active.data.current?.grupo as Grupo | undefined
+    if (destino === origen) return
+    if (destino === 'asignados') setPorAsignar(tema)
+    if (destino === 'borradores') void devolverAlTemario(tema.id)
   }
 
   /*
@@ -220,23 +267,48 @@ export default function Bloc() {
             }
           />
         ) : vista === 'columnas' ? (
-          <div className="grid gap-5 lg:grid-cols-3">
-            {GRUPOS.map((g) => (
-              <section key={g.clave}>
-                <h3 className="subtitulo">
-                  {g.titulo} <span className="cuenta">{porGrupo[g.clave].length}</span>
-                </h3>
-                <p className="mb-3 text-xs leading-relaxed text-tenue">{g.texto}</p>
-                {porGrupo[g.clave].length === 0 ? (
-                  <p className="border border-borde border-dashed p-4 text-meta text-tenue">
-                    Nada por acá.
-                  </p>
-                ) : (
-                  <ul className="space-y-3">{porGrupo[g.clave].map((t) => tarjeta(t, g.clave))}</ul>
+          <>
+            <DndContext sensors={sensores} onDragStart={alEmpezar} onDragEnd={alSoltar}>
+              <div className="grid gap-5 lg:grid-cols-3">
+                {GRUPOS.map((g) => (
+                  <ColumnaBloc key={g.clave} grupo={g} cuantos={porGrupo[g.clave].length}>
+                    {porGrupo[g.clave].length === 0 ? (
+                      <p className="border border-borde border-dashed p-4 text-meta text-tenue">
+                        Nada por acá.
+                      </p>
+                    ) : (
+                      <ul className="space-y-3">
+                        {porGrupo[g.clave].map((t) => tarjeta(t, g.clave))}
+                      </ul>
+                    )}
+                  </ColumnaBloc>
+                ))}
+              </div>
+
+              <DragOverlay>
+                {arrastrando && (
+                  <div className="w-72 rotate-2 opacity-90">
+                    <ul>
+                      <Tarjeta
+                        tema={arrastrando}
+                        grupo="borradores"
+                        superpuesta
+                        onAsignar={() => {}}
+                        onEditar={() => {}}
+                        onBorrar={() => {}}
+                        onSacar={() => {}}
+                      />
+                    </ul>
+                  </div>
                 )}
-              </section>
-            ))}
-          </div>
+              </DragOverlay>
+            </DndContext>
+
+            <p className="mt-4 hidden text-meta text-tenue lg:block">
+              Arrastrá una nota a «Asignados» para mandarla a una reunión, o a «Borradores» para
+              sacarla de la que tenga.
+            </p>
+          </>
         ) : (
           /*
              Lista de verdad: filas, no las mismas tarjetas puestas una
@@ -288,6 +360,45 @@ export default function Bloc() {
         }}
       />
     </div>
+  )
+}
+
+/* ── La columna ───────────────────────────────────────────── */
+
+/**
+ * Una de las tres columnas, con su zona para soltar.
+ *
+ * «Pendientes» no acepta nada: se llega ahí porque una reunión se
+ * cerró sin tratar la nota, no porque alguien lo decida. Marcarla
+ * igual como zona válida sería prometer algo que al soltar no pasa.
+ */
+function ColumnaBloc({
+  grupo: g,
+  cuantos,
+  children,
+}: {
+  grupo: (typeof GRUPOS)[number]
+  cuantos: number
+  children: React.ReactNode
+}) {
+  const recibe = g.clave !== 'pendientes'
+  const { setNodeRef, isOver } = useDroppable({ id: g.clave, disabled: !recibe })
+
+  return (
+    <section ref={setNodeRef}>
+      <h3 className="subtitulo">
+        {g.titulo} <span className="cuenta">{cuantos}</span>
+      </h3>
+      <p className="mb-3 text-xs leading-relaxed text-tenue">{g.texto}</p>
+      <div
+        className={cx(
+          'transition-colors',
+          isOver && recibe && 'border border-dashed border-signal bg-signal/5 p-2',
+        )}
+      >
+        {children}
+      </div>
+    </section>
   )
 }
 
@@ -384,6 +495,7 @@ function Tarjeta({
   onEditar,
   onBorrar,
   onSacar,
+  superpuesta,
 }: {
   tema: Tema
   grupo: Grupo
@@ -391,18 +503,48 @@ function Tarjeta({
   onEditar: () => void
   onBorrar: () => void
   onSacar: () => void
+  /** La copia que sigue al puntero: se dibuja, pero no se arrastra ella misma. */
+  superpuesta?: boolean
 }) {
   const { estado } = useApp()
   const suya = reunion(estado, t.reunionId)
+  /*
+   * Las columnas se ponen en fila recién en `lg`. Debajo de eso están
+   * apiladas —arrastrar entre ellas no lleva a ningún lado— y el gesto
+   * le pelearía el dedo al scroll.
+   */
+  const enEscritorio = usePantallaAncha(1024)
+  const arrastrable = enEscritorio && !superpuesta
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: t.id,
+    disabled: !arrastrable,
+    /* De qué columna salió, para saber qué significa soltarla en otra. */
+    data: { grupo },
+  })
 
   return (
+    /*
+      La nota entera es el asa, como en el tablero de Tareas: el
+      sensor arranca a los 6 px, así que un click en un botón sigue
+      siendo un click.
+    */
     <li
+      ref={setNodeRef}
+      {...(arrastrable ? listeners : {})}
+      style={{ transform: CSS.Translate.toString(transform) }}
       className={cx(
         'flex flex-col border bg-panel p-4',
         grupo === 'pendientes' ? 'border-amber/50' : 'border-borde',
+        isDragging && 'opacity-30',
+        arrastrable && 'cursor-grab active:cursor-grabbing',
       )}
     >
       <div className="mb-2 flex flex-wrap items-center gap-2">
+        {arrastrable && (
+          <span {...attributes} className="-ml-1 text-borde2" aria-label="Mover">
+            <GripVertical size={13} />
+          </span>
+        )}
         <ChipImportancia valor={t.importancia} />
         <ChipObjetivo valor={t.objetivo} />
         <span className="ml-auto text-meta text-tenue">anotado {relativo(t.creadoEn)}</span>

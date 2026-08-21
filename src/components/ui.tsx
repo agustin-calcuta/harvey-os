@@ -640,3 +640,32 @@ export function Confirmar({
     </Modal>
   )
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Si la pantalla es de escritorio.
+
+   Los tableros arrastran desde toda la tarjeta, y en un teléfono
+   eso pelea con el gesto de scrollear: el dedo baja por la lista y
+   el primer movimiento se lo lleva el arrastre. Ahí las columnas
+   además están apiladas, así que arrastrar entre ellas no lleva a
+   ningún lado —cada tarjeta trae sus propios botones de estado—.
+
+   El corte es el mismo `md` de Tailwind con el que las columnas se
+   ponen una al lado de la otra: si se ven en fila, se arrastra.
+   ───────────────────────────────────────────────────────────── */
+export function usePantallaAncha(minPx = 768) {
+  const consulta = `(min-width: ${minPx}px)`
+  const [ancha, setAncha] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(consulta).matches,
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia(consulta)
+    const alCambiar = () => setAncha(mq.matches)
+    alCambiar()
+    mq.addEventListener('change', alCambiar)
+    return () => mq.removeEventListener('change', alCambiar)
+  }, [consulta])
+
+  return ancha
+}

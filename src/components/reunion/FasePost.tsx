@@ -41,6 +41,7 @@ import {
   Etiqueta,
   Vacio,
 } from '../ui'
+import { marca } from '../../marca'
 import ModalCompromiso from './ModalCompromiso'
 import ImportarMinuta from './ImportarMinuta'
 
@@ -401,18 +402,24 @@ export default function FasePost({ reunion }: { reunion: Reunion }) {
         {generada ? (
           <>
             <span className="mr-auto text-meta text-suave">
-              Minuta generada. Descargala o mandala a los participantes.
+              {marca.usaCorreo
+                ? 'Minuta generada. Descargala o mandala a los participantes.'
+                : 'Minuta generada. Descargala y pasala por donde quieras.'}
             </span>
             <Boton
+              variante={marca.usaCorreo ? 'linea' : 'destacado'}
               onClick={() =>
                 generarMinutaPDF(estado, reunion, { pendientesIncluidos: [...enElPDF] })
               }
             >
               <Download size={13} /> Descargar
             </Boton>
-            <Boton variante="destacado" onClick={() => setConfirmarEnvio(true)}>
-              <Send size={13} /> Enviar minuta
-            </Boton>
+            {/* Enviar, sólo donde hay por dónde enviarla. */}
+            {marca.usaCorreo && (
+              <Boton variante="destacado" onClick={() => setConfirmarEnvio(true)}>
+                <Send size={13} /> Enviar minuta
+              </Boton>
+            )}
           </>
         ) : (
           <>

@@ -5,6 +5,7 @@ import { firebaseConfigurado } from '../lib/firebase'
 import { neonConfigurado } from '../lib/neon'
 import { correoConfigurado, correoDePrueba, enviarCorreo } from '../lib/email'
 import { fechaCorta, integrantes, uid } from '../lib/utils'
+import { marca } from '../marca'
 import type { Alcance, Usuario } from '../types'
 import { Boton, Campo, Chip, Confirmar, Modal, Seccion, Segmentado } from '../components/ui'
 
@@ -124,9 +125,14 @@ export default function Admin() {
                     <span className="text-sm">{u.nombre}</span>
                     {!u.activo && <Chip>Inactiva</Chip>}
                   </div>
+                  {/*
+                    Con separador sólo si hay las dos cosas: mientras
+                    no estén cargados los correos, un «·» suelto antes
+                    del cargo se lee como un dato que falta y no como
+                    uno que todavía no se pidió.
+                  */}
                   <div className="truncate text-meta text-tenue">
-                    {u.email}
-                    {u.cargo && ` · ${u.cargo}`}
+                    {[u.email, u.cargo].filter(Boolean).join(' · ')}
                   </div>
                 </div>
                 <span className="flex items-center gap-1.5 text-meta text-tenue">
@@ -172,20 +178,26 @@ export default function Admin() {
             </Campo>
           </div>
 
-          <label className="flex cursor-pointer items-start gap-3 p-4">
-            <input
-              type="checkbox"
-              className="mt-0.5 h-4 w-4 accent-signal"
-              checked={estado.config.emailsActivos}
-              onChange={(e) => actualizarConfig({ emailsActivos: e.target.checked })}
-            />
-            <span>
-              <span className="block text-sm">Correos automáticos</span>
-              <span className="block text-meta text-tenue">
-                Emitir el aviso al cerrar el temario y la minuta al cerrar la reunión.
+          {/*
+            Sin correo en la instancia el interruptor no tiene qué
+            encender: ofrecerlo es prometer avisos que no van a salir.
+          */}
+          {marca.usaCorreo && (
+            <label className="flex cursor-pointer items-start gap-3 p-4">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 accent-signal"
+                checked={estado.config.emailsActivos}
+                onChange={(e) => actualizarConfig({ emailsActivos: e.target.checked })}
+              />
+              <span>
+                <span className="block text-sm">Correos automáticos</span>
+                <span className="block text-meta text-tenue">
+                  Emitir el aviso al cerrar el temario y la minuta al cerrar la reunión.
+                </span>
               </span>
-            </span>
-          </label>
+            </label>
+          )}
 
           <Fila
             etiqueta="Persistencia"
@@ -207,12 +219,20 @@ export default function Admin() {
           />
           <Fila
             etiqueta="Acceso con Google"
-            valor={neonConfigurado || firebaseConfigurado ? 'Activo' : 'Pendiente'}
-            tono={neonConfigurado || firebaseConfigurado ? 'acid' : 'amber'}
+            valor={
+              !marca.accesoGoogle
+                ? 'Apagado'
+                : neonConfigurado || firebaseConfigurado
+                  ? 'Activo'
+                  : 'Pendiente'
+            }
+            tono={marca.accesoGoogle && (neonConfigurado || firebaseConfigurado) ? 'acid' : 'amber'}
             nota={
-              neonConfigurado
-                ? 'Neon Auth. La identidad se vincula por correo con la ficha ya cargada, así cada uno entra con el rol que tiene en cada sala.'
-                : 'Se activa al cargar las variables del proveedor.'
+              !marca.accesoGoogle
+                ? 'Se entra con los perfiles del equipo. Para encenderlo hacen falta los correos con los que entra cada uno, cargados en la ficha de cada persona.'
+                : neonConfigurado
+                  ? 'Neon Auth. La identidad se vincula por correo con la ficha ya cargada, así cada uno entra con el rol que tiene en cada sala.'
+                  : 'Se activa al cargar las variables del proveedor.'
             }
           />
           <Fila
@@ -226,37 +246,45 @@ export default function Admin() {
             }
           />
 
-          <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <Send size={13} className="text-tenue" />
-                <span className="text-sm">Envío de correo</span>
+          {marca.usaCorreo && (
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <Send size={13} className="text-tenue" />
+                  <span className="text-sm">Envío de correo</span>
+                </div>
+                <p className="mt-1 max-w-xl pl-5 text-meta text-tenue">
+                  {correoConfigurado
+                    ? 'Salen solos al cerrar el temario y al cerrar la reunión. Probalo acá para confirmar que la casilla responde.'
+                    : 'Los correos se componen siempre y quedan registrados y se pueden revisar desde acá, listos para copiar o abrir en el cliente de correo.'}
+                </p>
               </div>
-              <p className="mt-1 max-w-xl pl-5 text-meta text-tenue">
-                {correoConfigurado
-                  ? 'Salen solos al cerrar el temario y al cerrar la reunión. Probalo acá para confirmar que la casilla responde.'
-                  : 'Los correos se componen siempre y quedan registrados y se pueden revisar desde acá, listos para copiar o abrir en el cliente de correo.'}
-              </p>
+              <div className="flex items-center gap-2">
+                <Chip tono={correoConfigurado ? 'acid' : 'amber'}>
+                  {correoConfigurado ? 'Conectado' : 'Sin casilla'}
+                </Chip>
+                {correoConfigurado && (
+                  <Boton tam="sm" onClick={probarCorreo} disabled={probando}>
+                    <Send size={11} /> {probando ? 'Enviando…' : 'Probar'}
+                  </Boton>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Chip tono={correoConfigurado ? 'acid' : 'amber'}>
-                {correoConfigurado ? 'Conectado' : 'Sin casilla'}
-              </Chip>
-              {correoConfigurado && (
-                <Boton tam="sm" onClick={probarCorreo} disabled={probando}>
-                  <Send size={11} /> {probando ? 'Enviando…' : 'Probar'}
-                </Boton>
-              )}
-            </div>
-          </div>
+          )}
 
           <div className="flex flex-wrap items-center justify-between gap-3 p-4">
             <div>
-              <div className="text-sm">Datos de demostración</div>
+              {/*
+                Ya no dice «datos de demostración»: en una instancia en
+                uso eso hace pensar que lo que se está mirando es de
+                mentira. Lo que hace el botón es lo mismo de siempre
+                —volver al estado con el que arrancó—, y ahora lo dice.
+              */}
+              <div className="text-sm">Volver al estado inicial</div>
               <div className="text-meta text-tenue">
                 {modo === 'neon'
                   ? 'Con base compartida el restablecimiento se hace desde el repositorio, corriendo db/seed.sql.'
-                  : `Vuelve todo al estado original: ${estado.salas.length} salas, ${estado.reuniones.length} reuniones y ${estado.compromisos.length} compromisos.`}
+                  : `Se descarta todo lo cargado y vuelven las ${estado.salas.length === 1 ? 'personas y la sala' : 'personas y las salas'} del arranque. Ahora mismo hay ${plural(estado.reuniones.length, 'reunión', 'reuniones')} y ${plural(estado.compromisos.length, 'tarea', 'tareas')}.`}
               </div>
             </div>
             <Boton
@@ -290,8 +318,8 @@ export default function Admin() {
       />
       <Confirmar
         abierto={confirmarReset}
-        titulo="Restablecer la demostración"
-        texto="Se descartan todos los cambios y se vuelve al conjunto de datos original. No se puede deshacer."
+        titulo="Volver al estado inicial"
+        texto="Se descarta todo lo cargado —reuniones, notas y tareas— y se vuelve al arranque. No se puede deshacer."
         textoBoton="Restablecer"
         peligro
         onCancelar={() => setConfirmarReset(false)}
@@ -305,6 +333,9 @@ export default function Admin() {
 }
 
 /* ── Auxiliares ───────────────────────────────────────────── */
+
+/** «1 reunión» y no «1 reuniones». */
+const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`
 
 function Fila({
   etiqueta,

@@ -235,7 +235,17 @@ export default function Layout() {
             <div className="min-w-0 flex-1">
               <div className="truncate text-xs text-white/90">{yo?.nombre}</div>
               <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">
-                {esSuperadmin ? 'Superadmin' : (yo?.cargo ?? '')}
+                {/*
+                  «Superadmin» sólo donde administrar es de una cuenta
+                  de afuera: ahí decir el cargo sería esconder que ése
+                  no es alguien del equipo. Donde administran los
+                  propios socios, es su cargo lo que corresponde: el
+                  alcance con el que entran a la base no es lo que uno
+                  quiere leer abajo de su nombre todos los días.
+                */}
+                {esSuperadmin && !marca.adminsSonDelEquipo
+                  ? 'Superadmin'
+                  : (yo?.cargo ?? '')}
               </div>
             </div>
             <button
@@ -267,7 +277,17 @@ export default function Layout() {
           </button>
         </header>
 
-        {vistaPrevia && (
+        {/*
+          La cinta de vista previa avisa que lo que se está mirando es
+          de mentira. Eso vale mientras haya otra puerta: se entró por
+          un perfil de muestra **pudiendo** entrar con la cuenta propia.
+
+          Donde el acceso con Google todavía está apagado, el perfil no
+          es una previsualización sino la única forma de entrar, y la
+          cinta pasa a decir lo contrario de lo que corresponde: que lo
+          que el equipo carga no cuenta.
+        */}
+        {vistaPrevia && marca.accesoGoogle && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber/40 bg-amber/10 px-4 py-2.5 sm:px-6">
             <span className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber">
               <Eye size={12} />

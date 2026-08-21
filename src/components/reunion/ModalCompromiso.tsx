@@ -10,7 +10,7 @@ import {
 } from '../../types'
 import { Boton, Campo, Modal, Segmentado } from '../ui'
 import { marca } from '../../marca'
-import Comentarios from '../Comentarios'
+import Comentarios, { CajaMencion, detectarMenciones } from '../Comentarios'
 import CampoCliente from '../CampoCliente'
 
 /*
@@ -40,6 +40,7 @@ export default function ModalCompromiso({
     crearCompromiso,
     actualizarCompromiso,
     asegurarCliente,
+    comentar,
     salasDondeSoyDelEquipo: misSalas,
   } = useApp()
 
@@ -49,6 +50,8 @@ export default function ModalCompromiso({
   const [salaId, setSalaId] = useState(salaFija ?? misSalas[0]?.id ?? '')
   const laSala = salaFija ?? salaId
   const gente = laSala ? integrantes(estado, laSala) : []
+  /* Para arrobar: uno mismo no se avisa a sí mismo. */
+  const otros = gente.filter((u) => u.id !== yo?.id)
 
   const [accion, setAccion] = useState('')
   const [detalle, setDetalle] = useState('')
@@ -58,6 +61,16 @@ export default function ModalCompromiso({
   const [est, setEst] = useState<EstadoCompromiso>('pendiente')
   const [avance, setAvance] = useState('')
   const [cliente, setCliente] = useState('')
+  /*
+   * El primer comentario, para tareas nuevas.
+   *
+   * Es el lugar donde se arroba a alguien en el mismo momento en que
+   * se crea la tarea. Antes había que registrarla, buscarla en el
+   * tablero, abrirla con el lápiz y recién ahí escribir: cuatro pasos
+   * para avisarle a alguien que tiene algo que hacer, y por eso en la
+   * práctica no se avisaba.
+   */
+  const [comentario, setComentario] = useState('')
 
   /*
    * Quién puede tocar la tarea: quien la tiene a su nombre y quien
@@ -110,6 +123,7 @@ export default function ModalCompromiso({
     setCliente(
       clientesRef.current.find((c) => c.id === compromiso?.clienteId)?.nombre ?? '',
     )
+    setComentario('')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abierto, compromiso?.id, primero, salaFija])
 
@@ -136,8 +150,20 @@ export default function ModalCompromiso({
       completadoEn:
         est === 'hecho' ? (compromiso?.completadoEn ?? new Date().toISOString()) : undefined,
     }
-    if (compromiso) await actualizarCompromiso(compromiso.id, datos)
-    else await crearCompromiso(datos)
+    if (compromiso) {
+      await actualizarCompromiso(compromiso.id, datos)
+    } else {
+      const id = await crearCompromiso(datos)
+      /*
+       * El comentario va después de la tarea porque cuelga de ella.
+       * Si la creación falló no hay a qué colgarlo, y entonces no se
+       * escribe: mejor perder el comentario que dejar un aviso que
+       * apunta a una tarea que no existe.
+       */
+      if (id && comentario.trim()) {
+        await comentar(id, comentario, detectarMenciones(comentario, otros))
+      }
+    }
     onCerrar()
   }
 
@@ -267,9 +293,31 @@ export default function ModalCompromiso({
 
         {/* Fuera del fieldset: comentar puede cualquiera que la vea. */}
         {/* La conversación, sólo cuando la tarea ya existe. */}
-        {compromiso && (
+        {compromiso ? (
           <div className="border-t border-borde pt-4">
             <Comentarios tarea={compromiso} />
+          </div>
+        ) : (
+          <div className="border-t border-borde pt-4">
+            <Campo
+              etiqueta="Primer comentario"
+              ayuda={
+                otros.length
+                  ? 'Opcional. Con @ arrobás a alguien: le queda un aviso apenas se registre la tarea.'
+                  : 'Opcional. Queda como primer mensaje de la conversación de la tarea.'
+              }
+            >
+              <CajaMencion
+                gente={otros}
+                texto={comentario}
+                onChange={setComentario}
+                placeholder={
+                  otros.length
+                    ? 'Ej.: @Nombre esto sale del acuerdo de la semana pasada.'
+                    : 'Con qué contexto nace esta tarea…'
+                }
+              />
+            </Campo>
           </div>
         )}
 

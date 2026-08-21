@@ -50,7 +50,9 @@ function Rutas() {
         */}
         <Route
           path="correos"
-          element={esSuperadmin ? <Correos /> : <Navigate to="/" replace />}
+          element={
+            esSuperadmin && marca.usaCorreo ? <Correos /> : <Navigate to="/" replace />
+          }
         />
         <Route path="admin" element={<Admin />} />
         {/* La sección de pendientes pasó a ser una vista de Tareas. */}

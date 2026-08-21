@@ -16,6 +16,7 @@ import {
 } from '../lib/firebase'
 import { entrarConGoogleNeon, neonConfigurado, salirDeNeon, sesionActual } from '../lib/neon'
 import { correoAgendaCerrada, correoMinuta, enviarCorreo } from '../lib/email'
+import { marca } from '../marca'
 import { ESTADO_INICIAL } from '../lib/seed'
 import { agendaDe, rolEnSala, salasDe, uid } from '../lib/utils'
 import {
@@ -160,9 +161,10 @@ interface Ctx {
 
   // compromisos
   /** La sala sale de la reunión de la tarea, o se pasa a mano. */
+  /** Devuelve el id de la tarea creada, para poder seguir trabajando sobre ella. */
   crearCompromiso(
     datos: Omit<Compromiso, 'id' | 'creadoEn' | 'salaId'> & { salaId?: string },
-  ): Promise<void>
+  ): Promise<string | undefined>
   actualizarCompromiso(id: string, cambios: Partial<Compromiso>): Promise<void>
   borrarCompromiso(id: string): Promise<void>
   moverCompromiso(id: string, estado: EstadoCompromiso): Promise<void>
@@ -823,6 +825,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       reunion: Reunion,
       compuesto: { asunto: string; html: string; texto: string },
     ) => {
+      /*
+       * En una instancia sin correo no se registra nada. No es sólo
+       * que no se manda: la notificación quedaba guardada con estado
+       * «simulado», y eso después aparece en el registro y en la
+       * reunión como un envío que salió raro. Un correo que nadie
+       * pidió no tiene que dejar rastro.
+       */
+      if (!marca.usaCorreo) return undefined
+
       const gente = ref.current.usuarios.filter(
         (u) => reunion.participantesIds.includes(u.id) && u.activo,
       )
@@ -1084,8 +1095,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         agendaCerradaEn: new Date().toISOString(),
       }
       await persistir('reuniones', actualizada)
-      if (!notificar) {
-        avisar('Temario cerrado. No se avisó a nadie.', 'info')
+      /* Sin correo en la instancia, cerrar el temario es sólo cerrarlo. */
+      if (!notificar || !marca.usaCorreo) {
+        avisar(
+          marca.usaCorreo ? 'Temario cerrado. No se avisó a nadie.' : 'Temario cerrado.',
+          'info',
+        )
         return
       }
       const n = await registrarCorreo(
@@ -1093,6 +1108,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         actualizada,
         correoAgendaCerrada(ref.current, actualizada),
       )
+      if (!n) return
       avisar(
         n.estado === 'enviado'
           ? `Temario cerrado y avisado a ${n.destinatarios.length} personas.`
@@ -1167,19 +1183,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await persistir('reuniones', siguiente)
       }
 
-      if (notificar) {
+      if (notificar && marca.usaCorreo) {
         const n = await registrarCorreo(
           'minuta',
           actualizada,
           correoMinuta(ref.current, actualizada),
         )
-        avisar(
-          n.estado === 'enviado'
-            ? `Minuta enviada a ${n.destinatarios.length} personas.`
-            : `Minuta generada. Quedó lista para ${n.destinatarios.length} destinatarios.`,
-        )
+        if (n) {
+          avisar(
+            n.estado === 'enviado'
+              ? `Minuta enviada a ${n.destinatarios.length} personas.`
+              : `Minuta generada. Quedó lista para ${n.destinatarios.length} destinatarios.`,
+          )
+        }
       } else {
-        avisar('Minuta generada. No se avisó a nadie.', 'info')
+        avisar(
+          marca.usaCorreo ? 'Minuta generada. No se avisó a nadie.' : 'Minuta generada.',
+          'info',
+        )
       }
 
       if (sinTratar > 0) {
@@ -1212,6 +1233,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const r = ref.current.reuniones.find((x) => x.id === id)
       if (!r) return
       const n = await registrarCorreo('minuta', r, correoMinuta(ref.current, r))
+      /* Instancia sin correo: no hay nada que enviar ni que informar. */
+      if (!n) return
       const cuantos = n.destinatarios.length
 
       /*
@@ -1472,13 +1495,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         : undefined
       const sId = datos.salaId ?? deLaReunion
       if (!sId) return
+      /*
+       * El id se arma acá y se devuelve. Quien crea la tarea puede
+       * necesitar seguir escribiendo sobre ella en el mismo gesto
+       * —el primer comentario, con la mención a quien tiene que
+       * enterarse— y sin el id habría que buscarla después por
+       * texto, que es adivinar.
+       */
+      const id = uid('c')
       await persistir('compromisos', {
         ...datos,
         salaId: sId,
-        id: uid('c'),
+        id,
         creadoEn: new Date().toISOString(),
       })
       avisar('Tarea registrada.')
+      return id
     },
     [persistir, avisar],
   )
@@ -1612,7 +1644,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const limpio = structuredClone(ESTADO_INICIAL)
     setEstado(limpio)
     await repo.reemplazar(limpio)
-    avisar('Datos de demostración restablecidos.', 'info')
+    avisar('Todo volvió al estado inicial.', 'info')
   }, [avisar])
 
   const valor = useMemo<Ctx>(

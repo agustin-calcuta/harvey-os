@@ -19,11 +19,25 @@ export const imporbamas: Marca = {
   descripcion: 'Imporbamas — reuniones y minutas: temario, minuta y seguimiento de tareas.',
   kicker: 'Calcuta para Imporbamas',
 
-  /* El superadmin es la cuenta de soporte de Calcuta, no del equipo. */
-  adminsSonDelEquipo: false,
+  /*
+   * Los cuatro socios administran. No hay una cuenta de soporte
+   * aparte: dan de alta y de baja gente ellos, y por eso tienen que
+   * aparecer en las listas donde se elige a quién sumar a una sala.
+   */
+  adminsSonDelEquipo: true,
 
   /* Trabajan para su propia marca: no hay clientes que distinguir. */
   usaClientes: false,
+
+  /*
+   * Correo y acceso con Google, apagados hasta que el equipo pase
+   * los correos con los que entra cada uno. Mientras tanto se
+   * trabaja con los perfiles del acceso, y nada intenta salir a
+   * ningún lado.
+   */
+  usaCorreo: false,
+  accesoGoogle: false,
+
   credito: 'Desarrollado por Calcuta',
 
   colores: {
@@ -85,8 +99,13 @@ export const imporbamas: Marca = {
   ejemplos: {
     tema: 'Definir proveedor de denim',
     tarea: 'Cerrar contrato con el taller de denim',
-    correo: 'renata@harveywillys.com',
-    persona: 'Renata Sosa',
+    /*
+     * Genéricos desde que el seed dejó de tener gente inventada: un
+     * ejemplo con nombre y apellido de alguien que no existe se lee
+     * como una persona del equipo que no se sabe quién es.
+     */
+    correo: 'nombre@imporbamas.com',
+    persona: 'Nombre y apellido',
   },
 
   logos: {

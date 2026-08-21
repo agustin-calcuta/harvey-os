@@ -44,7 +44,15 @@ import {
   type EstadoCompromiso,
   type Importancia,
 } from '../types'
-import { Boton, Chip, Confirmar, Seccion, SelectorVista, Vacio } from '../components/ui'
+import {
+  Boton,
+  Chip,
+  Confirmar,
+  Seccion,
+  SelectorVista,
+  Vacio,
+  usePantallaAncha,
+} from '../components/ui'
 import { marca } from '../marca'
 import {
   BarraFiltros,
@@ -702,9 +710,15 @@ function Tarjeta({
   superpuesta?: boolean
 }) {
   const { estado, moverCompromiso } = useApp()
+  /*
+   * En el teléfono la tarjeta no se arrastra: las columnas están
+   * apiladas y el gesto pelearía con el scroll. Ahí se mueve con los
+   * botones de estado que trae abajo.
+   */
+  const enEscritorio = usePantallaAncha()
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: c.id,
-    disabled: superpuesta,
+    disabled: superpuesta || !enEscritorio,
   })
 
   const vencido = estaVencido(c)
@@ -716,24 +730,40 @@ function Tarjeta({
   const reunion = estado.reuniones.find((r) => r.id === c.reunionId)
 
   return (
+    /*
+      La tarjeta entera es el asa.
+
+      Antes el arrastre salía sólo de los puntitos, que son seis
+      píxeles de blanco: para mover una tarjeta de columna había que
+      apuntarles. El sensor arranca recién a los 6 px de movimiento,
+      así que un click sobre el lápiz o el tacho sigue siendo un
+      click y no el principio de un arrastre.
+    */
     <div
       ref={setNodeRef}
+      {...(superpuesta || !enEscritorio ? {} : listeners)}
       style={{ transform: CSS.Translate.toString(transform) }}
       className={cx(
         'group border bg-panel p-3 transition-colors',
         isDragging ? 'opacity-30' : 'hover:border-borde2',
         vencido ? 'border-alerta/50' : 'border-borde',
+        enEscritorio && !superpuesta && 'cursor-grab active:cursor-grabbing',
       )}
     >
       <div className="flex items-start gap-2">
-        <button
+        {/*
+          Los puntitos quedan como señal de que esto se arrastra. Ya
+          no llevan los `listeners` —los tiene la tarjeta— pero sí los
+          `attributes`, que son los que la anuncian como arrastrable a
+          un lector de pantalla.
+        */}
+        <span
           {...attributes}
-          {...listeners}
-          className="-m-1.5 mt-0 shrink-0 cursor-grab p-1.5 text-borde2 transition-colors hover:text-tinta active:cursor-grabbing sm:m-0 sm:mt-0.5 sm:p-0"
+          className="-m-1.5 mt-0 shrink-0 p-1.5 text-borde2 transition-colors group-hover:text-tinta sm:m-0 sm:mt-0.5 sm:p-0"
           aria-label="Mover"
         >
           <GripVertical size={13} />
-        </button>
+        </span>
         <span
           className="mt-0.5 h-4 w-0.5 shrink-0"
           style={{ background: IMPORTANCIA[c.importancia].hex }}
